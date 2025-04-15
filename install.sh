@@ -25,7 +25,7 @@ cd "$install_path"
 # Assuming the user does this part manually as per the user's plan
 
 # Setup Python virtual environment
-python3 -m venv venv
+python3 -m venv venv-kast
 source venv/bin/activate
 
 # Install Python dependencies
