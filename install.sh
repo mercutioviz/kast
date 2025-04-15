@@ -15,6 +15,17 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# Check if running on Kali Linux
+if ! grep -q 'Kali' /etc/os-release; then
+  echo -e "${YELLOW}[!] Warning: This script is designed for Kali Linux.${NC}"
+  echo -e "${YELLOW}[!] Running on a different distribution may cause issues with package names.${NC}"
+  read -p "Do you want to continue anyway? (y/N): " continue_anyway
+  if [[ ! $continue_anyway =~ ^[Yy]$ ]]; then
+    echo -e "${RED}[!] Installation aborted.${NC}"
+    exit 1
+  fi
+fi
+
 # Ethical usage agreement
 echo -e "${YELLOW}[*] IMPORTANT: This tool should only be used for authorized security testing.${NC}"
 echo -e "${YELLOW}[*] Unauthorized scanning of systems is illegal and unethical.${NC}"
@@ -64,9 +75,14 @@ echo -e "${YELLOW}[*] Setting up Python virtual environment${NC}"
 python3 -m venv "$INSTALL_DIR/venv-kast"
 source "$INSTALL_DIR/venv-kast/bin/activate"
 
-# Install Python dependencies
+# Install Python dependencies with error handling
 echo -e "${YELLOW}[*] Installing Python dependencies${NC}"
-pip install -r "$INSTALL_DIR/requirements.txt"
+if pip install -r "$INSTALL_DIR/requirements.txt"; then
+  echo -e "${GREEN}[+] Python dependencies installed successfully${NC}"
+else
+  echo -e "${RED}[!] Error installing Python dependencies. Please check your internet connection and try again.${NC}"
+  echo -e "${YELLOW}[*] You can manually install dependencies later with: source $INSTALL_DIR/venv-kast/bin/activate && pip install -r $INSTALL_DIR/requirements.txt${NC}"
+fi
 
 # Check for and install system dependencies
 echo -e "${YELLOW}[*] Checking for required system tools${NC}"
@@ -75,7 +91,11 @@ required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy"
 for tool in "${required_tools[@]}"; do
   if ! command -v $tool &> /dev/null; then
     echo -e "${YELLOW}[*] Installing $tool${NC}"
-    apt-get install -y $tool
+    if apt-get install -y $tool; then
+      echo -e "${GREEN}[+] $tool installed successfully${NC}"
+    else
+      echo -e "${RED}[!] Failed to install $tool. You may need to install it manually.${NC}"
+    fi
   else
     echo -e "${GREEN}[+] $tool is already installed${NC}"
   fi
