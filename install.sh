@@ -86,7 +86,7 @@ fi
 
 # Check for and install system dependencies
 echo -e "${YELLOW}[*] Checking for required system tools${NC}"
-required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy" "nikto" "wapiti" "arachni" "metasploit-framework" "burpsuite" "sqlmap" "wafw00f")
+required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy" "nikto" "wapiti" "metasploit-framework" "burpsuite" "sqlmap" "wafw00f")
 
 for tool in "${required_tools[@]}"; do
   if ! command -v $tool &> /dev/null; then
