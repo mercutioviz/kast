@@ -1,35 +1,91 @@
 #!/bin/bash
 
-echo "Welcome to the KAST Installation Script."
-echo "You must type YES to agree to use KAST within legal limits and responsibly."
-read -p "Type YES to agree: " user_agree
+# KAST - Kali Automated Scanning Tool
+# Installation Script
 
-if [[ $user_agree != "YES" ]]; then
-    echo "You did not agree to the terms. Exiting installation."
+# Colors for better readability
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+  echo -e "${RED}[!] This script must be run as root${NC}"
+  exit 1
+fi
+
+# Ethical usage agreement
+echo -e "${YELLOW}[*] IMPORTANT: This tool should only be used for authorized security testing.${NC}"
+echo -e "${YELLOW}[*] Unauthorized scanning of systems is illegal and unethical.${NC}"
+echo -e "${YELLOW}[*] By proceeding, you agree to use this tool responsibly and legally.${NC}"
+read -p "Type 'YES' to confirm you will use this tool ethically: " ethical_agreement
+
+if [ "$ethical_agreement" != "YES" ]; then
+  echo -e "${RED}[!] Installation aborted. You must agree to use this tool ethically.${NC}"
+  exit 1
+fi
+
+# Default installation directory
+DEFAULT_DIR="/opt/kast"
+INSTALL_DIR=$DEFAULT_DIR
+
+# Ask for installation directory
+echo -e "${YELLOW}[*] KAST will be installed in ${DEFAULT_DIR} by default.${NC}"
+read -p "Enter installation directory (or press Enter for default): " user_dir
+
+if [ -n "$user_dir" ]; then
+  INSTALL_DIR=$user_dir
+fi
+
+# Check if directory exists, if not ask to create it
+if [ ! -d "$INSTALL_DIR" ]; then
+  echo -e "${YELLOW}[*] Directory $INSTALL_DIR does not exist.${NC}"
+  read -p "Would you like to create it? (y/N): " create_dir
+  
+  if [[ $create_dir =~ ^[Yy]$ ]]; then
+    echo -e "${YELLOW}[*] Creating installation directory: $INSTALL_DIR${NC}"
+    mkdir -p "$INSTALL_DIR"
+  else
+    echo -e "${RED}[!] Installation aborted. Directory does not exist.${NC}"
     exit 1
+  fi
 fi
 
-echo "Select the installation directory for KAST (default is /opt/kast):"
-read -p "Press enter for default or specify a different path: " install_path
+# Copy files to installation directory
+echo -e "${YELLOW}[*] Copying files to $INSTALL_DIR${NC}"
+cp -r ./* "$INSTALL_DIR/"
 
-if [[ -z "$install_path" ]]; then
-    install_path="/opt/kast"
-fi
+# Create reports directory
+mkdir -p "$INSTALL_DIR/reports"
 
-# Create the directory if it doesn't exist
-mkdir -p "$install_path"
-cd "$install_path"
-
-# Clone the repository into the chosen directory
-# git clone https://github.com/yourusername/kast.git "$install_path" 
-# Assuming the user does this part manually as per the user's plan
-
-# Setup Python virtual environment
-python3 -m venv venv-kast
-source venv/bin/activate
+# Set up Python virtual environment
+echo -e "${YELLOW}[*] Setting up Python virtual environment${NC}"
+python3 -m venv "$INSTALL_DIR/venv-kast"
+source "$INSTALL_DIR/venv-kast/bin/activate"
 
 # Install Python dependencies
-pip install -r requirements.txt
+echo -e "${YELLOW}[*] Installing Python dependencies${NC}"
+pip install -r "$INSTALL_DIR/requirements.txt"
 
-echo "Installation completed successfully."
-echo "You can run KAST from $install_path/src/main.py"
+# Check for and install system dependencies
+echo -e "${YELLOW}[*] Checking for required system tools${NC}"
+required_tools=("nmap" "whatweb" "nikto" "dirb" "chromium")
+
+for tool in "${required_tools[@]}"; do
+  if ! command -v $tool &> /dev/null; then
+    echo -e "${YELLOW}[*] Installing $tool${NC}"
+    apt-get install -y $tool
+  else
+    echo -e "${GREEN}[+] $tool is already installed${NC}"
+  fi
+done
+
+# Create symlink for easy execution
+echo -e "${YELLOW}[*] Creating symlink for KAST${NC}"
+ln -sf "$INSTALL_DIR/src/main.py" /usr/local/bin/kast
+chmod +x "$INSTALL_DIR/src/main.py"
+
+echo -e "${GREEN}[+] KAST has been successfully installed!${NC}"
+echo -e "${GREEN}[+] You can now run the tool by typing 'kast' in your terminal${NC}"
+echo -e "${YELLOW}[*] Remember to use this tool responsibly and legally${NC}"
