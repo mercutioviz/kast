@@ -70,6 +70,28 @@ cp -r ./* "$INSTALL_DIR/"
 # Create reports directory
 mkdir -p "$INSTALL_DIR/reports"
 
+# Create a setup.py file for proper package installation
+echo -e "${YELLOW}[*] Creating setup.py for package installation${NC}"
+cat > "$INSTALL_DIR/setup.py" << 'EOF'
+from setuptools import setup, find_packages
+
+setup(
+    name="kast",
+    version="1.0.0",
+    packages=find_packages(),
+    install_requires=[
+        "pyppeteer>=1.0.2",
+        "requests>=2.27.1",
+        "beautifulsoup4>=4.10.0",
+        "python-nmap>=0.7.1",
+        "colorama>=0.4.4",
+        "pyyaml>=6.0",
+        "jinja2>=3.0.3",
+        "rich>=12.0.0",
+    ],
+)
+EOF
+
 # Set up Python virtual environment
 echo -e "${YELLOW}[*] Setting up Python virtual environment${NC}"
 python3 -m venv "$INSTALL_DIR/venv-kast"
@@ -102,8 +124,16 @@ for tool in "${required_tools[@]}"; do
 done
 
 # Create symlink for easy execution
-echo -e "${YELLOW}[*] Creating symlink for KAST${NC}"
-ln -sf "$INSTALL_DIR/src/main.py" /usr/local/bin/kast
+# Create wrapper script for easy execution
+echo -e "${YELLOW}[*] Creating wrapper script for KAST${NC}"
+cat > /usr/local/bin/kast << EOF
+#!/bin/bash
+cd "$INSTALL_DIR"
+source "$INSTALL_DIR/venv-kast/bin/activate"
+python "$INSTALL_DIR/src/main.py" "\$@"
+EOF
+
+chmod +x /usr/local/bin/kast
 chmod +x "$INSTALL_DIR/src/main.py"
 
 echo -e "${GREEN}[+] KAST has been successfully installed!${NC}"

@@ -39,7 +39,7 @@ def run_dnsenum(target, output_dir, dry_run=False):
         
         # Parse the XML results and convert to JSON for easier processing
         import xml.etree.ElementTree as ET
-try:
+        try:
             tree = ET.parse(output_file)
             root = tree.getroot()
             

@@ -5,11 +5,14 @@ import sys
 import os
 import time
 from datetime import datetime
+
+# Add the project root directory to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)  # Go up one level from src/
+sys.path.insert(0, project_root)
+
 from rich.console import Console
 from rich.panel import Panel
-
-# Add the parent directory to sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.modules.recon import coordinator as recon_coordinator
 from src.modules.vuln_scan import vulnerability_scanner
@@ -26,7 +29,7 @@ def main():
     banner.display_banner()
     
     parser = argparse.ArgumentParser(description="KAST - Kali Automated Scanning Tool")
-    parser.add_argument("target", help="Target URL or IP address")
+    parser.add_argument("target", help="Target URL or IP address", nargs="?")
     parser.add_argument("-m", "--mode", choices=["recon", "vuln", "full"], default="full",
                         help="Scan mode: reconnaissance only, vulnerability scan only, or full scan (default)")
     parser.add_argument("-o", "--output", help="Output directory for reports")
@@ -36,6 +39,11 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Dry run mode - show what would be done without actually doing it")
     
     args = parser.parse_args()
+    
+    # If no target is provided, show help and exit
+    if args.target is None:
+        parser.print_help()
+        sys.exit(0)
     
     # Validate target
     if not validators.is_valid_target(args.target):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-importjson
+import json
 import asyncio
 from pyppeteer import launch
 from src.modules.utils.validators import normalize_url
