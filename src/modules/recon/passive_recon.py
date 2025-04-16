@@ -73,9 +73,11 @@ def run_theharvester(target, output_dir, dry_run=False):
     
     domain = extract_domain(target)
     output_file = os.path.join(output_dir, 'theharvester.xml')
+    json_output_file = os.path.join(output_dir, 'theharvester.json')
     
+    # Use the correct command name (capital H)
     command = [
-        'theharvester',
+        'theHarvester',  # Changed from 'theharvester' to 'theHarvester'
         '-d', domain,
         '-b', 'all',
         '-f', output_file
@@ -90,15 +92,42 @@ def run_theharvester(target, output_dir, dry_run=False):
         }
     
     try:
-        subprocess.run(command, stderr=subprocess.PIPE, check=True)
+        # Run the command
+        process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         
-        logger.info(f"theHarvester scan completed. Results saved to {output_file}")
+        # Check if the output file was created
+        if not os.path.exists(output_file):
+            logger.warning(f"theHarvester did not create the expected output file: {output_file}")
+            
+            # Try to save the stdout as XML
+            with open(output_file, 'w') as f:
+                f.write(process.stdout.decode('utf-8', errors='ignore'))
+            
+            logger.info(f"Saved theHarvester stdout to {output_file}")
         
         # Parse the XML results and convert to JSON for easier processing
-        import xml.etree.ElementTree as ET
         try:
-            tree = ET.parse(output_file)
-            root = tree.getroot()
+            import xml.etree.ElementTree as ET
+            
+            # Try to parse the XML file
+            try:
+                tree = ET.parse(output_file)
+                root = tree.getroot()
+            except ET.ParseError:
+                # If parsing fails, try to read the file and fix common XML issues
+                with open(output_file, 'r') as f:
+                    content = f.read()
+                
+                # Add XML declaration if missing
+                if not content.startswith('<?xml'):
+                    content = '<?xml version="1.0" encoding="UTF-8"?>\n' + content
+                
+                # Wrap in root element if needed
+                if '<theHarvester>' not in content:
+                    content = '<theHarvester>\n' + content + '\n</theHarvester>'
+                
+                # Parse from string
+                root = ET.fromstring(content)
             
             results = {
                 'emails': [],
@@ -108,27 +137,42 @@ def run_theharvester(target, output_dir, dry_run=False):
             
             # Extract emails
             for email in root.findall('.//email'):
-                results['emails'].append(email.text)
+                if email is not None and email.text:
+                    results['emails'].append(email.text)
             
             # Extract hosts
             for host in root.findall('.//host'):
-                results['hosts'].append(host.text)
+                if host is not None and host.text:
+                    results['hosts'].append(host.text)
             
             # Extract virtual hosts
             for vhost in root.findall('.//vhost'):
-                results['vhosts'].append(vhost.text)
+                if vhost is not None and vhost.text:
+                    results['vhosts'].append(vhost.text)
             
             # Save parsed results
-            parsed_output = os.path.join(output_dir, 'theharvester_parsed.json')
-            with open(parsed_output, 'w') as f:
-                json.dump(results, f, indent=4)
+            from src.modules.utils.json_utils import save_json
+            save_json(results, json_output_file)
             
-            logger.debug(f"Parsed theHarvester results saved to {parsed_output}")
+            logger.info(f"theHarvester scan completed. Results saved to {json_output_file}")
             
             return results
         except Exception as e:
             logger.error(f"Error parsing theHarvester results: {str(e)}")
-            return None
+            
+            # Create a minimal result structure
+            results = {
+                'emails': [],
+                'hosts': [],
+                'vhosts': [],
+                'error': str(e)
+            }
+            
+            # Save minimal results
+            from src.modules.utils.json_utils import save_json
+            save_json(results, json_output_file)
+            
+            return results
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running theHarvester: {e}")
         return None
