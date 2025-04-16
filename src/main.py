@@ -26,8 +26,6 @@ console = Console()
 
 def main():
     """Main function to run KAST"""
-    banner.display_banner()
-    
     parser = argparse.ArgumentParser(description="KAST - Kali Automated Scanning Tool")
     parser.add_argument("target", help="Target URL or IP address", nargs="?")
     parser.add_argument("-m", "--mode", choices=["recon", "vuln", "full"], default="full",
@@ -37,8 +35,13 @@ def main():
     parser.add_argument("--no-browser", action="store_true", help="Disable browser-based scanning")
     parser.add_argument("--no-online", action="store_true", help="Disable online services (SSL Labs, SecurityHeaders.io, Mozilla Observatory)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run mode - show what would be done without actually doing it")
+    parser.add_argument("--no-banner", action="store_true", help="Skip banner and permission confirmation")
     
     args = parser.parse_args()
+    
+    # Display banner unless --no-banner is specified
+    if not args.no_banner:
+        banner.display_banner()
     
     # If no target is provided, show help and exit
     if args.target is None:
@@ -50,8 +53,8 @@ def main():
         console.print("[bold red]Invalid target. Please provide a valid URL or IP address.[/bold red]")
         sys.exit(1)
     
-    # Legal disclaimer
-    if not args.quiet:
+    # Legal disclaimer unless --no-banner is specified
+    if not args.quiet and not args.no_banner:
         console.print(Panel.fit(
             "[yellow]LEGAL DISCLAIMER[/yellow]: This tool should only be used for authorized security testing. "
             "Unauthorized scanning of systems is illegal and unethical.",
