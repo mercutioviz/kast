@@ -17,20 +17,30 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-def run_whatweb(target, output_dir):
+def run_whatweb(target, output_dir, dry_run=False):
     """Run WhatWeb for technology detection"""
     logger.info("Running WhatWeb for technology detection")
     
     output_file = os.path.join(output_dir, 'whatweb.json')
     
+    command = [
+        'whatweb', 
+        '--no-errors',
+        '-a', '3',  # Aggression level
+        '-j',       # JSON output
+        target
+    ]
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would execute: {' '.join(command)} > {output_file}")
+        return {
+            "dry_run": True,
+            "command": ' '.join(command),
+            "output_file": output_file
+        }
+    
     try:
-        subprocess.run([
-            'whatweb', 
-            '--no-errors',
-            '-a', '3',  # Aggression level
-            '-j',       # JSON output
-            target
-        ], stdout=open(output_file, 'w'), stderr=subprocess.PIPE, check=True)
+        subprocess.run(command, stdout=open(output_file, 'w'), stderr=subprocess.PIPE, check=True)
         
         logger.info(f"WhatWeb scan completed. Results saved to {output_file}")
         
@@ -46,20 +56,30 @@ def run_whatweb(target, output_dir):
         logger.error(f"Unexpected error with WhatWeb: {str(e)}")
         return None
 
-def run_theharvester(target, output_dir):
+def run_theharvester(target, output_dir, dry_run=False):
     """Run theHarvester for email and subdomain enumeration"""
     logger.info("Running theHarvester for email and subdomain enumeration")
     
     domain = extract_domain(target)
     output_file = os.path.join(output_dir, 'theharvester.xml')
     
+    command = [
+        'theharvester',
+        '-d', domain,
+        '-b', 'all',
+        '-f', output_file
+    ]
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would execute: {' '.join(command)}")
+        return {
+            "dry_run": True,
+            "command": ' '.join(command),
+            "output_file": output_file
+        }
+    
     try:
-        subprocess.run([
-            'theharvester',
-            '-d', domain,
-            '-b', 'all',
-            '-f', output_file
-        ], stderr=subprocess.PIPE, check=True)
+        subprocess.run(command, stderr=subprocess.PIPE, check=True)
         
         logger.info(f"theHarvester scan completed. Results saved to {output_file}")
         

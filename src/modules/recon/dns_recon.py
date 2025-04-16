@@ -9,27 +9,37 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-def run_dnsenum(target, output_dir):
+def run_dnsenum(target, output_dir, dry_run=False):
     """Run DNSenum for DNS enumeration"""
     logger.info("Running DNSenum for DNS enumeration")
     
     domain = extract_domain(target)
     output_file = os.path.join(output_dir, 'dnsenum.xml')
     
+    command = [
+        'dnsenum',
+        '--noreverse',
+        '--nocolor',
+        '-o', output_file,
+        domain
+    ]
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would execute: {' '.join(command)}")
+        return {
+            "dry_run": True,
+            "command": ' '.join(command),
+            "output_file": output_file
+        }
+    
     try:
-        subprocess.run([
-            'dnsenum',
-            '--noreverse',
-            '--nocolor',
-            '-o', output_file,
-            domain
-        ], stderr=subprocess.PIPE, check=True)
+        subprocess.run(command, stderr=subprocess.PIPE, check=True)
         
         logger.info(f"DNSenum scan completed. Results saved to {output_file}")
         
         # Parse the XML results and convert to JSON for easier processing
         import xml.etree.ElementTree as ET
-        try:
+try:
             tree = ET.parse(output_file)
             root = tree.getroot()
             

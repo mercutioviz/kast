@@ -9,21 +9,32 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-def run_wafw00f(target, output_dir):
+def run_wafw00f(target, output_dir, dry_run=False):
     """Run wafw00f to detect Web Application Firewalls"""
     logger.info("Running wafw00f to detect Web Application Firewalls")
     
     url = normalize_url(target)
     output_file = os.path.join(output_dir, 'wafw00f.json')
     
+    command = [
+        'wafw00f',
+        url,
+        '-a',  # Find all WAFs, don't stop at the first one
+        '-o', output_file,
+        '-f', 'json'
+    ]
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would execute: {' '.join(command)}")
+        return {
+            "dry_run": True,
+            "command": ' '.join(command),
+            "output_file": output_file
+        }
+    
     try:
         # Run wafw00f with JSON output
-        process = subprocess.run([
-            'wafw00f',
-            url,
-            '-o', output_file,
-            '-f', 'json'
-        ], stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=True)
+        process = subprocess.run(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, check=True)
         
         logger.info(f"wafw00f scan completed. Results saved to {output_file}")
         

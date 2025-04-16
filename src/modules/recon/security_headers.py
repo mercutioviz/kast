@@ -9,16 +9,25 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-def run_securityheaders(target, output_dir):
+def run_securityheaders(target, output_dir, dry_run=False):
     """Run SecurityHeaders.io scan for HTTP security headers analysis"""
     logger.info("Running SecurityHeaders.io scan for HTTP security headers analysis")
     
+    url = normalize_url(target)
     output_file = os.path.join(output_dir, 'securityheaders.json')
+    api_url = f"https://securityheaders.com/?q={url}&followRedirects=on&hide=on&json=on"
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would request SecurityHeaders.io analysis for {url}")
+        logger.info(f"[DRY RUN] Would save results to {output_file}")
+        return {
+            "dry_run": True,
+            "target": url,
+            "api": "SecurityHeaders.io",
+            "output_file": output_file
+        }
     
     try:
-        url = normalize_url(target)
-        api_url = f"https://securityheaders.com/?q={url}&followRedirects=on&hide=on&json=on"
-        
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
         }

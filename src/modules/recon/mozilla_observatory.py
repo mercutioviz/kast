@@ -10,12 +10,23 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-def run_mozilla_observatory(target, output_dir):
+def run_mozilla_observatory(target, output_dir, dry_run=False):
     """Run Mozilla Observatory scan for web security analysis"""
     logger.info("Running Mozilla Observatory scan for web security analysis")
     
     domain = extract_domain(target)
     output_file = os.path.join(output_dir, 'mozilla_observatory.json')
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would request Mozilla Observatory scan for {domain}")
+        logger.info(f"[DRY RUN] Would poll API until scan completes")
+        logger.info(f"[DRY RUN] Would save results to {output_file}")
+        return {
+            "dry_run": True,
+            "target": domain,
+            "api": "Mozilla Observatory",
+            "output_file": output_file
+        }
     
     try:
         # Start a new scan

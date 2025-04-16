@@ -11,21 +11,30 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-def run_sslscan(target, output_dir):
+def run_sslscan(target, output_dir, dry_run=False):
     """Run SSLScan for SSL/TLS configuration analysis"""
     logger.info("Running SSLScan for SSL/TLS configuration analysis")
     
     output_file = os.path.join(output_dir, 'sslscan.json')
+    domain = extract_domain(target)
+    
+    command = [
+        'sslscan',
+        '--no-colour',
+        '--json=' + output_file,
+        domain
+    ]
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would execute: {' '.join(command)}")
+        return {
+            "dry_run": True,
+            "command": ' '.join(command),
+            "output_file": output_file
+        }
     
     try:
-        domain = extract_domain(target)
-        
-        subprocess.run([
-            'sslscan',
-            '--no-colour',
-            '--json=' + output_file,
-            domain
-        ], stderr=subprocess.PIPE, check=True)
+        subprocess.run(command, stderr=subprocess.PIPE, check=True)
         
         logger.info(f"SSLScan completed. Results saved to {output_file}")
         
@@ -41,12 +50,23 @@ def run_sslscan(target, output_dir):
         logger.error(f"Unexpected error with SSLScan: {str(e)}")
         return None
 
-def run_ssllabs(target, output_dir):
+def run_ssllabs(target, output_dir, dry_run=False):
     """Run SSL Labs API scan for comprehensive SSL/TLS analysis"""
     logger.info("Running SSL Labs scan for comprehensive SSL/TLS analysis")
     
     domain = extract_domain(target)
     output_file = os.path.join(output_dir, 'ssllabs.json')
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would call SSL Labs API for {domain}")
+        logger.info(f"[DRY RUN] Would poll API until scan completes")
+        logger.info(f"[DRY RUN] Would save results to {output_file}")
+        return {
+            "dry_run": True,
+            "target": domain,
+            "api": "SSL Labs",
+            "output_file": output_file
+        }
     
     try:
         # Start new scan

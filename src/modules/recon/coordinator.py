@@ -26,13 +26,16 @@ def create_results_dir(target):
     os.makedirs(results_dir, exist_ok=True)
     return results_dir
 
-def run_recon(target, output_dir=None, use_browser=True, use_online_services=True):
+def run_recon(target, output_dir=None, use_browser=True, use_online_services=True, dry_run=False):
     """Run all reconnaissance modules"""
     if not output_dir:
         output_dir = create_results_dir(target)
     
     # Set up the logger
     main_logger = setup_logger(target, output_dir)
+    
+    if dry_run:
+        logger.info("[DRY RUN] This is a dry run. No actual scanning will be performed.")
     
     recon_dir = os.path.join(output_dir, 'recon')
     os.makedirs(recon_dir, exist_ok=True)
@@ -50,23 +53,55 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
         
         # Run WhatWeb
         logger.info("Running WhatWeb for technology detection")
-        results['whatweb'] = run_whatweb(target, recon_dir)
+        results['whatweb'] = run_whatweb(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run theHarvester
         logger.info("Running theHarvester for email and subdomain enumeration")
-        results['theharvester'] = run_theharvester(target, recon_dir)
+        results['theharvester'] = run_theharvester(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run DNSenum
         logger.info("Running DNSenum for DNS enumeration")
-        results['dnsenum'] = run_dnsenum(target, recon_dir)
+        results['dnsenum'] = run_dnsenum(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run SSLScan
         logger.info("Running SSLScan for SSL/TLS configuration analysis")
-        results['sslscan'] = run_sslscan(target, recon_dir)
+        results['sslscan'] = run_sslscan(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run wafw00f
-        logger.info("Running wafw00f to detect Web Application Firew
+        logger.info("Running wafw00f to detect Web Application Firewalls")
+        results['wafw00f'] = run_wafw00f(target, recon_dir, dry_run=dry_run)
+        progress.update(task, advance=1)
+        
+        # Run browser-based recon if enabled
+        if use_browser and target.startswith(('http://', 'https://')):
+            logger.info("Running browser-based reconnaissance")
+            results['browser'] = browser_recon(target, recon_dir, dry_run=dry_run)
+            progress.update(task, advance=1)
+        
+        # Run online services if enabled
+        if use_online_services:
+            # Run SSL Labs
+            logger.info("Running SSL Labs scan for comprehensive SSL/TLS analysis")
+            results['ssllabs'] = run_ssllabs(target, recon_dir, dry_run=dry_run)
+            progress.update(task, advance=1)
+            
+            # Run SecurityHeaders.io
+            logger.info("Running SecurityHeaders.io scan for HTTP security headers analysis")
+            results['securityheaders'] = run_securityheaders(target, recon_dir, dry_run=dry_run)
+            progress.update(task, advance=1)
+            
+            # Run Mozilla Observatory
+            logger.info("Running Mozilla Observatory scan for web security analysis")
+            results['mozilla_observatory'] = run_mozilla_observatory(target, recon_dir, dry_run=dry_run)
+            progress.update(task, advance=1)
+    
+    if dry_run:
+        logger.info("[DRY RUN] Reconnaissance dry run completed. No actual scans were performed.")
+    else:
+        logger.info(f"Reconnaissance completed! Results saved to {recon_dir}")
+    
+    return results, recon_dir

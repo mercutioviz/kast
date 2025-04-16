@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import json
+importjson
 import asyncio
 from pyppeteer import launch
 from src.modules.utils.validators import normalize_url
@@ -10,18 +10,41 @@ from src.modules.utils.logger import get_module_logger
 # Module-specific logger
 logger = get_module_logger(__name__)
 
-async def run_browser_recon(target, output_dir):
+async def run_browser_recon(target, output_dir, dry_run=False):
     """Run browser-based reconnaissance"""
     logger.info("Launching headless browser for JavaScript analysis")
+    
+    url = normalize_url(target)
+    output_file = os.path.join(output_dir, 'browser_recon.json')
+    screenshot_path = os.path.join(output_dir, 'screenshot.png')
+    
+    if dry_run:
+        logger.info(f"[DRY RUN] Would launch headless browser for {url}")
+        logger.info(f"[DRY RUN] Would extract JS files, forms, links, cookies")
+        logger.info(f"[DRY RUN] Would take screenshot and save to {screenshot_path}")
+        logger.info(f"[DRY RUN] Would save browser recon data to {output_file}")
+        return {
+            "dry_run": True,
+            "target": url,
+            "tool": "Browser Reconnaissance",
+            "actions": [
+                "Extract JavaScript files",
+                "Extract form information",
+                "Extract links",
+                "Take screenshot",
+                "Get cookies",
+                "Get local/session storage",
+                "Detect frameworks"
+            ],
+            "output_file": output_file,
+            "screenshot": screenshot_path
+        }
     
     browser = await launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
     page = await browser.newPage()
     
     # Set user agent to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36')
-    
-    url = normalize_url(target)
-    output_file = os.path.join(output_dir, 'browser_recon.json')
     
     try:
         await page.goto(url, {'waitUntil': 'networkidle0', 'timeout': 60000})
@@ -54,7 +77,6 @@ async def run_browser_recon(target, output_dir):
         }''')
         
         # Take screenshot
-        screenshot_path = os.path.join(output_dir, 'screenshot.png')
         await page.screenshot({'path': screenshot_path, 'fullPage': True})
         
         # Get cookies
@@ -84,7 +106,7 @@ async def run_browser_recon(target, output_dir):
             if (window.__VUE__ || document.querySelector('[data-v-]')) {
                 frameworks.push('Vue');
             }
-            
+
             // Check for jQuery
             if (window.jQuery || window.$) {
                 frameworks.push('jQuery');
@@ -117,10 +139,13 @@ async def run_browser_recon(target, output_dir):
     finally:
         await browser.close()
 
-def browser_recon(target, output_dir):
+def browser_recon(target, output_dir, dry_run=False):
     """Wrapper function to run browser recon in asyncio event loop"""
     try:
-        return asyncio.get_event_loop().run_until_complete(run_browser_recon(target, output_dir))
+        if dry_run:
+            return asyncio.get_event_loop().run_until_complete(run_browser_recon(target, output_dir, dry_run=True))
+        else:
+            return asyncio.get_event_loop().run_until_complete(run_browser_recon(target, output_dir))
     except Exception as e:
         logger.error(f"Error setting up browser reconnaissance: {str(e)}")
         return None
