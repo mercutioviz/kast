@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+import os
+from datetime import datetime
+from rich.progress import Progress
+
+from src.modules.utils.validators import extract_domain
+from src.modules.utils.logger import setup_logger, get_module_logger
+from src.modules.recon.passive_recon import run_whatweb, run_theharvester
+from src.modules.recon.dns_recon import run_dnsenum
+from src.modules.recon.ssl_recon import run_sslscan, run_ssllabs
+from src.modules.recon.security_headers import run_securityheaders
+from src.modules.recon.mozilla_observatory import run_mozilla_observatory
+from src.modules.recon.web_recon import browser_recon
+from src.modules.recon.wafw00f_scan import run_wafw00f
+
+# Module-specific logger
+logger = get_module_logger(__name__)
+
+def create_results_dir(target):
+    """Create a results directory for the current scan"""
+    domain = extract_domain(target)
+    timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    results_dir = os.path.join(base_dir, "results", f"{domain}-{timestamp}")
+    os.makedirs(results_dir, exist_ok=True)
+    return results_dir
+
+def run_recon(target, output_dir=None, use_browser=True, use_online_services=True):
+    """Run all reconnaissance modules"""
+    if not output_dir:
+        output_dir = create_results_dir(target)
+    
+    # Set up the logger
+    main_logger = setup_logger(target, output_dir)
+    
+    recon_dir = os.path.join(output_dir, 'recon')
+    os.makedirs(recon_dir, exist_ok=True)
+    
+    results = {}
+    
+    with Progress() as progress:
+        total_tasks = 5  # Basic tools
+        if use_browser:
+            total_tasks += 1
+        if use_online_services:
+            total_tasks += 3  # SSL Labs, SecurityHeaders, Mozilla Observatory
+        
+        task = progress.add_task("[cyan]Running reconnaissance...", total=total_tasks)
+        
+        # Run WhatWeb
+        logger.info("Running WhatWeb for technology detection")
+        results['whatweb'] = run_whatweb(target, recon_dir)
+        progress.update(task, advance=1)
+        
+        # Run theHarvester
+        logger.info("Running theHarvester for email and subdomain enumeration")
+        results['theharvester'] = run_theharvester(target, recon_dir)
+        progress.update(task, advance=1)
+        
+        # Run DNSenum
+        logger.info("Running DNSenum for DNS enumeration")
+        results['dnsenum'] = run_dnsenum(target, recon_dir)
+        progress.update(task, advance=1)
+        
+        # Run SSLScan
+        logger.info("Running SSLScan for SSL/TLS configuration analysis")
+        results['sslscan'] = run_sslscan(target, recon_dir)
+        progress.update(task, advance=1)
+        
+        # Run wafw00f
+        logger.info("Running wafw00f to detect Web Application Firew
