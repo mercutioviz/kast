@@ -69,9 +69,25 @@ def main():
         output_dir = args.output
     else:
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        output_dir = os.path.join(script_dir, "results", f"{args.target.replace('://', '_').replace('/', '_')}-{timestamp}")
-    
-    os.makedirs(output_dir, exist_ok=True)
+        default_dir = os.path.join(script_dir, "results")
+        
+        # Check if we have write permissions to the default directory
+        if os.access(default_dir, os.W_OK):
+            output_dir = os.path.join(default_dir, f"{args.target.replace('://', '_').replace('/', '_')}-{timestamp}")
+        else:
+            # Fall back to a directory in the user's home folder
+            home_dir = os.path.expanduser("~")
+            output_dir = os.path.join(home_dir, ".kast", "results", f"{args.target.replace('://', '_').replace('/', '_')}-{timestamp}")
+            logger.warning(f"No write permission to {default_dir}, using {output_dir} instead")
+
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except PermissionError:
+        # If we still can't create the directory, fall back to /tmp
+        old_output_dir = output_dir
+        output_dir = os.path.join("/tmp", f"kast-{args.target.replace('://', '_').replace('/', '_')}-{timestamp}")
+        os.makedirs(output_dir, exist_ok=True)
+        logger.warning(f"No write permission to {old_output_dir}, using {output_dir} instead")
     
     # Set up logger
     main_logger = setup_logger(args.target, output_dir)

@@ -70,6 +70,10 @@ cp -r ./* "$INSTALL_DIR/"
 # Create reports directory
 mkdir -p "$INSTALL_DIR/reports"
 
+# Create results directory
+mkdir -p "$INSTALL_DIR/results"
+chmod 666 "$INSTALL_DIR/results"
+
 # Create a setup.py file for proper package installation
 echo -e "${YELLOW}[*] Creating setup.py for package installation${NC}"
 cat > "$INSTALL_DIR/setup.py" << 'EOF'
