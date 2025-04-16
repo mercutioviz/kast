@@ -2,51 +2,140 @@
 
 # KAST - Kali Automated Scanning Tool
 
-## Overview
-KAST (Kali Automated Scanning Tool) is a comprehensive web application security scanning tool designed to automate the process of detecting vulnerabilities in web applications. It is built on Kali Linux and utilizes a variety of open-source tools to perform both gentle reconnaissance and thorough vulnerability scans.
-
-KAST is intended for security professionals and developers to assess the security of their web applications in a structured and automated manner. It supports customizable scanning options and generates detailed reports that include identified vulnerabilities, CVEs, and recommendations for enhancing security, particularly through the use of Web Application Firewalls (WAFs).
+KAST (Kali Automated Scanning Tool) is a comprehensive web application security scanning tool designed for Kali Linux. It automates the process of detecting vulnerabilities using various security tools and provides options for both reconnaissance and vulnerability scanning.
 
 ## Features
-- **Reconnaissance Scanning**: Gathers information without actively testing for vulnerabilities.
-- **Vulnerability Scanning**: Actively tests for vulnerabilities and requires permission to perform.
-- **Interactive Installation**: Customizable installation through an interactive script.
-- **Comprehensive Reporting**: Detailed reports on vulnerabilities, including CVEs and security enhancement recommendations.
 
-## Prerequisites
-- Kali Linux
-- Python 3
-- Git (for cloning the repository)
+- **Comprehensive Reconnaissance**: Utilizes multiple tools to gather information about the target:
+  - WhatWeb for technology detection
+  - theHarvester for email and subdomain enumeration
+  - DNSenum for DNS information gathering
+  - SSLScan for SSL/TLS configuration analysis
+  - wafw00f for Web Application Firewall detection
+  - Browser-based reconnaissance using pyppeteer
+
+- **Online Security Services Integration**:
+  - SSL Labs API for comprehensive SSL/TLS analysis
+  - SecurityHeaders.io for HTTP security headers analysis
+  - Mozilla Observatory for web security analysis
+
+- **Detailed Reporting**: Generates structured reports with findings from all tools
+
+- **Logging System**: Maintains detailed logs of all operations for audit and review
 
 ## Installation
 
-1. **Clone the Repository**:
-bash git clone https://github.com/yourusername/kast.git && cd kast
+### Prerequisites
 
-2. **Run the Installation Script**:
-bash ./install.sh
+- Kali Linux (recommended) or other Debian-based distributions
+- Python 3.7+
+- Root privileges for installing system dependencies
 
-Follow the interactive prompts in the installation script to agree to legal terms and select the installation directory. The default installation directory is `/opt/kast`, but you can specify another location if desired.
+### Installation Steps
 
-3. **Activate the Virtual Environment**:
-bash source venv-kast/bin/activate
+1. Clone the repository:
+git clone https://github.com/yourusername/kast.git && cd kast
 
-4. **Run KAST**:
-   Navigate to the `src` directory and run the main script:
-bash python main.py
+2. Run the installation script:
+sudo ./install.sh
+
+The installation script will:
+   - Verify you're running as root
+   - Check if you're running Kali Linux
+   - Ask for ethical usage confirmation
+   - Install required system dependencies
+   - Set up a Python virtual environment
+   - Install Python dependencies
+   - Create a symlink for easy execution
+
+3. Verify the installation:
+kast --help
 
 ## Usage
-Detailed usage instructions will be provided here, including how to select scan types, interpret results, and configure scans.
 
-## Legal Disclaimer
-KAST is intended for lawful, ethical testing and security assessment purposes only. Users must comply with all applicable local, state, and federal laws regarding access to information and technology. Misuse of KAST may result in criminal charges.
+### Basic Usage
 
-Please type `YES` when prompted by the installation script to indicate your agreement to use KAST responsibly and within legal limits.
+kast [target]
 
-## Contributing
-Contributions to KAST are welcome. Please read the contributing guidelines before submitting pull requests.
+Where `[target]` can be a URL, domain, or IP address.
 
-## License
-KAST is open-source software licensed under the [MIT license](LICENSE.txt).
+### Advanced Options
+
+kast [target] [options]
+
+Options:
+- `-m, --mode`: Scan mode (recon, vuln, full)
+- `-o, --output`: Custom output directory
+- `-q, --quiet`: Quiet mode, minimal output
+- `--no-browser`: Disable browser-based scanning
+- `--no-online`: Disable online services (SSL Labs, SecurityHeaders.io, Mozilla Observatory)
+
+### Examples
+
+# Full scan of a website
+kast https://example.com
+
+# Reconnaissance only
+kast example.com -m recon
+
+# Vulnerability scan with custom output directory
+kast 192.168.1.1 -m vuln -o /path/to/results
+
+# Full scan without browser-based tests
+kast example.com --no-browser
 
 
+## Results
+
+Scan results are stored in the results directory with the following structure:
+
+
+results/
+└── domain-YYYY-MM-DD-HH-MM-SS/
+    ├── logs/
+    │   └── kast-YYYYMMDD-HHMMSS.log
+    ├── recon/
+    │   ├── whatweb.json
+    │   ├── theharvester.xml
+    │   ├── theharvester_parsed.json
+    │   ├── dnsenum.xml
+    │   ├── dnsenum_parsed.json
+    │   ├── sslscan.json
+    │   ├── wafw00f.json
+    │   ├── browser_recon.json
+    │   ├── screenshot.png
+    │   ├── ssllabs.json
+    │   ├── securityheaders.json
+    │   └── mozilla_observatory.json
+    └── vuln/
+        └── [vulnerability scan results]
+
+## Tools Used
+
+KAST integrates with the following tools:
+
+WhatWeb
+theHarvester
+DNSenum
+SSLScan
+wafw00f
+Nikto
+Wapiti
+SQLmap
+Metasploit Framework
+Burp Suite
+ZAP (OWASP Zed Attack Proxy)
+
+## Ethical Usage Disclaimer
+IMPORTANT: KAST is designed for authorized security testing only. Unauthorized scanning of systems is illegal and unethical. Always ensure you have explicit permission to scan any target system.
+
+By using this tool, you agree to:
+
+Only scan systems you own or have explicit permission to test
+Comply with all applicable laws and regulations
+Use the tool responsibly and ethically
+Accept full responsibility for your actions
+The developers of KAST are not responsible for any misuse or damage caused by this tool.
+
+License
+This project is licensed under the MIT License - see the LICENSE file for details.
