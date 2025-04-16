@@ -34,11 +34,13 @@ KAST (Kali Automated Scanning Tool) is a comprehensive web application security 
 ### Installation Steps
 
 1. Clone the repository:
+```bash
 git clone https://github.com/yourusername/kast.git && cd kast
-
+```
 2. Run the installation script:
+```bash
 sudo ./install.sh
-
+```
 The installation script will:
    - Verify you're running as root
    - Check if you're running Kali Linux
@@ -49,20 +51,21 @@ The installation script will:
    - Create a symlink for easy execution
 
 3. Verify the installation:
+```bash
 kast --help
-
+```
 ## Usage
 
 ### Basic Usage
-
+```bash
 kast [target]
-
+```
 Where `[target]` can be a URL, domain, or IP address.
 
 ### Advanced Options
-
+```bash
 kast [target] [options]
-
+```
 Options:
 - `-m, --mode`: Scan mode (recon, vuln, full)
 - `-o, --output`: Custom output directory
@@ -73,23 +76,29 @@ Options:
 ### Examples
 
 # Full scan of a website
+```bash
 kast https://example.com
-
+```
 # Reconnaissance only
+```bash
 kast example.com -m recon
+```
 
 # Vulnerability scan with custom output directory
+```bash
 kast 192.168.1.1 -m vuln -o /path/to/results
+```
 
 # Full scan without browser-based tests
+```bash
 kast example.com --no-browser
-
+```
 
 ## Results
 
 Scan results are stored in the results directory with the following structure:
 
-
+```
 results/
 └── domain-YYYY-MM-DD-HH-MM-SS/
     ├── logs/
@@ -109,22 +118,23 @@ results/
     │   └── mozilla_observatory.json
     └── vuln/
         └── [vulnerability scan results]
+```
 
 ## Tools Used
 
 KAST integrates with the following tools:
 
-WhatWeb
-theHarvester
-DNSenum
-SSLScan
-wafw00f
-Nikto
-Wapiti
-SQLmap
-Metasploit Framework
-Burp Suite
-ZAP (OWASP Zed Attack Proxy)
+- WhatWeb
+- theHarvester
+- DNSenum
+- SSLScan
+- wafw00f
+- Nikto
+- Wapiti
+- SQLmap
+- Metasploit Framework
+- Burp Suite (with paid professional edition)
+- ZAP (OWASP Zed Attack Proxy)
 
 ## Ethical Usage Disclaimer
 IMPORTANT: KAST is designed for authorized security testing only. Unauthorized scanning of systems is illegal and unethical. Always ensure you have explicit permission to scan any target system.
