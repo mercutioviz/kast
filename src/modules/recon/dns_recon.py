@@ -14,13 +14,14 @@ def run_dnsenum(target, output_dir, dry_run=False):
     logger.info("Running DNSenum for DNS enumeration")
     
     domain = extract_domain(target)
-    output_file = os.path.join(output_dir, 'dnsenum.xml')
+    json_output_file = os.path.join(output_dir, 'dnsenum.json')
+    text_output_file = os.path.join(output_dir, 'dnsenum.txt')
     
+    # Remove the -o option since it's causing issues
     command = [
         'dnsenum',
         '--noreverse',
         '--nocolor',
-        '-o', output_file,
         domain
     ]
     
@@ -29,56 +30,77 @@ def run_dnsenum(target, output_dir, dry_run=False):
         return {
             "dry_run": True,
             "command": ' '.join(command),
-            "output_file": output_file
+            "output_file": json_output_file
         }
     
     try:
-        subprocess.run(command, stderr=subprocess.PIPE, check=True)
+        # Run the command and capture output
+        process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
         
-        logger.info(f"DNSenum scan completed. Results saved to {output_file}")
+        # Save stdout to text file regardless of exit code
+        with open(text_output_file, 'w') as f:
+            f.write(process.stdout)
         
-        # Parse the XML results and convert to JSON for easier processing
-        import xml.etree.ElementTree as ET
-        try:
-            tree = ET.parse(output_file)
-            root = tree.getroot()
-            
-            results = {
-                'nameservers': [],
-                'mx_records': [],
-                'subdomains': []
+        # Check if the process failed
+        if process.returncode != 0:
+            logger.warning(f"DNSenum exited with code {process.returncode}")
+            logger.warning(f"DNSenum stderr: {process.stderr}")
+            logger.info(f"DNSenum stdout saved to {text_output_file}")
+        
+        # Create a basic results structure from stdout
+        results = {
+            'nameservers': [],
+            'mx_records': [],
+            'subdomains': [],
+            'hosts': [],
+            'raw_output': process.stdout,
+            'error': process.stderr if process.returncode != 0 else None
+        }
+        
+        # Extract information from stdout using regex
+        import re
+        
+        # Extract nameservers
+        ns_matches = re.findall(r'NS: (.*?)$', process.stdout, re.MULTILINE)
+        for match in ns_matches:
+            results['nameservers'].append(match.strip())
+        
+        # Extract MX records
+        mx_matches = re.findall(r'MX: (.*?) (.*?)$', process.stdout, re.MULTILINE)
+        for priority, host in mx_matches:
+            results['mx_records'].append({
+                'host': host.strip(),
+                'priority': priority.strip()
+            })
+        
+        # Extract hosts (more general pattern)
+        host_pattern = r'([\w\.-]+\.[\w\.-]+)\s+\d+\s+IN\s+A\s+(\d+\.\d+\.\d+\.\d+)'
+        host_matches = re.findall(host_pattern, process.stdout)
+        
+        for hostname, ip in host_matches:
+            host_entry = {
+                'hostname': hostname.strip(),
+                'ip': ip.strip()
             }
+            results['hosts'].append(host_entry)
             
-            # Extract nameservers
-            for ns in root.findall('.//name_server'):
-                results['nameservers'].append(ns.text)
-            
-            # Extract MX records
-            for mx in root.findall('.//mx'):
-                results['mx_records'].append({
-                    'host': mx.find('hostname').text if mx.find('hostname') is not None else '',
-                    'priority': mx.find('priority').text if mx.find('priority') is not None else ''
-                })
-            
-            # Extract subdomains
-            for host in root.findall('.//domain'):
-                if host.find('hostname') is not None:
-                    results['subdomains'].append({
-                        'hostname': host.find('hostname').text,
-                        'ip': host.find('address').text if host.find('address') is not None else ''
-                    })
-            
-            # Save parsed results
-            parsed_output = os.path.join(output_dir, 'dnsenum_parsed.json')
-            with open(parsed_output, 'w') as f:
-                json.dump(results, f, indent=4)
-            
-            logger.debug(f"Parsed DNSenum results saved to {parsed_output}")
-            
-            return results
-        except Exception as e:
-            logger.error(f"Error parsing DNSenum results: {str(e)}")
-            return None
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error running DNSenum: {e}")
-        return None
+            # Also add to subdomains if it's a subdomain of the target
+            if hostname.endswith(f".{domain}"):
+                results['subdomains'].append(host_entry)
+        
+        # Save results to JSON
+        from src.modules.utils.json_utils import save_json
+        save_json(results, json_output_file)
+        
+        logger.info(f"DNSenum scan completed. Results saved to {json_output_file}")
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error with DNSenum: {str(e)}")
+        return {
+            'nameservers': [],
+            'mx_records': [],
+            'subdomains': [],
+            'hosts': [],
+            'error': str(e)
+        }
