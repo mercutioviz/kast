@@ -21,18 +21,20 @@ def run_whatweb(target, output_dir, dry_run=False):
     """Run WhatWeb for technology detection"""
     logger.info("Running WhatWeb for technology detection")
     
+    from src.modules.utils.json_utils import load_json_file
+    
     output_file = os.path.join(output_dir, 'whatweb.json')
     
     command = [
         'whatweb', 
         '--no-errors',
         '-a', '3',  # Aggression level
-        '-j',       # JSON output
+        f'--log-json={output_file}',  # Direct JSON output to file
         target
     ]
     
     if dry_run:
-        logger.info(f"[DRY RUN] Would execute: {' '.join(command)} > {output_file}")
+        logger.info(f"[DRY RUN] Would execute: {' '.join(command)}")
         return {
             "dry_run": True,
             "command": ' '.join(command),
@@ -40,15 +42,24 @@ def run_whatweb(target, output_dir, dry_run=False):
         }
     
     try:
-        subprocess.run(command, stdout=open(output_file, 'w'), stderr=subprocess.PIPE, check=True)
+        # Run the command
+        subprocess.run(command, stderr=subprocess.PIPE, check=True)
         
-        logger.info(f"WhatWeb scan completed. Results saved to {output_file}")
+        # Check if the output file was created
+        if not os.path.exists(output_file):
+            logger.error(f"WhatWeb did not create the output file: {output_file}")
+            return None
         
-        # Parse the results
-        with open(output_file, 'r') as f:
-            whatweb_data = json.load(f)
+        # Load and parse the JSON file with robust error handling
+        whatweb_data = load_json_file(output_file)
         
-        return whatweb_data
+        if whatweb_data:
+            logger.info(f"WhatWeb scan completed. Results saved to {output_file}")
+            return whatweb_data
+        else:
+            logger.error("Failed to parse WhatWeb output")
+            return None
+            
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running WhatWeb: {e}")
         return None
