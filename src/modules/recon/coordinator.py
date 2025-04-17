@@ -94,10 +94,11 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
             results['securityheaders'] = run_securityheaders(target, recon_dir, dry_run=dry_run)
             progress.update(task, advance=1)
             
+            ### Circle back to observatory if there's valid reason to do so ###
             # Run Mozilla Observatory
-            logger.info("Running Mozilla Observatory scan for web security analysis")
-            results['mozilla_observatory'] = run_mozilla_observatory(target, recon_dir, dry_run=dry_run)
-            progress.update(task, advance=1)
+            #logger.info("Running Mozilla Observatory scan for web security analysis")
+            #results['mozilla_observatory'] = run_mozilla_observatory(target, recon_dir, dry_run=dry_run)
+            #progress.update(task, advance=1)
     
     if dry_run:
         logger.info("[DRY RUN] Reconnaissance dry run completed. No actual scans were performed.")
