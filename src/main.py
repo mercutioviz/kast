@@ -36,6 +36,9 @@ def main():
     parser.add_argument("--no-online", action="store_true", help="Disable online services (SSL Labs, SecurityHeaders.io, Mozilla Observatory)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run mode - show what would be done without actually doing it")
     parser.add_argument("--no-banner", action="store_true", help="Skip banner and permission confirmation")
+    parser.add_argument("--nikto-type", choices=["basic", "quick", "thorough", "custom"], default="basic",
+                    help="Nikto scan type (default: basic)")
+    parser.add_argument("--nikto-options", nargs="+", help="Custom Nikto options (for custom scan type)")
     
     args = parser.parse_args()
     
@@ -85,6 +88,9 @@ def main():
 
     try:
         os.makedirs(output_dir, exist_ok=True)
+        # Try to make the directory writable by the current user
+        os.chmod(output_dir, 0o755)  # rwxr-xr-x
+
     except PermissionError:
         # If we still can't create the directory, fall back to /tmp
         old_output_dir = output_dir
@@ -121,6 +127,8 @@ def main():
             args.target, 
             output_dir, 
             use_browser=(not args.no_browser),
+            nikto_type=args.nikto_type,
+            custom_nikto_options=args.nikto_options,
             dry_run=args.dry_run
         )
     

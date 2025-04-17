@@ -28,20 +28,6 @@ def run_scan(target, output_dir=None, use_browser=True, nikto_type="basic", cust
     vuln_dir = os.path.join(output_dir, 'vuln')
     os.makedirs(vuln_dir, exist_ok=True)
     
-    if dry_run:
-        logger.info("[DRY RUN] Would run vulnerability scans against target")
-        logger.info(f"[DRY RUN] Would save results to {vuln_dir}")
-        logger.info(f"[DRY RUN] Would run Nikto with scan type: {nikto_type}")
-        if custom_nikto_options:
-            logger.info(f"[DRY RUN] Would use custom Nikto options: {' '.join(custom_nikto_options)}")
-        
-        results = {
-            "dry_run": True,
-            "nikto": run_nikto(target, vuln_dir, scan_type=nikto_type, 
-                              custom_options=custom_nikto_options, dry_run=True)
-        }
-        return results, vuln_dir
-    
     results = {}
     
     with Progress() as progress:
@@ -59,5 +45,9 @@ def run_scan(target, output_dir=None, use_browser=True, nikto_type="basic", cust
         )
         progress.update(task, advance=1)
     
-    logger.info(f"Vulnerability scanning completed! Results saved to {vuln_dir}")
+    if dry_run:
+        logger.info("[DRY RUN] Vulnerability scanning dry run completed. No actual scans were performed.")
+    else:
+        logger.info(f"Vulnerability scanning completed! Results saved to {vuln_dir}")
+    
     return results, vuln_dir
