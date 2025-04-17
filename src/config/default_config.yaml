@@ -1,0 +1,56 @@
+# KAST Default Configuration
+
+# API Keys
+api_keys:
+  securityheaders: ""  # Get your API key from https://securityheaders.com/api
+  ssllabs: ""
+  # Add other API keys as needed
+
+# Scan Settings
+scan_settings:
+  # Reconnaissance settings
+  recon:
+    use_browser: true
+    use_online_services: true
+    
+    # Tool-specific settings
+    whatweb:
+      aggression_level: 3  # 1-4, higher is more aggressive
+    
+    theharvester:
+      data_sources: "all"  # Comma-separated list of sources or "all"
+    
+    dnsenum:
+      timeout: 300  # Seconds
+    
+    sslscan:
+      timeout: 300  # Seconds
+    
+    wafw00f:
+      all_waf: true  # Detect all WAFs, not just the first one
+    
+  # Vulnerability scanning settings
+  vuln:
+    nikto:
+      default_type: "basic"  # basic, quick, thorough
+      timeout:
+        basic: 1800    # 30 minutes
+        quick: 600     # 10 minutes
+        thorough: 3600  # 60 minutes
+      tuning:
+        basic: ""      # Default tuning
+        quick: "23bc"  # Limited test types
+        thorough: "x"  # All test types
+    
+    # Add other vulnerability scanners as needed
+
+# Output Settings
+output:
+  default_directory: ""  # Leave empty to use the default location
+  report_format: "html"  # html, json, or both
+  
+# Logging Settings
+logging:
+  level: "info"  # debug, info, warning, error, critical
+  console_output: true
+  file_output: true

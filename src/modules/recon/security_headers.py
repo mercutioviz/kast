@@ -13,9 +13,22 @@ def run_securityheaders(target, output_dir, dry_run=False):
     """Run SecurityHeaders.io scan for HTTP security headers analysis"""
     logger.info("Running SecurityHeaders.io scan for HTTP security headers analysis")
     
+    # Get API key from configuration
+    from src.config.config_manager import get_config
+    api_key = get_config().get_api_key('securityheaders')
+    
     url = normalize_url(target)
     output_file = os.path.join(output_dir, 'securityheaders.json')
+    
+    # Base API URL
     api_url = f"https://securityheaders.com/?q={url}&followRedirects=on&hide=on&json=on"
+    
+    # Add API key if available
+    if api_key:
+        api_url += f"&apikey={api_key}"
+        logger.info("Using SecurityHeaders.io API key")
+    else:
+        logger.warning("No SecurityHeaders.io API key found. Please use an API Key from https://securityheaders.com/api")
     
     if dry_run:
         logger.info(f"[DRY RUN] Would request SecurityHeaders.io analysis for {url}")
@@ -24,7 +37,8 @@ def run_securityheaders(target, output_dir, dry_run=False):
             "dry_run": True,
             "target": url,
             "api": "SecurityHeaders.io",
-            "output_file": output_file
+            "output_file": output_file,
+            "using_api_key": bool(api_key)
         }
     
     try:

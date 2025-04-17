@@ -26,6 +26,10 @@ console = Console()
 
 def main():
     """Main function to run KAST"""
+    # Load configuration
+    from src.config.config_manager import load_config
+    load_config(args.config)
+
     parser = argparse.ArgumentParser(description="KAST - Kali Automated Scanning Tool")
     parser.add_argument("target", help="Target URL or IP address", nargs="?")
     parser.add_argument("-m", "--mode", choices=["recon", "vuln", "full"], default="full",
@@ -39,6 +43,7 @@ def main():
     parser.add_argument("--nikto-type", choices=["basic", "quick", "thorough", "custom"], default="basic",
                     help="Nikto scan type (default: basic)")
     parser.add_argument("--nikto-options", nargs="+", help="Custom Nikto options (for custom scan type)")
+    parser.add_argument("--config", help="Path to a custom configuration file")
     
     args = parser.parse_args()
     
