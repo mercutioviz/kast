@@ -89,10 +89,11 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
             results['ssllabs'] = run_ssllabs(target, recon_dir, dry_run=dry_run)
             progress.update(task, advance=1)
             
+            ### Circle back to securityheaders.com if there's valid reason to do so ###
             # Run SecurityHeaders.io
-            logger.info("Running SecurityHeaders.io scan for HTTP security headers analysis")
-            results['securityheaders'] = run_securityheaders(target, recon_dir, dry_run=dry_run)
-            progress.update(task, advance=1)
+            #logger.info("Running SecurityHeaders.io scan for HTTP security headers analysis")
+            #results['securityheaders'] = run_securityheaders(target, recon_dir, dry_run=dry_run)
+            #progress.update(task, advance=1)
             
             ### Circle back to observatory if there's valid reason to do so ###
             # Run Mozilla Observatory
