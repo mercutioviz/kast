@@ -63,16 +63,22 @@ if [ ! -d "$INSTALL_DIR" ]; then
   fi
 fi
 
+# Update package lists
+echo -e "${YELLOW}[*] Updating package lists${NC}"
+apt-get update
+
+# Install system dependencies
+echo -e "${YELLOW}[*] Installing system dependencies${NC}"
+apt-get install -y python3 python3-pip python3-venv git curl wget jq whois dnsutils npm
+
 # Copy files to installation directory
 echo -e "${YELLOW}[*] Copying files to $INSTALL_DIR${NC}"
 cp -r ./* "$INSTALL_DIR/"
 
-# Create reports directory
-mkdir -p "$INSTALL_DIR/reports"
-
 # Create results directory
 mkdir -p "$INSTALL_DIR/results"
-chmod 666 "$INSTALL_DIR/results"
+echo -e "${YELLOW}[*] Setting permissions for results directory${NC}"
+chmod 777 "$INSTALL_DIR/results"
 
 # Create a setup.py file for proper package installation
 echo -e "${YELLOW}[*] Creating setup.py for package installation${NC}"
@@ -92,6 +98,10 @@ setup(
         "pyyaml>=6.0",
         "jinja2>=3.0.3",
         "rich>=12.0.0",
+        "python-owasp-zap-v2.4>=0.0.20",
+        "pyjwt>=2.4.0",
+        "pandas>=1.4.0",
+        "matplotlib>=3.5.0",
     ],
 )
 EOF
@@ -110,9 +120,18 @@ else
   echo -e "${YELLOW}[*] You can manually install dependencies later with: source $INSTALL_DIR/venv-kast/bin/activate && pip install -r $INSTALL_DIR/requirements.txt${NC}"
 fi
 
+# Install the package in development mode
+echo -e "${YELLOW}[*] Installing KAST package${NC}"
+cd "$INSTALL_DIR"
+if pip install -e .; then
+  echo -e "${GREEN}[+] KAST package installed successfully${NC}"
+else
+  echo -e "${RED}[!] Error installing KAST package. You may need to install it manually.${NC}"
+fi
+
 # Check for and install system dependencies
 echo -e "${YELLOW}[*] Checking for required system tools${NC}"
-required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy" "nikto" "wapiti" "metasploit-framework" "burpsuite" "sqlmap" "wafw00f")
+required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy" "nikto" "wapiti" "metasploit-framework" "burpsuite" "sqlmap" "wafw00f" "wpscan" "droopescan" "joomscan" "nuclei" "dirb" "dirbuster" "nmap" "masscan" "testssl.sh" "sublist3r")
 
 for tool in "${required_tools[@]}"; do
   if ! command -v $tool &> /dev/null; then
@@ -127,7 +146,44 @@ for tool in "${required_tools[@]}"; do
   fi
 done
 
-# Create symlink for easy execution
+# Special case for testssl.sh which might be named differently
+if ! command -v testssl.sh &> /dev/null && ! command -v testssl &> /dev/null; then
+  echo -e "${YELLOW}[*] Installing testssl.sh${NC}"
+  apt-get install -y testssl.sh || {
+    echo -e "${YELLOW}[*] Trying alternative installation method for testssl.sh${NC}"
+    git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh
+    ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl.sh
+  }
+fi
+
+# Install pandoc
+echo -e "${YELLOW}[*] Installing pandoc${NC}"
+if ! command -v pandoc &> /dev/null; then
+  apt-get install -y pandoc
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}[+] pandoc installed successfully${NC}"
+  else
+    echo -e "${RED}[!] Failed to install pandoc. You may need to install it manually.${NC}"
+  fi
+else
+  echo -e "${GREEN}[+] pandoc is already installed${NC}"
+fi
+
+# Check for and install mdn-http-observatory
+echo -e "${YELLOW}[*] Checking for mdn-http-observatory${NC}"
+if ! command -v observatory &> /dev/null; then
+  echo -e "${YELLOW}[*] Installing mdn-http-observatory${NC}"
+  npm install -g observatory-cli
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}[+] mdn-http-observatory installed successfully${NC}"
+  else
+    echo -e "${RED}[!] Failed to install mdn-http-observatory. You may need to install it manually:${NC}"
+    echo -e "${YELLOW}    npm install -g observatory-cli${NC}"
+  fi
+else
+  echo -e "${GREEN}[+] mdn-http-observatory is already installed${NC}"
+fi
+
 # Create wrapper script for easy execution
 echo -e "${YELLOW}[*] Creating wrapper script for KAST${NC}"
 cat > /usr/local/bin/kast << EOF
@@ -136,10 +192,45 @@ cd "$INSTALL_DIR"
 source "$INSTALL_DIR/venv-kast/bin/activate"
 python "$INSTALL_DIR/src/main.py" "\$@"
 EOF
-
 chmod +x /usr/local/bin/kast
-chmod +x "$INSTALL_DIR/src/main.py"
 
 echo -e "${GREEN}[+] KAST has been successfully installed!${NC}"
 echo -e "${GREEN}[+] You can now run the tool by typing 'kast' in your terminal${NC}"
 echo -e "${YELLOW}[*] Remember to use this tool responsibly and legally${NC}"
+
+# Create default configuration
+echo -e "${YELLOW}[*] Creating default configuration${NC}"
+mkdir -p ~/.config/kast
+cat > ~/.config/kast/config.yaml << 'EOF'
+# KAST Configuration
+
+# API Keys
+api_keys:
+  securityheaders: ""  # Get your API key from https://securityheaders.com/api
+  ssllabs: ""
+  # Add other API keys as needed
+
+# Scan Settings
+scan_settings:
+  # Reconnaissance settings
+  recon:
+    use_browser: true
+    use_online_services: true
+    
+  # Vulnerability scanning settings
+  vuln:
+    nikto:
+      default_type: "basic"  # basic, quick, thorough
+      timeout:
+        basic: 1800    # 30 minutes
+        quick: 600     # 10 minutes
+        thorough: 3600  # 60 minutes
+
+# Output Settings
+output:
+  default_directory: ""  # Leave empty to use the default location
+  report_format: "html"  # html, json, or both
+EOF
+
+echo -e "${GREEN}[+] Default configuration created at ~/.config/kast/config.yaml${NC}"
+echo -e "${YELLOW}[*] You may want to edit this file to add your API keys and customize settings${NC}"

@@ -10,7 +10,8 @@ from src.modules.recon.passive_recon import run_whatweb, run_theharvester
 from src.modules.recon.dns_recon import run_dnsenum
 from src.modules.recon.ssl_recon import run_sslscan, run_ssllabs
 from src.modules.recon.security_headers import run_securityheaders
-from src.modules.recon.mozilla_observatory import run_mozilla_observatory
+#from src.modules.recon.mozilla_observatory import run_mozilla_observatory
+from src.modules.recon.observatory_cli import run_mozilla_observatory
 from src.modules.recon.web_recon import browser_recon
 from src.modules.recon.wafw00f_scan import run_wafw00f
 
@@ -97,9 +98,9 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
             
             ### Circle back to observatory if there's valid reason to do so ###
             # Run Mozilla Observatory
-            #logger.info("Running Mozilla Observatory scan for web security analysis")
-            #results['mozilla_observatory'] = run_mozilla_observatory(target, recon_dir, dry_run=dry_run)
-            #progress.update(task, advance=1)
+            logger.info("Running Mozilla Observatory scan for web security analysis")
+            results['mozilla_observatory'] = run_mozilla_observatory(target, recon_dir, dry_run=dry_run)
+            progress.update(task, advance=1)
     
     if dry_run:
         logger.info("[DRY RUN] Reconnaissance dry run completed. No actual scans were performed.")
