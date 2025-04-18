@@ -21,10 +21,7 @@ def run_mozilla_observatory(target, output_dir, dry_run=False):
     
     # Use the new command: mdn-http-observatory
     command = [
-        'mdn-http-observatory',
-        'scan',
-        '--format', 'json',
-        '--rescan',
+        'mdn-http-observatory-scan',
         domain
     ]
     
