@@ -10,8 +10,7 @@ from src.modules.recon.passive_recon import run_whatweb, run_theharvester
 from src.modules.recon.dns_recon import run_dnsenum
 from src.modules.recon.ssl_recon import run_sslscan, run_ssllabs
 from src.modules.recon.security_headers import run_securityheaders
-#from src.modules.recon.mozilla_observatory import run_mozilla_observatory
-from src.modules.recon.observatory_cli import run_mozilla_observatory
+from src.modules.recon.mozilla_observatory import run_mozilla_observatory
 from src.modules.recon.web_recon import browser_recon
 from src.modules.recon.wafw00f_scan import run_wafw00f
 
