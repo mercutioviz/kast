@@ -3,6 +3,11 @@
 # KAST - Kali Automated Scanning Tool
 # Installation Script
 
+## For fun print out the ANSI Kast logo
+if [ -f "./assets/kast-logo_small.ans" ]; then
+  cat ./assets/kast-logo_small.ans
+fi
+
 # Colors for better readability
 RED='\033[0;31m'
 GREEN='\033[0;32m'

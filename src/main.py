@@ -26,10 +26,8 @@ console = Console()
 
 def main():
     """Main function to run KAST"""
-    # Load configuration
-    from src.config.config_manager import load_config
-    load_config(args.config)
-
+    banner.display_banner()
+    
     parser = argparse.ArgumentParser(description="KAST - Kali Automated Scanning Tool")
     parser.add_argument("target", help="Target URL or IP address", nargs="?")
     parser.add_argument("-m", "--mode", choices=["recon", "vuln", "full"], default="full",
@@ -37,19 +35,12 @@ def main():
     parser.add_argument("-o", "--output", help="Output directory for reports")
     parser.add_argument("-q", "--quiet", action="store_true", help="Quiet mode, minimal output")
     parser.add_argument("--no-browser", action="store_true", help="Disable browser-based scanning")
-    parser.add_argument("--no-online", action="store_true", help="Disable online services (SSL Labs, SecurityHeaders.io, Mozilla Observatory)")
+    parser.add_argument("--no-online", action="store_true", help="Disable online services (SSL Labs, SecurityHeaders.io)")
     parser.add_argument("--dry-run", action="store_true", help="Dry run mode - show what would be done without actually doing it")
     parser.add_argument("--no-banner", action="store_true", help="Skip banner and permission confirmation")
-    parser.add_argument("--nikto-type", choices=["basic", "quick", "thorough", "custom"], default="basic",
-                    help="Nikto scan type (default: basic)")
-    parser.add_argument("--nikto-options", nargs="+", help="Custom Nikto options (for custom scan type)")
-    parser.add_argument("--config", help="Path to a custom configuration file")
     
+    # Parse arguments
     args = parser.parse_args()
-    
-    # Display banner unless --no-banner is specified
-    if not args.no_banner:
-        banner.display_banner()
     
     # If no target is provided, show help and exit
     if args.target is None:
@@ -61,7 +52,7 @@ def main():
         console.print("[bold red]Invalid target. Please provide a valid URL or IP address.[/bold red]")
         sys.exit(1)
     
-    # Legal disclaimer unless --no-banner is specified
+    # Legal disclaimer
     if not args.quiet and not args.no_banner:
         console.print(Panel.fit(
             "[yellow]LEGAL DISCLAIMER[/yellow]: This tool should only be used for authorized security testing. "
@@ -93,9 +84,6 @@ def main():
 
     try:
         os.makedirs(output_dir, exist_ok=True)
-        # Try to make the directory writable by the current user
-        os.chmod(output_dir, 0o755)  # rwxr-xr-x
-
     except PermissionError:
         # If we still can't create the directory, fall back to /tmp
         old_output_dir = output_dir
@@ -132,8 +120,6 @@ def main():
             args.target, 
             output_dir, 
             use_browser=(not args.no_browser),
-            nikto_type=args.nikto_type,
-            custom_nikto_options=args.nikto_options,
             dry_run=args.dry_run
         )
     
