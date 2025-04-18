@@ -21,7 +21,7 @@ def display_banner():
     """
     
     subtitle = "Kali Automated Scanning Tool"
-    version = "v1.0.0"
+    version = "v1.1.0"
     
     banner = Text(banner_text, style="bold blue")
     panel_text = Text.assemble(
