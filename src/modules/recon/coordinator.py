@@ -57,9 +57,9 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
         progress.update(task, advance=1)
         
         # Run theHarvester
-        logger.info("Running theHarvester for email and subdomain enumeration")
-        results['theharvester'] = run_theharvester(target, recon_dir, dry_run=dry_run)
-        progress.update(task, advance=1)
+        #logger.info("Running theHarvester for email and subdomain enumeration")
+        #results['theharvester'] = run_theharvester(target, recon_dir, dry_run=dry_run)
+        #progress.update(task, advance=1)
         
         # Run DNSenum
         logger.info("Running DNSenum for DNS enumeration")
