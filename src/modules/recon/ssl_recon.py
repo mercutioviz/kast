@@ -54,7 +54,7 @@ def run_sslscan(target, output_dir, dry_run=False):
         
         # Check if the JSON file was created
         if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
-            logger.warning(f"SSLScan did not create a valid JSON file at {output_file}")
+            logger.info(f"SSLScan did not create a valid JSON file at {output_file}, attempting to create from raw output...")
             
             # Create a JSON file from the text output
             sslscan_data = {

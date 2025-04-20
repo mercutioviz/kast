@@ -52,7 +52,7 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
         task = progress.add_task("[cyan]Running reconnaissance...", total=total_tasks)
         
         # Run WhatWeb
-        logger.info("Running WhatWeb for technology detection")
+        #logger.info("Running WhatWeb for technology detection")
         results['whatweb'] = run_whatweb(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
@@ -62,30 +62,30 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
         #progress.update(task, advance=1)
         
         # Run DNSenum
-        logger.info("Running DNSenum for DNS enumeration")
+        #logger.info("\nRunning DNSenum for DNS enumeration")
         results['dnsenum'] = run_dnsenum(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run SSLScan
-        logger.info("Running SSLScan for SSL/TLS configuration analysis")
+        #logger.info("\nRunning SSLScan for SSL/TLS configuration analysis")
         results['sslscan'] = run_sslscan(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run wafw00f
-        logger.info("Running wafw00f to detect Web Application Firewalls")
+        #logger.info("\nRunning wafw00f to detect Web Application Firewalls")
         results['wafw00f'] = run_wafw00f(target, recon_dir, dry_run=dry_run)
         progress.update(task, advance=1)
         
         # Run browser-based recon if enabled
         if use_browser and target.startswith(('http://', 'https://')):
-            logger.info("Running browser-based reconnaissance")
+            #logger.info("\nRunning browser-based reconnaissance")
             results['browser'] = browser_recon(target, recon_dir, dry_run=dry_run)
             progress.update(task, advance=1)
         
         # Run online services if enabled
         if use_online_services:
             # Run SSL Labs
-            logger.info("Running SSL Labs scan for comprehensive SSL/TLS analysis")
+            #logger.info("\nRunning SSL Labs scan for comprehensive SSL/TLS analysis")
             results['ssllabs'] = run_ssllabs(target, recon_dir, dry_run=dry_run)
             progress.update(task, advance=1)
             
@@ -97,7 +97,7 @@ def run_recon(target, output_dir=None, use_browser=True, use_online_services=Tru
             
             ### Circle back to observatory if there's valid reason to do so ###
             # Run Mozilla Observatory
-            logger.info("Running Mozilla Observatory scan for web security analysis")
+            logger.info("\nRunning Mozilla Observatory scan for web security analysis")
             results['mozilla_observatory'] = run_mozilla_observatory(target, recon_dir, dry_run=dry_run)
             progress.update(task, advance=1)
     
