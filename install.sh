@@ -57,9 +57,9 @@ fi
 # Check if directory exists, if not ask to create it
 if [ ! -d "$INSTALL_DIR" ]; then
   echo -e "${YELLOW}[*] Directory $INSTALL_DIR does not exist.${NC}"
-  read -p "Would you like to create it? (y/N): " create_dir
+  read -p "Would you like to create it? (Y/n): " create_dir
   
-  if [[ $create_dir =~ ^[Yy]$ ]]; then
+  if [[ $create_dir =~ ^[Yy]$ || -z $create_dir ]]; then
     echo -e "${YELLOW}[*] Creating installation directory: $INSTALL_DIR${NC}"
     mkdir -p "$INSTALL_DIR"
   else
@@ -84,6 +84,8 @@ cp -r ./* "$INSTALL_DIR/"
 mkdir -p "$INSTALL_DIR/results"
 echo -e "${YELLOW}[*] Setting permissions for results directory${NC}"
 chmod 777 "$INSTALL_DIR/results"
+echo -e "Do chown -R \"$SUDO_USER:$SUDO_USER\" $INSTALL_DIR"
+chown -R "$SUDO_USER:$SUDO_USER" "$INSTALL_DIR"
 
 # Create a setup.py file for proper package installation
 echo -e "${YELLOW}[*] Creating setup.py for package installation${NC}"
@@ -107,6 +109,7 @@ setup(
         "pyjwt>=2.4.0",
         "pandas>=1.4.0",
         "matplotlib>=3.5.0",
+        "droopescan>=1.45.1",
     ],
 )
 EOF
@@ -136,7 +139,7 @@ fi
 
 # Check for and install system dependencies
 echo -e "${YELLOW}[*] Checking for required system tools${NC}"
-required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy" "nikto" "wapiti" "metasploit-framework" "burpsuite" "sqlmap" "wafw00f" "wpscan" "droopescan" "joomscan" "nuclei" "dirb" "dirbuster" "nmap" "masscan" "testssl.sh" "sublist3r")
+required_tools=("whatweb" "theharvester" "maltego" "dnsenum" "sslscan" "zaproxy" "nikto" "wapiti" "metasploit-framework" "burpsuite" "sqlmap" "wafw00f" "wpscan" "joomscan" "nuclei" "dirb" "dirbuster" "nmap" "masscan" "testssl.sh" "sublist3r")
 
 for tool in "${required_tools[@]}"; do
   if ! command -v $tool &> /dev/null; then
