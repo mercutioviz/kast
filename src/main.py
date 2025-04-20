@@ -32,17 +32,23 @@ def main():
         description="KAST - Kali Automated Scanning Tool",
         epilog="""
 Examples:
+
   Run full scan against a target:
     kast -m full example.com
+
   Run reconnaissance only:
     kast -m recon example.com
+
   Run vulnerability scan only:
     kast -m vuln example.com
+
   Run without banner and confirmation:
     kast -m full example.com --no-banner
+    
   Run with dry run mode:
     kast -m full example.com --dry-run
-"""
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
     parser.add_argument("target", help="Target URL or IP address", nargs="?")
