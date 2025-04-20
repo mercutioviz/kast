@@ -1,0 +1,7 @@
+2025-04-20
+Base prompt:
+you are an experienced linux and python programmer. I am building a python tool that automates some of the scanning tools found in kali linux. i am a solutions architect and the purpose of my tool is to scan a target host and produce a report that highlights possible security issues and how a WAF could help. 
+
+2025-04-20:
+Phase prompt:
+you are an experienced linux and python programmer. I am building a python tool that automates some of the scanning tools found in kali linux. i am a solutions architect and the purpose of my tool is to scan a target host and produce a report that highlights possible security issues and how a WAF could help. It is a command line tool. In the current phase of the project I need assistance with improving the user experience. What information can I give you for you to help me with this phase of the project?
