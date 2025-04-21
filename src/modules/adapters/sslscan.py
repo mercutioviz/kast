@@ -26,35 +26,42 @@ class SSLScanAdapter(ToolAdapter):
         """
         if not data:
             return {}
-            
-        # This structure may need adjustment based on the actual SSLScan JSON format
-        adapted_data = {
+        
+        # Initialize result structure
+        result = {
             'certificate': {},
             'ciphers': [],
             'protocols': []
         }
         
         # Extract certificate information
-        if 'certificate' in data:
-            adapted_data['certificate'] = {
-                'subject': data['certificate'].get('subject', ''),
-                'issuer': data['certificate'].get('issuer', ''),
-                'valid_from': data['certificate'].get('valid_from', ''),
-                'valid_to': data['certificate'].get('valid_to', ''),
-                'fingerprint': data['certificate'].get('fingerprint', '')
+        if 'certificate' in data and isinstance(data['certificate'], dict):
+            cert = data['certificate']
+            result['certificate'] = {
+                'subject': cert.get('subject', ''),
+                'issuer': cert.get('issuer', ''),
+                'valid_from': cert.get('valid_from', ''),
+                'valid_to': cert.get('valid_to', ''),
+                'fingerprint': cert.get('fingerprint', '')
             }
         
         # Extract cipher information
         if 'ciphers' in data and isinstance(data['ciphers'], list):
             for cipher in data['ciphers']:
-                adapted_data['ciphers'].append({
-                    'name': cipher.get('name', ''),
-                    'strength': cipher.get('strength', ''),
-                    'bits': cipher.get('bits', '')
-                })
+                if isinstance(cipher, dict):
+                    result['ciphers'].append({
+                        'name': cipher.get('name', ''),
+                        'strength': cipher.get('strength', ''),
+                        'bits': cipher.get('bits', '')
+                    })
         
         # Extract protocol information
         if 'protocols' in data and isinstance(data['protocols'], list):
-            adapted_data['protocols'] = data['protocols']
+            result['protocols'] = data['protocols']
+        elif 'protocols' in data and isinstance(data['protocols'], dict):
+            # Handle case where protocols are in a dict
+            for proto, enabled in data['protocols'].items():
+                if enabled:
+                    result['protocols'].append(proto)
         
-        return adapted_data
+        return result

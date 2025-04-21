@@ -8,6 +8,8 @@
 from .base import ToolAdapter
 import logging
 import os
+import glob
+import json
 
 class NiktoAdapter(ToolAdapter):
     """Adapter for Nikto vulnerability scanner results."""
@@ -25,15 +27,19 @@ class NiktoAdapter(ToolAdapter):
         Returns:
             list: The loaded Nikto scan results
         """
-        import os
-        import glob
-        import json
+        # Try both naming patterns: with and without underscore
+        patterns = [
+            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}.json'),
+            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}_quick.json'),
+            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}_quick_*.json')
+        ]
         
-        pattern = os.path.join(results_dir, self.result_subdir, f'{self.tool_name}_quick_*.json')
-        files = glob.glob(pattern)
+        files = []
+        for pattern in patterns:
+            files.extend(glob.glob(pattern))
         
         if not files:
-            logging.warning(f"No Nikto quick scan results found at {pattern}")
+            logging.warning(f"No Nikto scan results found in {os.path.join(results_dir, self.result_subdir)}")
             return None
         
         try:
@@ -48,26 +54,62 @@ class NiktoAdapter(ToolAdapter):
         Transform Nikto data into template-friendly format.
         
         Args:
-            data (list): The raw Nikto scan results
+            data (list/dict): The raw Nikto scan results
             
         Returns:
             list: Transformed Nikto findings with severity information
         """
         if not data:
             return []
-            
+        
         adapted_data = []
-        for finding in data:
-            adapted_finding = {
-                'id': finding.get('id', ''),
-                'osvdb': finding.get('osvdb', ''),
-                'message': finding.get('message', ''),
-                'uri': finding.get('uri', ''),
-                'severity': self._determine_severity(finding)
-            }
-            adapted_data.append(adapted_finding)
+        
+        # Handle different data formats
+        if isinstance(data, dict):
+            # If it's a dictionary with scan results
+            if 'vulnerabilities' in data:
+                # Format 1: Direct vulnerabilities list
+                for vuln in data['vulnerabilities']:
+                    adapted_data.append(self._process_vulnerability(vuln))
+            elif 'scan' in data and isinstance(data['scan'], dict):
+                # Format 2: Nested scan results
+                for host, host_data in data['scan'].items():
+                    if 'vulnerabilities' in host_data:
+                        for vuln in host_data['vulnerabilities']:
+                            adapted_data.append(self._process_vulnerability(vuln))
+            else:
+                # Format 3: Simple list of findings
+                for finding in data:
+                    if isinstance(finding, dict):
+                        adapted_data.append(self._process_vulnerability(finding))
+        elif isinstance(data, list):
+            # If it's a list of findings
+            for finding in data:
+                adapted_data.append(self._process_vulnerability(finding))
         
         return adapted_data
+
+    def _process_vulnerability(self, vuln):
+        """Process a single vulnerability entry"""
+        if not isinstance(vuln, dict):
+            return {
+                'id': 'unknown',
+                'osvdb': '',
+                'message': str(vuln),
+                'uri': '',
+                'severity': 'info'
+            }
+        
+        # Extract basic information
+        finding = {
+            'id': vuln.get('id', ''),
+            'osvdb': vuln.get('osvdb', ''),
+            'message': vuln.get('message', ''),
+            'uri': vuln.get('uri', vuln.get('url', '')),
+            'severity': self._determine_severity(vuln)
+        }
+        
+        return finding
     
     def _determine_severity(self, finding):
         """
@@ -82,7 +124,7 @@ class NiktoAdapter(ToolAdapter):
         # Check OSVDB reference first
         osvdb = finding.get('osvdb', '')
         if osvdb:
-            # These are example mappings - you would need toexpand this with actual OSVDB references
+            # These are example mappings - you would need to expand this with actual OSVDB references
             high_risk_osvdb = ['11771', '877', '12613', '838']
             medium_risk_osvdb = ['3268', '5646', '576']
             low_risk_osvdb = ['13648', '3092', '3093']
