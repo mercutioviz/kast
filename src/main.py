@@ -20,10 +20,41 @@ from src.modules.vuln_scan import vulnerability_scanner
 from src.modules.reporting import report_generator
 from src.modules.utils import banner, validators
 from src.modules.utils.logger import setup_logger, get_module_logger
+from src.modules.adapters import get_all_adapters  # Import the adapter registry
 
 # Module-specific logger
 logger = get_module_logger(__name__)
 console = Console()
+
+def load_recon_results(recon_dir):
+    """Load reconnaissance results from the specified directory."""
+    results = {}
+    
+    # Use adapters to load and process recon results
+    adapters = [adapter for adapter in get_all_adapters() 
+                if adapter.result_subdir == 'recon']
+    
+    for adapter in adapters:
+        data = adapter.load_data(os.path.dirname(recon_dir))  # Parent directory of recon_dir
+        if data:
+            results[adapter.tool_name] = data
+    
+    return results
+
+def load_vuln_results(vuln_dir):
+    """Load vulnerability scan results from the specified directory."""
+    results = {}
+    
+    # Use adapters to load and process vulnerability results
+    adapters = [adapter for adapter in get_all_adapters() 
+                if adapter.result_subdir == 'vuln']
+    
+    for adapter in adapters:
+        data = adapter.load_data(os.path.dirname(vuln_dir))  # Parent directory of vuln_dir
+        if data:
+            results[adapter.tool_name] = data
+    
+    return results
 
 def main():
     """Main function to run KAST"""
@@ -91,7 +122,7 @@ Examples:
         logger.info(f"Report-only mode: Using existing results from {args.report_only}")
         logger.info(f"Target: {target}")
         
-        # Load results
+        # Load results using the adapter system
         results = {}
         
         # Check for recon results
@@ -111,7 +142,7 @@ Examples:
             console.print("[bold red]No results found in the specified directory.[/bold red]")
             sys.exit(1)
         
-        # Generate report
+        # Generate report using the adapter system
         logger.info("Generating report...")
         report_path = report_generator.generate_report(target, results, output_dir)
         
