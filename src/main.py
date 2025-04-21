@@ -93,9 +93,17 @@ Examples:
     parser.add_argument("--dry-run", action="store_true", help="Dry run mode - show what would be done without actually doing it")
     parser.add_argument("--no-banner", action="store_true", help="Skip banner and permission confirmation")
     parser.add_argument("--report-only", metavar="RESULTS_DIR", help="Generate report from existing results directory without running scans")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging for more detailed output")
 
     # Parse arguments
     args = parser.parse_args()
+    
+    # Set debug logging if requested
+    if args.debug:
+        import logging
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled")
     
     # Check if we're in report-only mode
     if args.report_only:
@@ -120,6 +128,11 @@ Examples:
             # Set up logger
             main_logger = setup_logger(target, output_dir)
             
+            # Apply debug level if requested
+            if args.debug:
+                main_logger.setLevel(logging.DEBUG)
+                logger.debug("Debug logging enabled for main logger")
+            
             logger.info(f"Report-only mode: Using existing results from {args.report_only}")
             logger.info(f"Target: {target}")
             
@@ -131,12 +144,14 @@ Examples:
             if os.path.isdir(recon_dir):
                 logger.info("Loading reconnaissance results")
                 results['recon'] = load_recon_results(recon_dir)
+                logger.debug(f"Loaded recon results: {list(results['recon'].keys()) if 'recon' in results else 'None'}")
             
             # Check for vuln results
             vuln_dir = os.path.join(args.report_only, 'vuln')
             if os.path.isdir(vuln_dir):
                 logger.info("Loading vulnerability scan results")
                 results['vuln'] = load_vuln_results(vuln_dir)
+                logger.debug(f"Loaded vuln results: {list(results['vuln'].keys()) if 'vuln' in results else 'None'}")
             
             if not results:
                 logger.error("No results found in the specified directory")
@@ -154,15 +169,6 @@ Examples:
             logger.error(f"An error occurred in report-only mode: {str(e)}", exc_info=True)
             console.print(f"[bold red]An error occurred: {str(e)}[/bold red]")
             sys.exit(1)
-        
-        sys.exit(0)
-
-        # Generate report using the adapter system
-        logger.info("Generating report...")
-        report_path = report_generator.generate_report(target, results, output_dir)
-        
-        logger.info(f"Report generated: {report_path}")
-        console.print(f"[bold green]Report generated: {report_path}[/bold green]")
         
         sys.exit(0)
     
@@ -217,6 +223,11 @@ Examples:
     
     # Set up logger
     main_logger = setup_logger(args.target, output_dir)
+    
+    # Apply debug level if requested
+    if args.debug:
+        main_logger.setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled for main logger")
     
     if args.dry_run:
         logger.info("[DRY RUN] This is a dry run. No actual scanning will be performed.")
