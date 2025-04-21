@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import os
 import socket
 from urllib.parse import urlparse
 from src.modules.utils.logger import get_module_logger

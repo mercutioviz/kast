@@ -99,49 +99,64 @@ Examples:
     
     # Check if we're in report-only mode
     if args.report_only:
-        # Validate the results directory
-        if not validators.is_valid_results_dir(args.report_only):
-            console.print("[bold red]Invalid results directory. Please provide a valid KAST results directory.[/bold red]")
+        try:
+            # Validate the results directory
+            if not validators.is_valid_results_dir(args.report_only):
+                console.print("[bold red]Invalid results directory. Please provide a valid KAST results directory.[/bold red]")
+                sys.exit(1)
+            
+            # Extract target from directory name if possible
+            target = args.target
+            if not target:
+                dir_name = os.path.basename(os.path.normpath(args.report_only))
+                if '-' in dir_name:
+                    target = dir_name.split('-')[0]
+                else:
+                    target = dir_name
+            
+            # Set up output directory
+            output_dir = args.output if args.output else args.report_only
+            
+            # Set up logger
+            main_logger = setup_logger(target, output_dir)
+            
+            logger.info(f"Report-only mode: Using existing results from {args.report_only}")
+            logger.info(f"Target: {target}")
+            
+            # Load results using the adapter system
+            results = {}
+            
+            # Check for recon results
+            recon_dir = os.path.join(args.report_only, 'recon')
+            if os.path.isdir(recon_dir):
+                logger.info("Loading reconnaissance results")
+                results['recon'] = load_recon_results(recon_dir)
+            
+            # Check for vuln results
+            vuln_dir = os.path.join(args.report_only, 'vuln')
+            if os.path.isdir(vuln_dir):
+                logger.info("Loading vulnerability scan results")
+                results['vuln'] = load_vuln_results(vuln_dir)
+            
+            if not results:
+                logger.error("No results found in the specified directory")
+                console.print("[bold red]No results found in the specified directory.[/bold red]")
+                sys.exit(1)
+            
+            # Generate report using the adapter system
+            logger.info("Generating report...")
+            report_path = report_generator.generate_report(target, results, output_dir)
+            
+            logger.info(f"Report generated: {report_path}")
+            console.print(f"[bold green]Report generated: {report_path}[/bold green]")
+            
+        except Exception as e:
+            logger.error(f"An error occurred in report-only mode: {str(e)}", exc_info=True)
+            console.print(f"[bold red]An error occurred: {str(e)}[/bold red]")
             sys.exit(1)
         
-        # Extract target from directory name if possible
-        target = args.target
-        if not target:
-            dir_name = os.path.basename(os.path.normpath(args.report_only))
-            if '-' in dir_name:
-                target = dir_name.split('-')[0]
-            else:
-                target = dir_name
-        
-        # Set up output directory
-        output_dir = args.output if args.output else args.report_only
-        
-        # Set up logger
-        main_logger = setup_logger(target, output_dir)
-        
-        logger.info(f"Report-only mode: Using existing results from {args.report_only}")
-        logger.info(f"Target: {target}")
-        
-        # Load results using the adapter system
-        results = {}
-        
-        # Check for recon results
-        recon_dir = os.path.join(args.report_only, 'recon')
-        if os.path.isdir(recon_dir):
-            logger.info("Loading reconnaissance results")
-            results['recon'] = load_recon_results(recon_dir)
-        
-        # Check for vuln results
-        vuln_dir = os.path.join(args.report_only, 'vuln')
-        if os.path.isdir(vuln_dir):
-            logger.info("Loading vulnerability scan results")
-            results['vuln'] = load_vuln_results(vuln_dir)
-        
-        if not results:
-            logger.error("No results found in the specified directory")
-            console.print("[bold red]No results found in the specified directory.[/bold red]")
-            sys.exit(1)
-        
+        sys.exit(0)
+
         # Generate report using the adapter system
         logger.info("Generating report...")
         report_path = report_generator.generate_report(target, results, output_dir)
