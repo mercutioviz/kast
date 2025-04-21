@@ -6,6 +6,7 @@
 #
 
 from .base import ToolAdapter
+import os
 
 class DNSenumAdapter(ToolAdapter):
     """Adapter for DNSenum DNS enumeration results."""

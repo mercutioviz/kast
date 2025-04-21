@@ -6,6 +6,7 @@
 #
 
 from .base import ToolAdapter
+import os
 
 class WhatWebAdapter(ToolAdapter):
     """Adapter for WhatWeb web technology detection results."""

@@ -11,6 +11,8 @@ from .theharvester import TheHarvesterAdapter
 from .dnsenum import DNSenumAdapter
 from .sslscan import SSLScanAdapter
 from .wafw00f import WAFw00fAdapter
+import os
+import sys
 
 # Registry of all available adapters
 ADAPTERS = [

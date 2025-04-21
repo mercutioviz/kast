@@ -6,6 +6,7 @@
 #
 
 from .base import ToolAdapter
+import os
 
 class TheHarvesterAdapter(ToolAdapter):
     """Adapter for theHarvester information gathering results."""

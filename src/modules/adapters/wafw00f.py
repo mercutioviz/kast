@@ -8,6 +8,7 @@
 from .base import ToolAdapter
 import json
 import logging
+import os
 
 class WAFw00fAdapter(ToolAdapter):
     """Adapter for wafw00f Web Application Firewall detection results."""

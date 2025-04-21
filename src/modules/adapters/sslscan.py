@@ -6,6 +6,7 @@
 #
 
 from .base import ToolAdapter
+import os
 
 class SSLScanAdapter(ToolAdapter):
     """Adapter for SSLScan SSL/TLS configuration results."""

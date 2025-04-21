@@ -7,6 +7,7 @@
 
 from .base import ToolAdapter
 import logging
+import os
 
 class NiktoAdapter(ToolAdapter):
     """Adapter for Nikto vulnerability scanner results."""
