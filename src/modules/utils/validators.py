@@ -49,7 +49,7 @@ def normalize_url(url):
         str: The normalized URL
     """
     if not url.startswith(('http://', 'https://')):
-        return f'http://{url}'
+        return f'https://{url}'
     return url
 
 def extract_domain(url):

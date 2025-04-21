@@ -44,7 +44,7 @@ Examples:
 
   Run without banner and confirmation:
     kast -m full example.com --no-banner
-    
+
   Run with dry run mode:
     kast -m full example.com --dry-run
         """,
@@ -142,6 +142,7 @@ Examples:
             args.target, 
             output_dir, 
             use_browser=(not args.no_browser),
+            nikto_type="quick",
             dry_run=args.dry_run
         )
     
