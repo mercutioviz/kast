@@ -64,3 +64,37 @@ def extract_domain(url):
     """
     parsed_url = urlparse(normalize_url(url))
     return parsed_url.netloc
+
+def is_valid_results_dir(directory):
+    """
+    Validate if a directory contains KAST scan results
+    
+    Args:
+        directory (str): Path to the directory to validate
+        
+    Returns:
+        bool: True if the directory contains valid results, False otherwise
+    """
+    if not os.path.isdir(directory):
+        return False
+    
+    # Check if it has either a recon or vuln subdirectory
+    recon_dir = os.path.join(directory, 'recon')
+    vuln_dir = os.path.join(directory, 'vuln')
+    
+    if not (os.path.isdir(recon_dir) or os.path.isdir(vuln_dir)):
+        return False
+    
+    # Check if there are any result files in the recon directory
+    if os.path.isdir(recon_dir):
+        recon_files = [f for f in os.listdir(recon_dir) if f.endswith('.json')]
+        if recon_files:
+            return True
+    
+    # Check if there are any result files in the vuln directory
+    if os.path.isdir(vuln_dir):
+        vuln_files = [f for f in os.listdir(vuln_dir) if f.endswith('.json')]
+        if vuln_files:
+            return True
+    
+    return False
