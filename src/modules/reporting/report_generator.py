@@ -88,6 +88,11 @@ def generate_report(target, results, output_dir):
             os.makedirs(template_dir, exist_ok=True)
             create_default_template(template_dir)
         
+        ### Debugging ###
+        logger.debug(f"Template directory: {template_dir}")
+        logger.debug(f"Template exists: {os.path.exists(os.path.join(template_dir, 'report_template.html'))}")
+        logger.debug(f"Report data keys: {list(report_data.keys())}")
+
         # Set up Jinja2 environment
         env = Environment(loader=FileSystemLoader(template_dir))
         template = env.get_template('report_template.html')
