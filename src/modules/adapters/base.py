@@ -37,12 +37,19 @@ class ToolAdapter:
         search_path = results_dir
         if self.result_subdir:
             search_path = os.path.join(results_dir, self.result_subdir)
-            
-        pattern = os.path.join(search_path, f'{self.tool_name}_*.json')
-        files = glob.glob(pattern)
+        
+        # Try both naming patterns: with and without underscore
+        patterns = [
+            os.path.join(search_path, f'{self.tool_name}.json'),
+            os.path.join(search_path, f'{self.tool_name}_*.json')
+        ]
+        
+        files = []
+        for pattern in patterns:
+            files.extend(glob.glob(pattern))
         
         if not files:
-            logging.warning(f"No result files found for {self.tool_name} at {pattern}")
+            logging.warning(f"No result files found for {self.tool_name} in {search_path}")
             return None
         
         try:

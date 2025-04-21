@@ -58,7 +58,6 @@ def load_vuln_results(vuln_dir):
 
 def main():
     """Main function to run KAST"""
-    banner.display_banner()
     
     parser = argparse.ArgumentParser(
         description="KAST - Kali Automated Scanning Tool",
@@ -172,6 +171,9 @@ Examples:
         
         sys.exit(0)
     
+    # Banner here
+    banner.display_banner()
+
     # If no target is provided, show help and exit
     if args.target is None:
         parser.print_help()

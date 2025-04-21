@@ -92,6 +92,11 @@ def generate_report(target, results, output_dir):
         logger.debug(f"Template directory: {template_dir}")
         logger.debug(f"Template exists: {os.path.exists(os.path.join(template_dir, 'report_template.html'))}")
         logger.debug(f"Report data keys: {list(report_data.keys())}")
+        logger.debug(f"Template content preview: {open(os.path.join(template_dir, 'report_template.html')).read()[:200]}...")
+        logger.debug(f"Rendering template with data: target={target}, timestamp={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.debug(f"Recon results keys: {list(report_data.get('recon_results', {}).keys()) if report_data.get('recon_results') else 'None'}")
+        logger.debug(f"Vuln results keys: {list(report_data.get('vuln_results', {}).keys()) if report_data.get('vuln_results') else 'None'}")
+        logger.debug(f"Adapter results: {[k for k in report_data.keys() if k.endswith('_results') and k not in ['recon_results', 'vuln_results']]}")
 
         # Set up Jinja2 environment
         env = Environment(loader=FileSystemLoader(template_dir))
