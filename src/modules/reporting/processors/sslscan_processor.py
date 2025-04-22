@@ -16,9 +16,9 @@ class SSLScanProcessor(BaseDataProcessor):
         processed_data = {
             "title": "SSLScan Results",
             "description": "SSL/TLS configuration analysis",
-            "certificates": [],
+            "certificate": {},
             "ciphers": [],
-            "protocols": [],
+            "protocols": {},
             "vulnerabilities": []
         }
         
@@ -26,13 +26,16 @@ class SSLScanProcessor(BaseDataProcessor):
             return processed_data
             
         try:
-            if "certificates" in raw_data:
-                processed_data["certificates"] = raw_data["certificates"]
+            # Process certificate information
+            if "certificate" in raw_data:
+                processed_data["certificate"] = raw_data["certificate"]
                 
-            if "ciphers" in raw_data:
+            # Process cipher information
+            if "ciphers" in raw_data and isinstance(raw_data["ciphers"], list):
                 processed_data["ciphers"] = raw_data["ciphers"]
                 
-            if "protocols" in raw_data:
+            # Process protocol information
+            if "protocols" in raw_data and isinstance(raw_data["protocols"], dict):
                 processed_data["protocols"] = raw_data["protocols"]
                 
             # Extract vulnerabilities from the data
@@ -60,31 +63,40 @@ class SSLScanProcessor(BaseDataProcessor):
     def extract_summary(self, processed_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract summary information from SSLScan results"""
         ssl_vulns = processed_data.get("vulnerabilities", [])
-        protocols_data = processed_data.get("protocols")
-        certs_data = processed_data.get("certificates") or []
+        protocols_data = processed_data.get("protocols", {})
+        ciphers_data = processed_data.get("ciphers", [])
+        cert_data = processed_data.get("certificate", {})
         
-        versions = ["SSLv2", "SSLv3", "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3"]
-        
+        # Format protocol information
         protocol_support = {}
-        if isinstance(protocols_data, list):
-            # fallback in case of misstructured data
-            self.logger.warning("Expected dict for protocols_data, got list. Skipping protocol summary.")
-        elif isinstance(protocols_data, str):
-            self.logger.warning("Expected dict for protocols_data, got string. Skipping protocol summary.")
-        elif isinstance(protocols_data, dict):
-            protocol_support = {
-                v.lower().replace(".", ""): protocols_data.get(v, False)
-                for v in versions
-            }
-        else:
-            self.logger.warning(f"Unknown type for protocols_data: {type(protocols_data)}")
+        enabled_protocols = []
+        
+        # Map protocol keys to their display names
+        protocol_display_names = {
+            "SSLv2": "SSLv2",
+            "SSLv3": "SSLv3", 
+            "TLSv1.0": "TLSv1.0",
+            "TLSv1.1": "TLSv1.1",
+            "TLSv1.2": "TLSv1.2",
+            "TLSv1.3": "TLSv1.3"
+        }
+        
+        # Process protocol information
+        if isinstance(protocols_data, dict):
+            for protocol, enabled in protocols_data.items():
+                display_name = protocol_display_names.get(protocol, protocol)
+                if enabled:
+                    enabled_protocols.append(display_name)
         
         return {
             "vulnerabilities": len(ssl_vulns),
             "has_issues": len(ssl_vulns) > 0,
-            "protocols": protocol_support,
+            "ciphers": len(ciphers_data),
+            "enabled_protocols": enabled_protocols,
             "cert_info": {
-                "expired": any(c.get("expired", False) for c in certs_data),
-                "self_signed": any(c.get("self_signed", False) for c in certs_data)
+                "issuer": cert_data.get("issuer", "Unknown"),
+                "subject": cert_data.get("subject", "Unknown"),
+                "not_before": cert_data.get("not_before", "Unknown"),
+                "not_after": cert_data.get("not_after", "Unknown")
             }
         }

@@ -161,7 +161,7 @@
                         {% endif %}
 
                         {% if summary.tools.whatweb is defined %}
-                        <li>WhatWeb: {{ summary.tools.whatweb }} technologies detected</li>
+                        <li>WhatWeb: {{ summary.tools.whatweb.count }} technologies detected</li>
                         {% endif %}
                         
                         {% if summary.tools.theharvester is defined %}
@@ -175,9 +175,16 @@
                         {% if summary.tools.dnsenum is defined %}
                         <li>DNSenum: {{ summary.tools.dnsenum.nameservers + summary.tools.dnsenum.mx_records + summary.tools.dnsenum.a_records }} records</li>
                         {% endif %}
-                        
+
                         {% if summary.tools.sslscan is defined %}
-                        <li>SSLScan: {{ summary.tools.sslscan.ciphers }} ciphers, {{ summary.tools.sslscan.protocols }} protocols</li>
+                        <li>SSLScan: 
+                            {{ summary.tools.sslscan.ciphers }} ciphers enabled;
+                            {% if summary.tools.sslscan.enabled_protocols %}
+                                {{ summary.tools.sslscan.enabled_protocols|join(' and ') }} enabled
+                            {% else %}
+                                No secure protocols enabled
+                            {% endif %}
+                        </li>
                         {% endif %}
                     </ul>
                 </div>

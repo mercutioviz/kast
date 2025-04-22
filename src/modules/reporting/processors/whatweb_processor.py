@@ -5,8 +5,14 @@ from .base_processor import BaseDataProcessor
 class WhatWebProcessor(BaseDataProcessor):
     """Process WhatWeb scan results"""
     
-    def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, raw_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Process WhatWeb scan results"""
+
+        # Debug the raw data structure
+        import pprint
+        self.logger.debug("WhatWeb raw data structure:")
+        self.logger.debug(pprint.pformat(raw_data, indent=2))
+
         processed_data = {
             "title": "WhatWeb Results",
             "description": "Web technology identification",
@@ -17,23 +23,45 @@ class WhatWebProcessor(BaseDataProcessor):
             return processed_data
             
         try:
-            for target, details in raw_data.items():
-                if isinstance(details, dict):
-                    plugins = details.get("plugins", {})
-                    finding = {
-                        "target": target,
-                        "http_status": details.get("http_status", ""),
-                        "technologies": []
-                    }
+            # Log the raw data structure for debugging
+            self.logger.debug(f"WhatWeb raw data structure:")
+            self.logger.debug(f"{raw_data}")
+            
+            # Process each entry in the list
+            for entry in raw_data:
+                target = entry.get("target", "Unknown")
+                plugins = entry.get("plugins", {})
+                
+                finding = {
+                    "target": target,
+                    "http_status": entry.get("http_status", ""),
+                    "technologies": []
+                }
+                
+                for plugin_name, plugin_data in plugins.items():
+                    tech = {"name": plugin_name}
                     
-                    for plugin_name, plugin_data in plugins.items():
-                        tech = {"name": plugin_name}
-                        if isinstance(plugin_data, dict):
-                            tech["version"] = plugin_data.get("version", [""])[0] if isinstance(plugin_data.get("version", []), list) else ""
-                            tech["details"] = plugin_data
-                        finding["technologies"].append(tech)
+                    # Extract version if available
+                    if isinstance(plugin_data, dict):
+                        version_list = plugin_data.get("version", [])
+                        if version_list and isinstance(version_list, list):
+                            tech["version"] = version_list[0]
+                        
+                        # Extract other details
+                        details = []
+                        for key, value in plugin_data.items():
+                            if isinstance(value, list) and value:
+                                details.append(f"{key}: {', '.join(value)}")
+                        
+                        if details:
+                            tech["details"] = details
                     
-                    processed_data["findings"].append(finding)
+                    finding["technologies"].append(tech)
+                
+                processed_data["findings"].append(finding)
+                
+            self.logger.debug(f"Processed WhatWeb data: {processed_data}")
+            
         except Exception as e:
             self.logger.error(f"Error processing WhatWeb data: {str(e)}")
             
@@ -55,6 +83,6 @@ class WhatWebProcessor(BaseDataProcessor):
                     technologies.append(tech_info)
         
         return {
-            "count": len(findings),
+            "count": len(technologies),
             "technologies": technologies[:10]  # Limit to top 10 technologies
         }

@@ -40,13 +40,14 @@ class ReportGenerator:
         self.env = Environment(loader=FileSystemLoader(template_dir))
         logger.debug(f"Initialized ReportGenerator with template directory: {template_dir}")
 
-    def generate_report(self, scan_results: Dict[str, Any], output_file: str) -> str:
+    def generate_report(self, scan_results: Dict[str, Any], output_file: str, target: str = None) -> str:
         """
         Generate an HTML report from scan results.
         
         Args:
             scan_results: Dictionary containing results from various scanning tools
             output_file: Path where the report will be saved
+            target: Optional target name to include in the report
             
         Returns:
             Path to the generated report file
@@ -54,8 +55,12 @@ class ReportGenerator:
         try:
             # Process the scan data
             processed_data = process_scan_data(scan_results)
-            #logger.debug(f"Summary tools keys: {processed_data['summary']['tools'].keys()}")
-            #logger.debug(f"Detailed results keys: {processed_data['detailed_results'].keys()}")
+            
+            # Override target if provided
+            if target:
+                processed_data['metadata']['target'] = target
+                
+            # Debug logging
             logger.debug(f"Processed data keys: {list(processed_data.keys())}")
             logger.debug(f"Summary keys: {list(processed_data['summary'].keys())}")
             if 'tools' in processed_data['summary']:
@@ -84,7 +89,7 @@ class ReportGenerator:
             
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}")
-            raise        
+            raise
 
     def get_template_variables(self, template_name: str) -> List[str]:
         """
@@ -106,7 +111,7 @@ class ReportGenerator:
             return []
 
 # Module-level function for easier use
-def generate_html_report(scan_results: Dict[str, Any], output_file: str, template_dir: str = None) -> str:
+def generate_html_report(scan_results: Dict[str, Any], output_file: str, target: str = None, template_dir: str = None) -> str:
     """
     Generate an HTML report from scan results.
     This is a convenience function for external use.
@@ -114,13 +119,14 @@ def generate_html_report(scan_results: Dict[str, Any], output_file: str, templat
     Args:
         scan_results: Dictionary containing results from various scanning tools
         output_file: Path where the report will be saved
+        target: Optional target name to include in the report
         template_dir: Optional directory containing report templates
         
     Returns:
         Path to the generated report file
     """
     generator = ReportGenerator(template_dir)
-    return generator.generate_report(scan_results, output_file)
+    return generator.generate_report(scan_results, output_file, target)
     
 # Get a proper filename
 def get_report_filename(output_dir):

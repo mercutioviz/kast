@@ -162,7 +162,7 @@ Examples:
             logger.info("Generating report...")
             #report_path = report_generator.generate_report(target, results, output_dir)
             #report_path = generate_html_report(results, output_dir)
-            report_path = generate_html_report(results, get_report_filename(output_dir))
+            report_path = generate_html_report(results, get_report_filename(output_dir), target)
 
             
             logger.info(f"Report generated: {report_path}")
