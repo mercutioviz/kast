@@ -7,898 +7,125 @@
 
 import os
 import json
-import time
+import logging
 from datetime import datetime
+from typing import Dict, List, Any, Optional, Union
 from jinja2 import Environment, FileSystemLoader
-from src.modules.utils.logger import get_module_logger
-from src.modules.adapters import get_all_adapters, get_adapter_by_name
 
-# Module-specific logger
-logger = get_module_logger(__name__)
+# Import the data processor
+from src.modules.reporting.data_processor import process_scan_data
 
-def generate_report(target, results, output_dir):
+# Configure logger
+logger = logging.getLogger(__name__)
+
+class ReportGenerator:
     """
-    Generate a comprehensive HTML report from scan results
-    
-    Args:
-        target (str): The target that was scanned
-        results (dict): The scan results (contains 'recon' and/or 'vuln' keys)
-        output_dir (str): Directory to save the report
-        
-    Returns:
-        str: Path to the generated report
+    Generates HTML reports from processed scan data.
+    This class handles the rendering of templates and creation of report files.
     """
-    logger.info(f"Generating report for {target}")
     
-    # Create report directory if it doesn't exist
-    report_dir = os.path.join(output_dir, 'report')
-    os.makedirs(report_dir, exist_ok=True)
-    
-    # Define report file path
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_file = os.path.join(report_dir, f'kast_report_{timestamp}.html')
-
-    # Determine which scans were performed
-    recon_performed = 'recon' in results
-    vuln_performed = 'vuln' in results
-    
-    # Process results using adapters if available
-    processed_results = {}
-    
-    # Try to use adapters for processing results
-    try:
-        # Get all registered adapters
-        adapters = get_all_adapters()
-        
-        ### DEBUG
-        logger.debug("Inside try block for adapters")
-
-        # Process recon results with adapters
-        if recon_performed:
-            recon_results = results.get('recon', {})
-            for tool_name, tool_data in recon_results.items():
-                adapter = get_adapter_by_name(tool_name)
-                if adapter:
-                    # Use adapter to process the data
-                    logger.debug(f"Using adapter for {tool_name}")
-                    processed_data = adapter.adapt(tool_data)
-                    processed_results[f"{tool_name}_results"] = processed_data
-        
-        # Process vuln results with adapters
-        if vuln_performed:
-            vuln_results = results.get('vuln', {})
-            for tool_name, tool_data in vuln_results.items():
-                adapter = get_adapter_by_name(tool_name)
-                if adapter:
-                    # Use adapter to process the data
-                    logger.debug(f"Using adapter for {tool_name}")
-                    processed_data = adapter.adapt(tool_data)
-                    processed_results[f"{tool_name}_results"] = processed_data
-    except ImportError:
-        # Adapters not available, continue with standard processing
-        logger.warning("Adapter system not available, using standard processing")
-    except Exception as e:
-        logger.error(f"Error using adapters: {str(e)}")
-
-    # Prepare report data
-    report_data = {
-        'target': target,
-        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'recon_performed': recon_performed,
-        'vuln_performed': vuln_performed,
-        'recon_results': process_recon_results(results.get('recon', {})) if recon_performed else None,
-        'vuln_results': process_vuln_results(results.get('vuln', {})) if vuln_performed else None
-    }
-    
-    # Add processed results from adapters
-    report_data.update(processed_results)
-    
-    # Generate summary statistics from adapter results
-    report_data['summary'] = generate_summary_stats(processed_results)
-    
-    # Generate HTML report using template
-    try:
-        # Get the template directory
-        template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
-
-        ### DEBUGGING ###
-        logger.debug(f"Template directory (before try): {template_dir}")
-
-        # If template directory doesn't exist, create it and generate a default template
-        if not os.path.exists(template_dir):
-            os.makedirs(template_dir, exist_ok=True)
-            create_default_template(template_dir)
-        
-        # Check if the template file exists, create it if it doesn't
-        template_path = os.path.join(template_dir, 'report_template.html')
-        if not os.path.exists(template_path):
-            create_default_template(template_dir)
-            
-        ### Debugging ###
-        logger.debug(f"Template directory: {template_dir}")
-        logger.debug(f"Template exists: {os.path.exists(template_path)}")
-        logger.debug(f"Report data keys: {list(report_data.keys())}")
-        logger.debug(f"Template content preview: {open(template_path).read()[:200]}...")
-        logger.debug(f"Rendering template with data: target={target}, timestamp={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        logger.debug(f"Recon results keys: {list(report_data.get('recon_results', {}).keys()) if report_data.get('recon_results') else 'None'}")
-        logger.debug(f"Vuln results keys: {list(report_data.get('vuln_results', {}).keys()) if report_data.get('vuln_results') else 'None'}")
-        logger.debug(f"Adapter results: {[k for k in report_data.keys() if k.endswith('_results') and k not in ['recon_results', 'vuln_results']]}")
-
-        # Set up Jinja2 environment
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template('report_template.html')
-        
-        # Render the template with our data
-        html_content = template.render(**report_data)
-        
-        # Write the report to file
-        with open(report_file, 'w') as f:
-            f.write(html_content)
-        
-        logger.info(f"Report generated successfully: {report_file}")
-        return report_file
-        
-    except Exception as e:
-        logger.error(f"Error generating report: {str(e)}", exc_info=True)
-        
-        # Fallback to a simple report if template rendering fails
-        generate_simple_report(target, results, report_file)
-        return report_file
-        
-def generate_summary_stats(results):
-    """
-    Generate summary statistics from scan results.
-    
-    Args:
-        results (dict): Processed results from all tools
-        
-    Returns:
-        dict: Summary statistics
-    """
-    summary = {
-        'total_findings': 0,
-        'severity': {
-            'high': 0,
-            'medium': 0,
-            'low': 0,
-            'info': 0
-        },
-        'tools': {}
-    }
-    
-    # Count Nikto findings by severity
-    if 'nikto_results' in results and results['nikto_results']:
-        nikto_findings = len(results['nikto_results'])
-        summary['tools']['nikto'] = nikto_findings
-        summary['total_findings'] += nikto_findings
-        
-        for finding in results['nikto_results']:
-            severity = finding.get('severity', 'info')
-            summary['severity'][severity] += 1
-    
-    # Add WhatWeb statistics
-    if 'whatweb_results' in results and results['whatweb_results']:
-        tech_count = sum(len(entry.get('technologies', [])) for entry in results['whatweb_results'])
-        summary['tools']['whatweb'] = {
-            'targets': len(results['whatweb_results']),
-            'technologies': tech_count
-        }        
-        # Add DNSenum statistics
-    if 'dnsenum_results' in results and results['dnsenum_results']:
-        dns_data = results['dnsenum_results']
-        summary['tools']['dnsenum'] = {
-            'nameservers': len(dns_data.get('nameservers', [])),
-            'mx_records': len(dns_data.get('mx_records', [])),
-            'a_records': len(dns_data.get('a_records', []))
-        }
-    
-    # Add SSLScan statistics
-    if 'sslscan_results' in results and results['sslscan_results']:
-        ssl_data = results['sslscan_results']
-        summary['tools']['sslscan'] = {
-            'ciphers': len(ssl_data.get('ciphers', [])),
-            'protocols': len(ssl_data.get('protocols', []))
-        }
-    
-    # Add WAFw00f statistics
-    if 'wafw00f_results' in results and results['wafw00f_results']:
-        waf_data = results['wafw00f_results']
-        summary['tools']['wafw00f'] = {
-            'detected': waf_data.get('detected', False),
-            'waf': waf_data.get('waf', 'None detected')
-        }
-    
-    return summary
-
-def process_recon_results(recon_results):
+    def __init__(self, template_dir: str = None):
         """
-        Process reconnaissance results for the report
+        Initialize the report generator with template directory.
         
         Args:
-            recon_results (dict): The reconnaissance results
+            template_dir: Directory containing report templates
+        """
+        if template_dir is None:
+            # Default to the templates directory in the project
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            template_dir = os.path.join(base_dir, "templates")
+        
+        self.template_dir = template_dir
+        self.env = Environment(loader=FileSystemLoader(template_dir))
+        logger.debug(f"Initialized ReportGenerator with template directory: {template_dir}")
+
+    def generate_report(self, scan_results: Dict[str, Any], output_file: str) -> str:
+        """
+        Generate an HTML report from scan results.
+        
+        Args:
+            scan_results: Dictionary containing results from various scanning tools
+            output_file: Path where the report will be saved
             
         Returns:
-            dict: Processed reconnaissance results
+            Path to the generated report file
         """
-        processed = {
-            'summary': {
-                'tools_run': 0,
-                'tools_succeeded': 0,
-                'tools_failed': 0
-            },
-            'tools': {}
-        }
-        
-        # Process WhatWeb results
-        if 'whatweb' in recon_results:
-            processed['tools']['whatweb'] = process_whatweb_results(recon_results['whatweb'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['whatweb'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-        
-        # Process theHarvester results
-        if 'theharvester' in recon_results:
-            processed['tools']['theharvester'] = process_theharvester_results(recon_results['theharvester'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['theharvester'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-
-        # Process DNSenum results
-        if 'dnsenum' in recon_results:
-            processed['tools']['dnsenum'] = process_dnsenum_results(recon_results['dnsenum'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['dnsenum'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-        
-        # Process SSLScan results
-        if 'sslscan' in recon_results:
-            processed['tools']['sslscan'] = process_sslscan_results(recon_results['sslscan'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['sslscan'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-        
-        # Process wafw00f results
-        if 'wafw00f' in recon_results:
-            processed['tools']['wafw00f'] = process_wafw00f_results(recon_results['wafw00f'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['wafw00f'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-
-    # Process SSL Labs results
-        if 'ssllabs' in recon_results:
-            processed['tools']['ssllabs'] = process_ssllabs_results(recon_results['ssllabs'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['ssllabs'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-        
-        # Process SecurityHeaders results
-        if 'securityheaders' in recon_results:
-            processed['tools']['securityheaders'] = process_securityheaders_results(recon_results['securityheaders'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['securityheaders'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
+        try:
+            # Process the scan data
+            processed_data = process_scan_data(scan_results)
+            #logger.debug(f"Summary tools keys: {processed_data['summary']['tools'].keys()}")
+            #logger.debug(f"Detailed results keys: {processed_data['detailed_results'].keys()}")
+            logger.debug(f"Processed data keys: {list(processed_data.keys())}")
+            logger.debug(f"Summary keys: {list(processed_data['summary'].keys())}")
+            if 'tools' in processed_data['summary']:
+                logger.debug(f"Summary tools keys: {list(processed_data['summary']['tools'].keys())}")
+            logger.debug(f"Detailed results keys: {list(processed_data['detailed_results'].keys())}")
+            
+            # Render the template
+            template = self.env.get_template("report_template.html")
+            report_html = template.render(
+                title=f"KAST Scan Report - {processed_data['metadata'].get('target', 'Unknown Target')}",
+                timestamp=processed_data['metadata'].get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                target=processed_data['metadata'].get('target', 'Unknown'),
+                summary=processed_data['summary'],
+                detailed_results=processed_data['detailed_results']
+            )
+            
+            # Ensure the output directory exists
+            os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+            
+            # Write the report to file
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(report_html)
                 
-        # Process Mozilla Observatory results
-        if 'mozilla_observatory' in recon_results:
-            processed['tools']['mozilla_observatory'] = process_observatory_results(recon_results['mozilla_observatory'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['mozilla_observatory'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-        
-        # Process browser recon results
-        if 'browser' in recon_results:
-            processed['tools']['browser'] = process_browser_results(recon_results['browser'])
-            processed['summary']['tools_run'] += 1
-            if processed['tools']['browser'].get('success', False):
-                processed['summary']['tools_succeeded'] += 1
-            else:
-                processed['summary']['tools_failed'] += 1
-        
-        return processed
+            logger.info(f"Report generated successfully: {output_file}")
+            return output_file
+            
+        except Exception as e:
+            logger.error(f"Error generating report: {str(e)}")
+            raise        
 
-def process_vuln_results(vuln_results):
+    def get_template_variables(self, template_name: str) -> List[str]:
+        """
+        Get a list of variables used in a template.
+        Useful for debugging template rendering issues.
+        
+        Args:
+            template_name: Name of the template file
+            
+        Returns:
+            List of variable names used in the template
+        """
+        try:
+            template_source = self.env.loader.get_source(self.env, template_name)[0]
+            parsed_content = self.env.parse(template_source)
+            return list(self.env.meta.find_undeclared_variables(parsed_content))
+        except Exception as e:
+            logger.error(f"Error getting template variables: {str(e)}")
+            return []
+
+# Module-level function for easier use
+def generate_html_report(scan_results: Dict[str, Any], output_file: str, template_dir: str = None) -> str:
     """
-    Process vulnerability scanning results for the report
+    Generate an HTML report from scan results.
+    This is a convenience function for external use.
     
     Args:
-        vuln_results (dict): The vulnerability scanning results
+        scan_results: Dictionary containing results from various scanning tools
+        output_file: Path where the report will be saved
+        template_dir: Optional directory containing report templates
         
     Returns:
-        dict: Processed vulnerability scanning results
+        Path to the generated report file
     """
-    processed = {
-        'summary': {
-            'tools_run': 0,
-            'tools_succeeded': 0,
-            'tools_failed': 0,
-            'vulnerabilities': {
-                'high': 0,
-                'medium': 0,
-                'low': 0,
-                'info': 0
-            }
-        },
-        'tools': {}
-    }
+    generator = ReportGenerator(template_dir)
+    return generator.generate_report(scan_results, output_file)
     
-    # Process Nikto results
-    if 'nikto' in vuln_results:
-        processed['tools']['nikto'] = process_nikto_results(vuln_results['nikto'])
-        processed['summary']['tools_run'] += 1
-        if processed['tools']['nikto'].get('success', False):
-            processed['summary']['tools_succeeded'] += 1
-            
-            # Add vulnerability counts
-            if 'summary' in processed['tools']['nikto'] and 'vulnerabilities' in processed['tools']['nikto']['summary']:
-                vulns = processed['tools']['nikto']['summary']['vulnerabilities']
-                processed['summary']['vulnerabilities']['high'] += vulns.get('high', 0)
-                processed['summary']['vulnerabilities']['medium'] += vulns.get('medium', 0)
-                processed['summary']['vulnerabilities']['low'] += vulns.get('low', 0)
-                processed['summary']['vulnerabilities']['info'] += vulns.get('info', 0)
-        else:
-            processed['summary']['tools_failed'] += 1
-            
-    # Add other vulnerability scanners here as they are implemented
-    
-    # Calculate total vulnerabilities
-    processed['summary']['total_vulnerabilities'] = (
-        processed['summary']['vulnerabilities']['high'] +
-        processed['summary']['vulnerabilities']['medium'] +
-        processed['summary']['vulnerabilities']['low'] +
-        processed['summary']['vulnerabilities']['info']
-    )
-    
-    return processed
-
-def process_whatweb_results(results):
-    """Process WhatWeb results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'command': results.get('command', 'Unknown command')
-        }
-    
-    # Process actual results
-    try:
-        technologies = []
-        
-        # WhatWeb output format can vary, try to handle different formats
-        if isinstance(results, list):
-            for entry in results:
-                if isinstance(entry, dict) and 'plugins'in entry:
-                    for plugin, data in entry.get('plugins', {}).items():
-                        technologies.append({
-                            'name': plugin,
-                            'version': data.get('version', ['Unknown'])[0] if isinstance(data.get('version', []), list) else data.get('version', 'Unknown'),
-                            'details': data
-                        })
-        elif isinstance(results, dict) and 'target' in results:
-            for plugin, data in results.get('plugins', {}).items():
-                technologies.append({
-                    'name': plugin,
-                    'version': data.get('version', ['Unknown'])[0] if isinstance(data.get('version', []), list) else data.get('version', 'Unknown'),
-                    'details': data
-                })
-        
-        return {
-            'success': True,
-            'technologies': technologies,
-            'count': len(technologies)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing WhatWeb results: {str(e)}"
-        }
-    
-def process_theharvester_results(results):
-    """Process theHarvester results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'command': results.get('command', 'Unknown command')
-        }
-    
-    # Process actual results
-    try:
-        emails = results.get('emails', [])
-        hosts = results.get('hosts', [])
-        vhosts = results.get('vhosts', [])
-        
-        return {
-            'success': True,
-            'emails': emails,
-            'hosts': hosts,
-            'vhosts': vhosts,
-            'email_count': len(emails),
-            'host_count': len(hosts),
-            'vhost_count': len(vhosts)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing theHarvester results: {str(e)}"
-        }
-
-def process_dnsenum_results(results):
-    """Process DNSenum results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'command': results.get('command', 'Unknown command')
-        }
-    
-    # Process actual results
-    try:
-        nameservers = results.get('nameservers', [])
-        mx_records = results.get('mx_records', [])
-        subdomains = results.get('subdomains', [])
-        hosts = results.get('hosts', [])
-        
-        return {
-            'success': True,
-            'nameservers': nameservers,
-            'mx_records': mx_records,
-            'subdomains': subdomains,
-            'hosts': hosts,
-            'nameserver_count': len(nameservers),
-            'mx_record_count': len(mx_records),
-            'subdomain_count': len(subdomains),
-            'host_count': len(hosts)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing DNSenum results: {str(e)}"
-        }
-
-def process_sslscan_results(results):
-    """Process SSLScan results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'command': results.get('command', 'Unknown command')
-        }
-    
-    # Process actual results
-    try:
-        protocols = {}
-        ciphers = []
-        certificate = {}
-        
-        # Extract protocols
-        if 'protocols' in results:
-            protocols = results['protocols']
-        
-        # Extract ciphers
-        if 'ciphers' in results:
-            ciphers = results['ciphers']
-        
-        # Extract certificate info
-        if 'certificate' in results:
-            certificate = results['certificate']
-        
-        return {
-            'success': True,
-            'protocols': protocols,
-            'ciphers': ciphers,
-            'certificate': certificate,
-            'cipher_count': len(ciphers)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing SSLScan results: {str(e)}"
-        }
-
-def process_wafw00f_results(results):
-    """Process wafw00f results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'command': results.get('command', 'Unknown command')
-        }
-    
-    # Process actual results
-    try:
-        detected_wafs = []
-        
-        # Handle different possible data structures
-        if isinstance(results, dict):
-            if 'detected_wafs' in results:
-                detected_wafs = results['detected_wafs']
-            elif 'waf' in results:
-                detected_wafs = [results['waf']]
-            elif 'results' in results and isinstance(results['results'], list):
-                for item in results['results']:
-                    if isinstance(item, dict) and 'waf' in item:
-                        detected_wafs.append(item['waf'])
-                    elif isinstance(item, str):
-                        detected_wafs.append(item)
-        elif isinstance(results, list):
-            for item in results:
-                if isinstance(item, dict) and 'waf' in item:
-                    detected_wafs.append(item['waf'])
-                elif isinstance(item, str):
-                    detected_wafs.append(item)
-        
-        # Remove duplicates and None values
-        detected_wafs = [waf for waf in detected_wafs if waf]
-        detected_wafs = list(set(detected_wafs))
-        
-        return {
-            'success': True,
-            'detected_wafs': detected_wafs,
-            'waf_detected': len(detected_wafs) > 0,
-            'waf_count': len(detected_wafs)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing wafw00f results: {str(e)}"
-        }
-
-def process_ssllabs_results(results):
-    """Process SSL Labs results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'api': results.get('api', 'SSL Labs')
-        }
-    
-    # Process actual results
-    try:
-        grade = None
-        endpoints = []
-        
-        if 'endpoints' in results:
-            for endpoint in results['endpoints']:
-                endpoints.append({
-                    'ip': endpoint.get('ipAddress', 'Unknown'),
-                    'grade': endpoint.get('grade', 'Unknown'),
-                    'has_warnings': endpoint.get('hasWarnings', False),
-                    'is_exceptional': endpoint.get('isExceptional', False)
-                })
-                
-                # Use the first endpoint's grade as the overall grade
-                if grade is None and 'grade' in endpoint:
-                    grade = endpoint['grade']
-        
-        return {
-            'success': True,
-            'grade': grade,
-            'endpoints': endpoints,
-            'endpoint_count': len(endpoints)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing SSL Labs results: {str(e)}"
-        }
-
-def process_securityheaders_results(results):
-    """Process SecurityHeaders.io results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'api': results.get('api', 'SecurityHeaders.io')
-        }
-    
-    # Process actual results
-    try:
-        headers = {}
-        
-        if 'security_headers' in results:
-            headers = results['security_headers']
-        
-        return {
-            'success': True,
-            'headers': headers,
-            'header_count': len(headers) if headers else 0
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing SecurityHeaders.io results: {str(e)}"
-        }
-
-def process_observatory_results(results):
-    """Process Mozilla Observatory results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'api': results.get('api', 'Mozilla Observatory')
-        }
-    
-    # Process actual results
-    try:
-        grade = None
-        score = None
-        tests = []
-        
-        if 'summary' in results:
-            summary = results['summary']
-            grade = summary.get('grade')
-            score = summary.get('score')
-            tests = summary.get('tests', [])
-        
-        return {
-            'success': True,
-            'grade': grade,
-            'score': score,
-            'tests': tests,
-            'test_count': len(tests)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing Mozilla Observatory results: {str(e)}"
-        }
-
-def process_browser_results(results):
-    """Process browser-based reconnaissance results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'tool': results.get('tool', 'Browser Reconnaissance')
-        }
-    
-    # Process actual results
-    try:
-        js_files = results.get('js_files', [])
-        forms = results.get('forms', [])
-        links = results.get('links', [])
-        cookies = results.get('cookies', [])
-        frameworks = results.get('frameworks', [])
-        
-        return {
-            'success': True,
-            'js_files': js_files,
-            'forms': forms,
-            'links': links,
-            'cookies': cookies,
-            'frameworks': frameworks,
-            'js_file_count': len(js_files),
-            'form_count': len(forms),
-            'link_count': len(links),
-            'cookie_count': len(cookies),
-            'framework_count': len(frameworks)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing browser reconnaissance results: {str(e)}"
-        }
-    
-def process_nikto_results(results):
-    """Process Nikto results"""
-    if results is None or isinstance(results, str) or 'error' in results:
-        return {
-            'success': False,
-            'error': results if isinstance(results, str) else results.get('error', 'Unknown error')
-        }
-    
-    # Check if it's a dry run
-    if isinstance(results, dict) and results.get('dry_run', False):
-        return {
-            'success': True,
-            'dry_run': True,
-            'command': results.get('command', 'Unknown command'),
-            'scan_type': results.get('scan_type', 'Unknown')
-        }
-    
-    # Process actual results
-    try:
-        summary = results.get('summary', {})
-        findings = summary.get('findings', [])
-        
-        return {
-            'success': True,
-            'summary': summary,
-            'findings': findings,
-            'finding_count': len(findings),
-            'scan_type': results.get('scan_type', 'Unknown'),
-            'duration': results.get('duration', 0)
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'error': f"Error processing Nikto results: {str(e)}"
-        }
-    
-def create_default_template(template_dir):
-    """
-    Create a default HTML report template
-    
-    Args:
-        template_dir (str): Directory to save the template
-    """
-    template_path = os.path.join(template_dir, 'report_template.html')
-    
-    # Template content is very long, so I'll omit it here for brevity
-    template_content = """<!DOCTYPE html>
-<html lang="en">
-<!-- Template content omitted for brevity -->
-</html>
-"""
-    
-    with open(template_path, 'w') as f:
-        f.write(template_content)
-    
-    logger.info(f"Default report template created at {template_path}")
-
-def generate_simple_report(target, results, report_file):
-    """
-    Generate a simple HTML report as a fallback
-    
-    Args:
-        target (str): The target that was scanned
-        results (dict): The scan results
-        report_file (str): Path to save the report
-    """
-    logger.info("Generating simple fallback report")
-    
-    # Determine which scans were performed
-    recon_performed = 'recon' in results
-    vuln_performed = 'vuln' in results
-    
-    # Create a simple HTML report
-    html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>KAST Scan Report - {target}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        h1 {{ color: #2c3e50; }}
-        h2 {{ color: #3498db; }}
-        .section {{ margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; }}
-    </style>
-</head>
-<body>
-    <h1>KAST Security Scan Report</h1>
-    <p><strong>Target:</strong> {target}</p>
-    <p><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-    
-    <div class="section">
-        <h2>Scan Summary</h2>
-        <p>This report presents the findings from a security scan of {target} performed using KAST (Kali Automated Scanning Tool).</p>
-        
-        <p>
-        {'Both reconnaissance and vulnerability scanning were performed.' if recon_performed and vuln_performed else
-         'Only reconnaissance scanning was performed. No vulnerability scanning was conducted.' if recon_performed else
-         'Only vulnerability scanning was performed. No reconnaissance was conducted.' if vuln_performed else
-         'No scans were performed.'}
-        </p>
-    </div>
-    
-    {'<div class="section"><h2>Reconnaissance Results</h2><p>See detailed results in the recon directory.</p></div>' if recon_performed else ''}
-    
-    {'<div class="section"><h2>Vulnerability Scan Results</h2><p>See detailed results in the vuln directory.</p></div>' if vuln_performed else ''}
-    
-    <p><em>Note: This is a simplified report generated as a fallback due to template rendering issues.</em></p>
-</body>
-</html>
-"""
-    
-    # Write the report to file
-    with open(report_file, 'w') as f:
-        f.write(html)
-    
-    logger.info(f"Simple fallback report generated: {report_file}")
-
-    # If you need to test the report generator directly
-    if __name__ == "__main__":
-        import sys
-        import argparse
-        
-        parser = argparse.ArgumentParser(description="Generate a report from scan results")
-        parser.add_argument("target", help="Target that was scanned")
-        parser.add_argument("results_dir", help="Directory containing scan results")
-        parser.add_argument("output_dir", help="Directory to save the report")
-        
-        args = parser.parse_args()
-        
-        # Load results from files
-        results = {}
-        
-        recon_file = os.path.join(args.results_dir, 'recon_results.json')
-        if os.path.exists(recon_file):
-            with open(recon_file, 'r') as f:
-                results['recon'] = json.load(f)
-        
-        vuln_file = os.path.join(args.results_dir, 'vuln_results.json')
-        if os.path.exists(vuln_file):
-            with open(vuln_file, 'r') as f:
-                results['vuln'] = json.load(f)
-        
-        # Generate the report
-        report_path = generate_report(args.target, results, args.output_dir)
-        print(f"Report generated: {report_path}")        
+# Get a proper filename
+def get_report_filename(output_dir):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_filename = f"kast_report_{timestamp}.html"
+    report_dir = os.path.join(output_dir, "report")
+    os.makedirs(report_dir, exist_ok=True)
+    return os.path.join(report_dir, report_filename)

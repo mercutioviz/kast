@@ -17,7 +17,8 @@ from rich.panel import Panel
 
 from src.modules.recon import coordinator as recon_coordinator
 from src.modules.vuln_scan import vulnerability_scanner
-from src.modules.reporting import report_generator
+from src.modules.reporting.report_generator import generate_html_report
+from src.modules.reporting.report_generator import get_report_filename
 from src.modules.utils import banner, validators
 from src.modules.utils.logger import setup_logger, get_module_logger
 from src.modules.adapters import get_all_adapters  # Import the adapter registry
@@ -159,7 +160,10 @@ Examples:
             
             # Generate report using the adapter system
             logger.info("Generating report...")
-            report_path = report_generator.generate_report(target, results, output_dir)
+            #report_path = report_generator.generate_report(target, results, output_dir)
+            #report_path = generate_html_report(results, output_dir)
+            report_path = generate_html_report(results, get_report_filename(output_dir))
+
             
             logger.info(f"Report generated: {report_path}")
             console.print(f"[bold green]Report generated: {report_path}[/bold green]")
@@ -267,7 +271,7 @@ Examples:
         logger.info("[DRY RUN] Would generate report with collected data")
         report_path = os.path.join(output_dir, "report.html")
     else:
-        report_path = report_generator.generate_report(args.target, results, output_dir)
+        report_path = generate_html_report(results, get_report_filename(output_dir))
     
     logger.info(f"Scan completed! Report available at: {report_path}")
 
