@@ -11,9 +11,9 @@ Phase prompt:
 I'm continuing development on my security tool called KAST (Kali Automated Scanning Tool) that automates reconnaissance and vulnerability scanning. The tool is built in Python and runs on Kali Linux, integrating various security tools.
 
 Here is a tree structure of my project:
-tree -h
+ tree -h
 [4.0K]  .
-├── [2.1K]  AI-Prompts.txt
+├── [4.4K]  AI-Prompts.txt
 ├── [4.2K]  README.md
 ├── [4.0K]  assets
 │   ├── [151K]  kast-logo.ans
@@ -55,7 +55,18 @@ tree -h
 │   │   │   └── [5.3K]  web_recon.py
 │   │   ├── [4.0K]  reporting
 │   │   │   ├── [   0]  __init__.py
-│   │   │   ├── [ 22K]  data_processor.py
+│   │   │   ├── [ 11K]  data_processor.py
+│   │   │   ├── [4.0K]  processors
+│   │   │   │   ├── [1.0K]  __init__.py
+│   │   │   │   ├── [1.6K]  base_processor.py
+│   │   │   │   ├── [ 11K]  data_processor.py
+│   │   │   │   ├── [2.0K]  dnsenum_processor.py
+│   │   │   │   ├── [3.5K]  nikto_processor.py
+│   │   │   │   ├── [5.2K]  report_generator.py
+│   │   │   │   ├── [3.6K]  sslscan_processor.py
+│   │   │   │   ├── [1.6K]  theharvester_processor.py
+│   │   │   │   ├── [2.0K]  wafw00f_processor.py
+│   │   │   │   └── [2.4K]  whatweb_processor.py
 │   │   │   └── [5.2K]  report_generator.py
 │   │   ├── [4.0K]  utils
 │   │   │   ├── [   0]  __init__.py
@@ -74,7 +85,7 @@ tree -h
 ├── [2.3K]  test_recon.py
 └── [7.0K]  test_report.py
 
-12 directories, 49 files
+13 directories, 59 files
 
 We've recently implemented an adapter system to process results from different security tools (WhatWeb, theHarvester, DNSenum, SSLScan, wafw00f, Nikto) and generate comprehensive HTML reports.
 
@@ -84,3 +95,5 @@ I'd like to focus on the following improvements:
 3. Implementing a more robust error handling system
 4. Creating a configuration system to customize tool behavior
 
+My current issue is with making sure that report template is getting the correct data so that it can display the findings properly.
+Before generating any code, what information do you need to assist me with fixing my report?
