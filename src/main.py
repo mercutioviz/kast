@@ -261,7 +261,7 @@ Examples:
             args.target, 
             output_dir, 
             use_browser=(not args.no_browser),
-            nikto_type="quick",
+            nikto_type="thorough",
             dry_run=args.dry_run
         )
     
