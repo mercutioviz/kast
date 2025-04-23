@@ -7,6 +7,11 @@ class NiktoProcessor(BaseDataProcessor):
     
     def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process Nikto scan results"""
+        # Debug the raw data structure
+        import pprint
+        self.logger.debug("Nikto raw data structure:")
+        self.logger.debug(pprint.pformat(raw_data, indent=2))
+
         processed_data = {
             "title": "Nikto Vulnerability Scan",
             "description": "Web server vulnerability scanner",

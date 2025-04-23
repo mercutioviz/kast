@@ -7,6 +7,11 @@ class TheHarvesterProcessor(BaseDataProcessor):
     
     def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process theHarvester scan results"""
+        # Debug the raw data structure
+        import pprint
+        self.logger.debug("theHarvester raw data structure:")
+        self.logger.debug(pprint.pformat(raw_data, indent=2))
+
         processed_data = {
             "title": "theHarvester Results",
             "description": "Email, subdomain and host information gathering",

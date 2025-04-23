@@ -7,6 +7,11 @@ class DNSEnumProcessor(BaseDataProcessor):
     
     def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process DNSenum scan results"""
+        # Debug the raw data structure
+        import pprint
+        self.logger.debug("DNSenum raw data structure:")
+        self.logger.debug(pprint.pformat(raw_data, indent=2))
+
         processed_data = {
             "title": "DNSenum Results",
             "description": "DNS enumeration information",

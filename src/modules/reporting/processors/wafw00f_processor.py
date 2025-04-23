@@ -7,7 +7,10 @@ class Wafw00fProcessor(BaseDataProcessor):
     
     def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process wafw00f scan results"""
-        self.logger.debug(f"Raw wafw00f data: {raw_data}")
+        # Debug the raw data structure
+        import pprint
+        self.logger.debug("wafw00f raw data structure:")
+        self.logger.debug(pprint.pformat(raw_data, indent=2))
         
         processed_data = {
             "title": "WAF Detection Results",
