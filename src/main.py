@@ -62,6 +62,7 @@ def main():
     
     parser = argparse.ArgumentParser(
         description="KAST - Kali Automated Scanning Tool",
+        prog='kast',
         epilog="""
 Examples:
 
