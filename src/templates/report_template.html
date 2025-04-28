@@ -254,68 +254,32 @@
         <!-- WhatWeb Results -->
         <div class="section">
             <h2>Web Technology Detection (WhatWeb)</h2>
-            {% if detailed_results.whatweb %}
-            {% for entry in detailed_results.whatweb %}
-            <h3>{{ entry.target }}</h3>
-            <table>
-                <tr>
-                    <th>Technology</th>
-                    <th>Details</th>
-                </tr>
-                {% for tech in entry.technologies %}
-                <tr>
-                    <td>{{ tech.name }}</td>
-                    <td>{{ tech.details|join(', ') }}</td>
-                </tr>
-                {% endfor %}
-            </table>
+            {% if detailed_results.whatweb and detailed_results.whatweb.findings %}
+            {% for entry in detailed_results.whatweb.findings %}
+            <div class="finding info">
+                <h3>{{ entry.target }} (HTTP Status: {{ entry.http_status }})</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Technology</th>
+                            <th>Version</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tech in entry.technologies %}
+                        <tr>
+                            <td>{{ tech.name }}</td>
+                            <td>{{ tech.version if tech.version is defined else '' }}</td>
+                            <td>{{ tech.details|join(', ') if tech.details is defined else '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% endfor %}
             {% else %}
             <p>No WhatWeb results available.</p>
-            {% endif %}
-        </div>
-        
-        <!-- theHarvester Results -->
-        <div class="section">
-            <h2>Information Gathering (theHarvester)</h2>
-            {% if detailed_results.theharvester %}
-            {% if detailed_results.theharvester.emails %}
-            <h3>Email Addresses</h3>
-            <ul>
-                {% for email in detailed_results.theharvester.emails %}
-                <li>{{ email }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            
-            {% if detailed_results.theharvester.hosts %}
-            <h3>Hosts</h3>
-            <ul>
-                {% for host in detailed_results.theharvester.hosts %}
-                <li>{{ host }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            
-            {% if detailed_results.theharvester.ips %}
-            <h3>IP Addresses</h3>
-            <ul>
-                {% for ip in detailed_results.theharvester.ips %}
-                <li>{{ ip }}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            
-            {% for section in detailed_results.theharvester.additional %}
-            <h3>{{ section.name|capitalize }}</h3>
-            <ul>
-                {% for item in section.items %}
-                <li>{{ item }}</li>
-                {% endfor %}
-            </ul>
-            {% endfor %}
-            {% else %}
-            <p>No theHarvester results available.</p>
             {% endif %}
         </div>
         
