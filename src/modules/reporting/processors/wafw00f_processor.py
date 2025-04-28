@@ -5,7 +5,7 @@ from .base_processor import BaseDataProcessor
 class Wafw00fProcessor(BaseDataProcessor):
     """Process wafw00f scan results"""
     
-    def process(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, raw_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Process wafw00f scan results"""
         # Debug the raw data structure
         import pprint
@@ -22,20 +22,23 @@ class Wafw00fProcessor(BaseDataProcessor):
             return processed_data
             
         try:
-            if "waf" in raw_data:
-                waf_info = raw_data["waf"]
-                if waf_info:
-                    processed_data["findings"].append({
-                        "target": raw_data.get("target", "Unknown"),
-                        "waf_detected": True,
-                        "waf_name": waf_info
-                    })
-                else:
-                    processed_data["findings"].append({
-                        "target": raw_data.get("target", "Unknown"),
-                        "waf_detected": False,
-                        "waf_name": "None detected"
-                    })
+            # Filter out "Generic" WAF if there are other WAFs detected
+            detected_wafs = [item for item in raw_data if item.get('detected', False)]
+            
+            # Check if we have multiple WAFs and one is Generic
+            non_generic_wafs = [waf for waf in detected_wafs if waf.get('firewall') != 'Generic']
+            
+            # If we have non-generic WAFs, use those; otherwise use all detected WAFs
+            wafs_to_use = non_generic_wafs if non_generic_wafs and len(detected_wafs) > 1 else detected_wafs
+            
+            for waf in wafs_to_use:
+                processed_data["findings"].append({
+                    "target": waf.get("url", "Unknown"),
+                    "waf_detected": waf.get("detected", False),
+                    "waf_name": waf.get("firewall", "Unknown"),
+                    "manufacturer": waf.get("manufacturer", "Unknown")
+                })
+                
         except Exception as e:
             self.logger.error(f"Error processing wafw00f data: {str(e)}")
         
@@ -47,7 +50,10 @@ class Wafw00fProcessor(BaseDataProcessor):
         findings = processed_data.get("findings", [])
         
         waf_detected = any(finding.get("waf_detected", False) for finding in findings)
-        waf_name = next((finding.get("waf_name", "Unknown") for finding in findings if finding.get("waf_detected")), "None")
+        
+        # If multiple WAFs detected, join their names
+        waf_names = [finding.get("waf_name", "Unknown") for finding in findings if finding.get("waf_detected")]
+        waf_name = ", ".join(waf_names) if waf_names else "None"
         
         return {
             "detected": waf_detected,

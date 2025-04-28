@@ -155,7 +155,7 @@
                         {% endif %}
                         
                         {% if summary.tools.wafw00f.detected %}
-                        <li>WAF Detected {{ summary.tools.wafw00f.waf }}</li>
+                        <li>WAF(s) Detected: {{ summary.tools.wafw00f.waf }}</li>
                         {% else %}
                         <li>No WAF Detected</li>
                         {% endif %}
@@ -197,9 +197,9 @@
         <!-- Nikto Results -->
         <div class="section">
             <h2>Vulnerability Scan Results (Nikto)</h2>
-            {% if nikto_results %}
-            <p>Total findings: {{ nikto_results|length }}</p>
-            {% for finding in nikto_results %}
+            {% if detailed_results.nikto %}
+            <p>Total findings: {{ detailed_results.nikto|length }}</p>
+            {% for finding in detailed_results.nikto %}
             <div class="finding {{ finding.severity }}">
                 <h3>{{ finding.id }} {% if finding.osvdb %}(OSVDB: {{ finding.osvdb }}){% endif %}</h3>
                 <p>{{ finding.message }}</p>
@@ -215,33 +215,31 @@
         <!-- WAFw00f Results Section -->
         <div class="section">
             <h2>Web Application Firewall Detection (wafw00f)</h2>
-            {% if wafw00f_results %}
-                {% if wafw00f_results.detected %}
+            {% if detailed_results.wafw00f and detailed_results.wafw00f.findings %}
+                {% if detailed_results.wafw00f.findings|selectattr('waf_detected')|list %}
                     <div class="alert alert-warning">
-                        <h3>WAF Detected: {{ wafw00f_results.waf }}</h3>
-                        <p>A Web Application Firewall was detected protecting this target.</p>
+                        <h3>The following WAF information was detected:</h3>
                         
-                        {% if wafw00f_results.details %}
-                        <h4>Detection Details:</h4>
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>Property</th>
-                                    <th>Value</th>
+                                    <th>WAF Name</th>
+                                    <th>Manufacturer</th>
+                                    <th>Target</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for key, value in wafw00f_results.details.items() %}
-                                {% if key != 'waf' %}
+                                {% for finding in detailed_results.wafw00f.findings %}
+                                {% if finding.waf_detected %}
                                 <tr>
-                                    <td>{{ key|capitalize }}</td>
-                                    <td>{{ value }}</td>
+                                    <td>{{ finding.waf_name }}</td>
+                                    <td>{{ finding.manufacturer }}</td>
+                                    <td>{{ finding.target }}</td>
                                 </tr>
                                 {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
-                        {% endif %}
                     </div>
                 {% else %}
                     <div class="alert alert-info">
@@ -252,11 +250,12 @@
                 <p>No WAF detection results available.</p>
             {% endif %}
         </div>
+
         <!-- WhatWeb Results -->
         <div class="section">
             <h2>Web Technology Detection (WhatWeb)</h2>
-            {% if whatweb_results %}
-            {% for entry in whatweb_results %}
+            {% if detailed_results.whatweb %}
+            {% for entry in detailed_results.whatweb %}
             <h3>{{ entry.target }}</h3>
             <table>
                 <tr>
@@ -279,35 +278,35 @@
         <!-- theHarvester Results -->
         <div class="section">
             <h2>Information Gathering (theHarvester)</h2>
-            {% if theharvester_results %}
-            {% if theharvester_results.emails %}
+            {% if detailed_results.theharvester %}
+            {% if detailed_results.theharvester.emails %}
             <h3>Email Addresses</h3>
             <ul>
-                {% for email in theharvester_results.emails %}
+                {% for email in detailed_results.theharvester.emails %}
                 <li>{{ email }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
             
-            {% if theharvester_results.hosts %}
+            {% if detailed_results.theharvester.hosts %}
             <h3>Hosts</h3>
             <ul>
-                {% for host in theharvester_results.hosts %}
+                {% for host in detailed_results.theharvester.hosts %}
                 <li>{{ host }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
             
-            {% if theharvester_results.ips %}
+            {% if detailed_results.theharvester.ips %}
             <h3>IP Addresses</h3>
             <ul>
-                {% for ip in theharvester_results.ips %}
+                {% for ip in detailed_results.theharvester.ips %}
                 <li>{{ ip }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
             
-            {% for section in theharvester_results.additional %}
+            {% for section in detailed_results.theharvester.additional %}
             <h3>{{ section.name|capitalize }}</h3>
             <ul>
                 {% for item in section.items %}
@@ -323,29 +322,29 @@
         <!-- DNSenum Results -->
         <div class="section">
             <h2>DNS Enumeration</h2>
-            {% if dnsenum_results %}
-            {% if dnsenum_results.nameservers %}
+            {% if detailed_results.dnsenum %}
+            {% if detailed_results.dnsenum.nameservers %}
             <h3>Nameservers</h3>
             <ul>
-                {% for ns in dnsenum_results.nameservers %}
+                {% for ns in detailed_results.dnsenum.nameservers %}
                 <li>{{ ns }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
             
-            {% if dnsenum_results.mx_records %}
+            {% if detailed_results.dnsenum.mx_records %}
             <h3>MX Records</h3>
             <ul>
-                {% for mx in dnsenum_results.mx_records %}
+                {% for mx in detailed_results.dnsenum.mx_records %}
                 <li>{{ mx }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
             
-            {% if dnsenum_results.a_records %}
+            {% if detailed_results.dnsenum.a_records %}
             <h3>A Records</h3>
             <ul>
-                {% for record in dnsenum_results.a_records %}
+                {% for record in detailed_results.dnsenum.a_records %}
                 <li>{{ record }}</li>
                 {% endfor %}
             </ul>
@@ -358,16 +357,16 @@
         <!-- SSLScan Results -->
         <div class="section">
             <h2>SSL/TLS Configuration</h2>
-            {% if sslscan_results %}
+            {% if detailed_results.sslscan %}
             <!-- Certificate Information -->
-            {% if sslscan_results.certificate %}
+            {% if detailed_results.sslscan.certificate %}
             <h3>Certificate Information</h3>
             <table>
                 <tr>
                     <th>Property</th>
                     <th>Value</th>
                 </tr>
-                {% for key, value in sslscan_results.certificate.items() %}
+                {% for key, value in detailed_results.sslscan.certificate.items() %}
                 <tr>
                     <td>{{ key|capitalize }}</td>
                     <td>{{ value }}</td>
@@ -377,7 +376,7 @@
             {% endif %}
             
             <!-- Supported Ciphers -->
-            {% if sslscan_results.ciphers %}
+            {% if detailed_results.sslscan.ciphers %}
             <h3>Supported Ciphers</h3>
             <table>
                 <tr>
@@ -385,7 +384,7 @@
                     <th>Strength</th>
                     <th>Bits</th>
                 </tr>
-                {% for cipher in sslscan_results.ciphers %}
+                {% for cipher in detailed_results.sslscan.ciphers %}
                 <tr>
                     <td>{{ cipher.name }}</td>
                     <td>{{ cipher.strength }}</td>
@@ -396,10 +395,10 @@
             {% endif %}
             
             <!-- Supported Protocols -->
-            {% if sslscan_results.protocols %}
+            {% if detailed_results.sslscan.protocols %}
             <h3>Supported Protocols</h3>
             <ul>
-                {% for protocol in sslscan_results.protocols %}
+                {% for protocol in detailed_results.sslscan.protocols %}
                 <li>{{ protocol }}</li>
                 {% endfor %}
             </ul>
