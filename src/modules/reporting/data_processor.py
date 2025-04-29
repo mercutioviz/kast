@@ -24,6 +24,7 @@ class DataProcessor:
     
     def __init__(self):
         self.processed_data = {}
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def process_scan_results(self, scan_results: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -109,6 +110,11 @@ class DataProcessor:
 
     def _generate_summary(self, detailed_results: Dict[str, Any]) -> Dict[str, Any]:
         """Generate a summary of all scan results"""
+        # Debug the raw data structure
+        import pprint
+        self.logger.debug("Results raw data structure:")
+        self.logger.debug(pprint.pformat(detailed_results, indent=2))
+
         summary = {
             "total_findings": 0,
             "tools_run": len(detailed_results),
@@ -150,13 +156,23 @@ class DataProcessor:
             tool_name: Name of the tool
             tool_data: Processed data from the tool
         """
-        # Handle Nikto vulnerabilities
-        if tool_name == "nikto" and "vulnerabilities" in tool_data:
-            for vuln in tool_data["vulnerabilities"]:
-                severity = vuln.get("severity", "Info").lower()
-                if severity in summary["severity"]:
-                    summary["severity"][severity] += 1
-                    summary["total_findings"] += 1
+        # Handle Nikto vulnerabilities - use pre-calculated counts
+        if tool_name == "nikto":
+            if "severity_counts" in tool_data:
+                # Use the pre-calculated severity counts
+                for severity, count in tool_data["severity_counts"].items():
+                    if severity in summary["severity"]:
+                        summary["severity"][severity] += count
+                
+                # Add to total findings
+                summary["total_findings"] += tool_data.get("all_vulnerabilities_count", 0)
+            else:
+                # Fall back to counting vulnerabilities in the list
+                for vuln in tool_data.get("vulnerabilities", []):
+                    severity = vuln.get("severity", "Info").lower()
+                    if severity in summary["severity"]:
+                        summary["severity"][severity] += 1
+                        summary["total_findings"] += 1
         
         # Handle SSLScan vulnerabilities
         elif tool_name == "sslscan" and "vulnerabilities" in tool_data:
@@ -165,6 +181,15 @@ class DataProcessor:
                 if severity in summary["severity"]:
                     summary["severity"][severity] += 1
                     summary["total_findings"] += 1
+        
+        # For WAFw00f, count each detected WAF as a finding
+        elif tool_name == "wafw00f" and "findings" in tool_data:
+            detected_wafs = [f for f in tool_data["findings"] if f.get("waf_detected", False)]
+            summary["total_findings"] += len(detected_wafs)
+        
+        # For WhatWeb, count each URL scanned as a finding
+        elif tool_name == "whatweb" and "findings" in tool_data:
+            summary["total_findings"] += len(tool_data["findings"])
         
         # For other tools, just count findings if available
         elif "findings" in tool_data and isinstance(tool_data["findings"], list):

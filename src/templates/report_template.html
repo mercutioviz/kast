@@ -99,6 +99,9 @@
             border-radius: 50%;
             margin-right: 5px;
         }
+        .severity-critical {
+        background-color: #990000; /* Darker red for critical */
+        }
         .severity-high {
             background-color: #e74c3c;
         }
@@ -138,8 +141,12 @@
             <div class="summary-box">
                 <div class="summary-item">
                     <h3>Vulnerability Findings</h3>
-                    <p>Total findings: {{ summary.total_findings }}</p>
+                    {% set total_by_severity = summary.severity.critical + summary.severity.high + summary.severity.medium + summary.severity.low + summary.severity.info %}
+                    <p>Total vulnerability findings: {{ total_by_severity }}</p>
                     <ul>
+                        {% if summary.severity.critical > 0 %}
+                        <li><span class="severity-indicator severity-critical"></span> Critical severity: {{ summary.severity.critical }}</li>
+                        {% endif %}
                         <li><span class="severity-indicator severity-high"></span> High severity: {{ summary.severity.high }}</li>
                         <li><span class="severity-indicator severity-medium"></span> Medium severity: {{ summary.severity.medium }}</li>
                         <li><span class="severity-indicator severity-low"></span> Low severity: {{ summary.severity.low }}</li>
@@ -159,7 +166,7 @@
                             {{ summary.tools.nikto.severity.info }} info
                         </li>
                         {% endif %} 
-                                               
+
                         {% if summary.tools.wafw00f.detected %}
                         <li>WAF(s) Detected: {{ summary.tools.wafw00f.waf }}</li>
                         {% else %}
