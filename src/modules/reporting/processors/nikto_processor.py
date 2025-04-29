@@ -15,7 +15,15 @@ class NiktoProcessor(BaseDataProcessor):
         processed_data = {
             "title": "Nikto Vulnerability Scan",
             "description": "Web server vulnerability scanner",
-            "vulnerabilities": []
+            "vulnerabilities": [],
+            "all_vulnerabilities_count": 0,  # Track total count including info findings
+            "severity_counts": {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "info": 0
+            }
         }
         
         if not raw_data:
@@ -23,23 +31,52 @@ class NiktoProcessor(BaseDataProcessor):
             
         try:
             if "vulnerabilities" in raw_data and isinstance(raw_data["vulnerabilities"], list):
-                # Process and categorize vulnerabilities by severity
+                # Process and categorize vulnerabilities
                 for vuln in raw_data["vulnerabilities"]:
-                    # Determine severity based on OSVDB ID or description keywords
+                    # Extract CVE or OSVDB from references if available
+                    reference_id = ""
+                    references = vuln.get("references", "")
+                    
+                    if references:
+                        # Try to extract CVE ID
+                        if "CVE-" in references:
+                            import re
+                            cve_match = re.search(r'CVE-\d+-\d+', references)
+                            if cve_match:
+                                reference_id = cve_match.group(0)
+                        # If no CVE, try OSVDB
+                        elif "OSVDB-" in references or "OSVDB " in references:
+                            import re
+                            osvdb_match = re.search(r'OSVDB[-\s](\d+)', references)
+                            if osvdb_match:
+                                reference_id = f"OSVDB-{osvdb_match.group(1)}"
+                    
+                    # Determine severity based on ID, message, or references
                     severity = self._determine_nikto_severity(vuln)
                     
+                    # Create processed vulnerability entry with all relevant fields
                     processed_vuln = {
                         "id": vuln.get("id", ""),
-                        "osvdb": vuln.get("osvdb", ""),
-                        "description": vuln.get("description", ""),
+                        "method": vuln.get("method", "GET"),
+                        "message": vuln.get("msg", ""),
+                        "uri": vuln.get("url", "/"),
+                        "reference_id": reference_id,
+                        "references": references,
                         "severity": severity
                     }
-                    processed_data["vulnerabilities"].append(processed_vuln)
+                    
+                    # Update severity counts for all findings
+                    processed_data["all_vulnerabilities_count"] += 1
+                    processed_data["severity_counts"][severity.lower()] += 1
+                    
+                    # Only add non-info vulnerabilities to the display list
+                    if severity.lower() != "info":
+                        processed_data["vulnerabilities"].append(processed_vuln)
                 
                 # Sort vulnerabilities by severity (High to Low)
-                severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3, "Info": 4}
+                severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
                 processed_data["vulnerabilities"].sort(
-                    key=lambda x: severity_order.get(x["severity"], 999)
+                    key=lambda x: severity_order.get(x["severity"].lower(), 999)
                 )
         except Exception as e:
             self.logger.error(f"Error processing Nikto data: {str(e)}")
@@ -48,22 +85,25 @@ class NiktoProcessor(BaseDataProcessor):
     
     def _determine_nikto_severity(self, vulnerability: Dict[str, Any]) -> str:
         """Determine the severity of a Nikto vulnerability"""
-        description = vulnerability.get("description", "").lower()
+        # Check ID first - some IDs have known severities
+        vuln_id = vulnerability.get("id", "")
+        msg = vulnerability.get("msg", "").lower()
+        references = vulnerability.get("references", "").lower()
         
         # Critical vulnerabilities
-        if any(keyword in description for keyword in ["remote code execution", "rce", "sql injection", "command injection"]):
+        if any(keyword in msg for keyword in ["remote code execution", "rce", "sql injection", "command injection", "arbitrary file upload"]):
             return "Critical"
             
         # High severity vulnerabilities
-        if any(keyword in description for keyword in ["xss", "cross-site scripting", "directory traversal", "path traversal", "information disclosure"]):
+        if any(keyword in msg for keyword in ["xss", "cross-site scripting", "directory traversal", "path traversal", "information disclosure", "cve-"]):
             return "High"
             
         # Medium severity vulnerabilities
-        if any(keyword in description for keyword in ["clickjacking", "csrf", "cross-site request forgery", "weak password"]):
+        if any(keyword in msg for keyword in ["clickjacking", "csrf", "cross-site request forgery", "weak password", "default credential"]):
             return "Medium"
             
         # Low severity vulnerabilities
-        if any(keyword in description for keyword in ["missing header", "cookie without", "outdated"]):
+        if any(keyword in msg for keyword in ["missing header", "cookie without", "outdated", "deprecated"]):
             return "Low"
             
         # Default to Info
@@ -71,20 +111,14 @@ class NiktoProcessor(BaseDataProcessor):
     
     def extract_summary(self, processed_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract summary information from Nikto results"""
-        vulnerabilities = processed_data.get("vulnerabilities", [])
-        
-        # Count vulnerabilities by severity
-        severity_counts = {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0,
-            "info": 0
+        # Use the pre-calculated counts that include info findings
+        return {
+            "total": processed_data.get("all_vulnerabilities_count", 0),
+            "severity": processed_data.get("severity_counts", {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "info": 0
+            })
         }
-        
-        for vuln in vulnerabilities:
-            severity = vuln.get("severity", "Info").lower()
-            if severity in severity_counts:
-                severity_counts[severity] += 1
-        
-        return len(vulnerabilities)

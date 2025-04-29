@@ -151,9 +151,15 @@
                     <h3>Tools Used</h3>
                     <ul>
                         {% if summary.tools.nikto is defined %}
-                        <li>Nikto: {{ summary.tools.nikto }} findings</li>
-                        {% endif %}
-                        
+                        <li>Nikto findings: 
+                            {{ summary.tools.nikto.severity.critical }} critical, 
+                            {{ summary.tools.nikto.severity.high }} high, 
+                            {{ summary.tools.nikto.severity.medium }} medium, 
+                            {{ summary.tools.nikto.severity.low }} low, 
+                            {{ summary.tools.nikto.severity.info }} info
+                        </li>
+                        {% endif %} 
+                                               
                         {% if summary.tools.wafw00f.detected %}
                         <li>WAF(s) Detected: {{ summary.tools.wafw00f.waf }}</li>
                         {% else %}
@@ -198,17 +204,28 @@
         <div class="section">
             <h2>Vulnerability Scan Results (Nikto)</h2>
             {% if detailed_results.nikto %}
-            <p>Total findings: {{ detailed_results.nikto|length }}</p>
-            {% for finding in detailed_results.nikto %}
-            <div class="finding {{ finding.severity }}">
-                <h3>{{ finding.id }} {% if finding.osvdb %}(OSVDB: {{ finding.osvdb }}){% endif %}</h3>
-                <p>{{ finding.message }}</p>
-                <p><strong>URI:</strong> {{ finding.uri }}</p>
-                <p><strong>Severity:</strong> {{ finding.severity|capitalize }}</p>
-            </div>
-            {% endfor %}
+                <p>Total findings: {{ detailed_results.nikto.all_vulnerabilities_count }}</p>
+                <p>Displaying {{ detailed_results.nikto.vulnerabilities|length }} non-informational findings</p>
+                
+                {% if detailed_results.nikto.vulnerabilities %}
+                    {% for finding in detailed_results.nikto.vulnerabilities %}
+                    <div class="finding {{ finding.severity|lower }}">
+                        <h3>{{ finding.id }} {% if finding.reference_id %}({{ finding.reference_id }}){% endif %}</h3>
+                        <p>{{ finding.message }}</p>
+                        <p><strong>Method:</strong> {{ finding.method }}</p>
+                        <p><strong>URI:</strong> {{ finding.uri if finding.uri else '/' }}</p>
+                        <p><strong>Severity:</strong> {{ finding.severity }}</p>
+                        {% if finding.references %}
+                        <p><strong>References:</strong> {{ finding.references }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No non-informational findings to display.</p>
+                    <p>All {{ detailed_results.nikto.severity_counts.info }} findings were classified as informational.</p>
+                {% endif %}
             {% else %}
-            <p>No Nikto results available.</p>
+                <p>No Nikto results available.</p>
             {% endif %}
         </div>
         
