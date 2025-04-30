@@ -158,6 +158,9 @@ class DataProcessor:
         """
         # Handle Nikto vulnerabilities - use pre-calculated counts
         if tool_name == "nikto":
+            ### DEBUG
+            logger.debug(f"Processing Nikto data: {tool_data}")
+        
             if "severity_counts" in tool_data:
                 # Use the pre-calculated severity counts
                 for severity, count in tool_data["severity_counts"].items():

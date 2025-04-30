@@ -90,6 +90,9 @@ class NiktoProcessor(BaseDataProcessor):
         msg = vulnerability.get("msg", "").lower()
         references = vulnerability.get("references", "").lower()
         
+        # Debug the vulnerability being processed
+        self.logger.debug(f"Processing Nikto vulnerability: ID={vuln_id}, msg={msg}")
+        
         # Critical vulnerabilities
         if any(keyword in msg for keyword in ["remote code execution", "rce", "sql injection", "command injection", "arbitrary file upload"]):
             return "Critical"
@@ -99,12 +102,19 @@ class NiktoProcessor(BaseDataProcessor):
             return "High"
             
         # Medium severity vulnerabilities
-        if any(keyword in msg for keyword in ["clickjacking", "csrf", "cross-site request forgery", "weak password", "default credential"]):
+        if any(keyword in msg for keyword in [
+            "clickjacking", "csrf", "cross-site request forgery", "weak password", "default credential",
+            "strict-transport-security", "content-type-options", "secure flag", "httponly flag", "breach attack"
+        ]):
             return "Medium"
             
         # Low severity vulnerabilities
-        if any(keyword in msg for keyword in ["missing header", "cookie without", "outdated", "deprecated"]):
+        if any(keyword in msg for keyword in ["missing header", "cookie without", "outdated", "deprecated", "x-powered-by"]):
             return "Low"
+            
+        # Special cases based on ID
+        if vuln_id in ["999970", "999103", "999961", "95", "999966", "999972"]:
+            return "Medium"  # Security headers and cookie issues
             
         # Default to Info
         return "Info"

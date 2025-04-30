@@ -67,6 +67,11 @@ class ReportGenerator:
                 logger.debug(f"Summary tools keys: {list(processed_data['summary']['tools'].keys())}")
             logger.debug(f"Detailed results keys: {list(processed_data['detailed_results'].keys())}")
             
+            # Debug the raw data structure
+            import pprint
+            logger.debug("Processed data raw data structure:")
+            logger.debug(pprint.pformat(processed_data, indent=2))
+
             # Render the template
             template = self.env.get_template("report_template.html")
             report_html = template.render(

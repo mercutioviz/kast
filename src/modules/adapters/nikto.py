@@ -29,9 +29,7 @@ class NiktoAdapter(ToolAdapter):
         """
         # Try both naming patterns: with and without underscore
         patterns = [
-            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}.json'),
-            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}_quick.json'),
-            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}_quick_*.json')
+            os.path.join(results_dir, self.result_subdir, f'{self.tool_name}_thorough_*.json')
         ]
         
         files = []
@@ -42,6 +40,8 @@ class NiktoAdapter(ToolAdapter):
             logging.warning(f"No Nikto scan results found in {os.path.join(results_dir, self.result_subdir)}")
             return None
         
+        logging.info(f"Found Nikto scan results: {files}")
+        logging.info(f"Loading Nikto data from {files[0]}")
         try:
             with open(files[0], 'r') as f:
                 return json.load(f)

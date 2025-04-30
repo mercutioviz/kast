@@ -224,7 +224,7 @@ def create_nikto_summary(nikto_data, target, scan_type, duration):
                     "severity": severity,
                     "method": vuln.get("method", ""),
                     "url": vuln.get("url", ""),
-                    "message": vuln.get("message", ""),
+                    "message": vuln.get("msg", ""),  # Fix: Use "msg" field from Nikto output
                     "osvdb": vuln.get("osvdb", "")
                 }
                 
@@ -256,9 +256,14 @@ def estimate_severity(vulnerability):
     Returns:
         str: Estimated severity - "high", "medium", "low", or "info"
     """
-    # Get the message and OSVDB ID
-    message = vulnerability.get("message", "").lower()
-    osvdb = vulnerability.get("osvdb", "")
+    # Get the message and references
+    message = vulnerability.get("msg", "").lower()
+    references = vulnerability.get("references", "").lower()
+    vuln_id = vulnerability.get("id", "")
+    
+    # Check for CVE references first
+    if references and "cve-" in references:
+        return "high"
     
     # Keywords that might indicate high severity
     high_keywords = [
@@ -271,29 +276,34 @@ def estimate_severity(vulnerability):
     medium_keywords = [
         "information disclosure", "information leakage", "default password",
         "default credential", "misconfiguration", "sensitive data", "weak password",
-        "insecure configuration", "outdated", "deprecated"
+        "insecure configuration", "outdated", "deprecated", "breach attack",
+        "strict-transport-security", "content-type-options", "secure flag", "httponly flag"
     ]
     
     # Keywords that might indicate low severity
     low_keywords = [
         "version disclosure", "server type", "banner", "header", "cookie",
-        "missing header", "clickjacking", "cacheable", "autocomplete"
+        "missing header", "clickjacking", "cacheable", "autocomplete", "x-powered-by"
     ]
     
     # Check for high severity indicators
     for keyword in high_keywords:
-        if keyword in message:
+        if keyword in message or keyword in references:
             return "high"
     
     # Check for medium severity indicators
     for keyword in medium_keywords:
-        if keyword in message:
+        if keyword in message or keyword in references:
             return "medium"
     
     # Check for low severity indicators
     for keyword in low_keywords:
-        if keyword in message:
+        if keyword in message or keyword in references:
             return "low"
+    
+    # Special cases based on ID
+    if vuln_id in ["999970", "999103", "999961", "95", "999966", "999972"]:
+        return "medium"  # Security headers and cookie issues
     
     # Default to info
     return "info"
