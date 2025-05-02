@@ -4,8 +4,8 @@
 # Installation Script
 
 ## For fun print out the ANSI Kast logo
-if [ -f "./assets/kast-logo_small.ans" ]; then
-  cat ./assets/kast-logo_small.ans
+if [ -f "./assets/mascot.ans" ]; then
+  cat ./assets/mascot.ans
 fi
 
 # Colors for better readability
