@@ -74,7 +74,7 @@ apt-get update
 
 # Install system dependencies
 echo -e "${YELLOW}[*] Installing system dependencies${NC}"
-apt-get install -y python3 python3-pip python3-venv git curl wget jq whois dnsutils npm
+apt-get install -y python3 python3-pip python3-venv git curl wget jq whois dnsutils npm man-db screen
 
 # Copy files to installation directory
 echo -e "${YELLOW}[*] Copying files to $INSTALL_DIR${NC}"
@@ -153,6 +153,10 @@ for tool in "${required_tools[@]}"; do
     echo -e "${GREEN}[+] $tool is already installed${NC}"
   fi
 done
+
+# Install zaproxy addons
+echo -e "${YELLOW}[*]Installing zaproxy addons${NC}"
+zaproxy -addoninstallall -cmd
 
 # Special case for testssl.sh which might be named differently
 if ! command -v testssl.sh &> /dev/null && ! command -v testssl &> /dev/null; then
