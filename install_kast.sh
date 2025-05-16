@@ -28,7 +28,7 @@ fi
 sudo tee /usr/local/bin/kast > /dev/null <<EOF
 #!/bin/bash
 source "$INSTALL_DIR/venv/bin/activate"
-python "$INSTALL_DIR/main.py" "\$@"
+python -m kast.main "\$@"
 EOF
 
 sudo chmod +x /usr/local/bin/kast
