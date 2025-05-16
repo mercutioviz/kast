@@ -1,2 +1,2 @@
-# kast/plugins/__init__.py
-# Marks the plugins directory as a Python package.
+# File: kast/plugins/__init__.py
+# Description: Plugin package init file. Required for plugin discovery.

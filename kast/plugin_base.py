@@ -1,39 +1,36 @@
-# kast/plugin_base.py
-# Base class for all KAST plugins. Defines the interface and required methods.
+# File: kast/plugin_base.py
+# Description: Defines the base class for all KAST plugins and the uniform result schema.
 
-import abc
+import json
+from abc import ABC, abstractmethod
 
-class KastPlugin(abc.ABC):
-    """
-    Abstract base class for all KAST plugins.
-    Each plugin must implement the run() method and provide metadata.
-    """
+class PluginResult:
+    def __init__(self, tool_name, target, success, results, error=None, extra=None):
+        self.tool_name = tool_name
+        self.target = target
+        self.success = success
+        self.results = results  # Tool-specific results (dict)
+        self.error = error
+        self.extra = extra or {}
 
-    @abc.abstractmethod
-    def run(self, target, options):
-        """
-        Run the plugin's scan against the target.
-        Args:
-            target (str): The target domain or IP.
-            options (dict): Additional options for the scan.
-        Returns:
-            dict: Results conforming to the KAST result schema.
-        """
+    def to_dict(self):
+        return {
+            "tool_name": self.tool_name,
+            "target": self.target,
+            "success": self.success,
+            "results": self.results,
+            "error": self.error,
+            "extra": self.extra,
+        }
+
+    def to_json(self):
+        return json.dumps(self.to_dict(), indent=2)
+
+class KastPlugin(ABC):
+    name = "base"
+    description = "Base plugin class"
+
+    @abstractmethod
+    def run(self, target):
+        """Run the plugin against the target. Returns a PluginResult."""
         pass
-
-    @property
-    @abc.abstractmethod
-    def name(self):
-        """Return the unique name of the plugin."""
-        pass
-
-    @property
-    @abc.abstractmethod
-    def description(self):
-        """Return a short description of the plugin."""
-        pass
-
-    @property
-    def version(self):
-        """Return the plugin version (optional)."""
-        return "1.0"
