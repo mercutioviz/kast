@@ -1,0 +1,3 @@
+rich==10.16.2
+pyyaml
+argparse
