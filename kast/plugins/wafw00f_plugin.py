@@ -84,3 +84,37 @@ class Wafw00fPlugin(KastPlugin):
             "disposition": disposition,
             "results": results
         }
+
+    def post_process(self, raw_output, output_dir):
+        import json
+        import os
+        from datetime import datetime
+
+        # If raw_output is a file path, load it
+        if isinstance(raw_output, str) and os.path.isfile(raw_output):
+            with open(raw_output, "r") as f:
+                findings = json.load(f)
+        elif isinstance(raw_output, dict):
+            findings = raw_output
+        else:
+            # Try to parse string as JSON, fallback to empty dict
+            try:
+                findings = json.loads(raw_output)
+            except Exception:
+                findings = {}
+
+        #summary = self._generate_summary(findings)  # Implement this as needed
+        summary = None
+        
+        processed = {
+            "plugin-name": self.name,
+            "plugin-description": self.description,
+            "timestamp": datetime.now().isoformat(),
+            "findings": findings if findings else {},
+            "summary": summary if summary else f"{self.name} did not produce any findings"
+        }
+
+        processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
+        with open(processed_path, "w") as f:
+            json.dump(processed, f, indent=2)
+        return processed_path

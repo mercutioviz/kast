@@ -65,9 +65,11 @@ class ScannerOrchestrator:
             return plugin.get_result_dict("fail", "Tool not available.")
         try:
             self.log.info(f"Running plugin: {plugin.name}")
-            result = plugin.run(self.cli_args.target, self.output_dir)
-            self.log.info(f"Plugin {plugin.name} finished with disposition: {result.get('disposition')}")
-            return result
+            raw_result = plugin.run(self.cli_args.target, self.output_dir)
+            self.log.info(f"Plugin {plugin.name} finished with disposition: {raw_result.get('disposition')}")
+            processed_path = plugin.post_process(raw_result, self.output_dir)
+            self.log.info(f"Plugin {plugin.name} post-processed output: {processed_path}")
+            return raw_result
         except Exception as e:
             self.log.exception(f"Plugin {plugin.name} failed with exception: {e}")
             return plugin.get_result_dict("fail", str(e))

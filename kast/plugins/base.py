@@ -73,3 +73,13 @@ class KastPlugin(ABC):
         :return: True if available, False otherwise.
         """
         pass
+
+    @abstractmethod
+    def post_process(self, raw_output, output_dir):
+        """
+        Post-process the raw output from the plugin.
+        :param raw_output: Raw output (string, dict, or file path)
+        :param output_dir: Directory to write processed JSON
+        :return: Path to processed JSON file
+        """
+        pass

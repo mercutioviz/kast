@@ -121,6 +121,11 @@ def main():
     # Launch orchestrator
     orchestrator = ScannerOrchestrator(plugins, args, output_dir, log)
     results = orchestrator.run()
+    processed_files = list(output_dir.glob("*_processed.json"))
+    if processed_files:
+        console.print("[green]Post-processed JSON files created:[/green]")
+        for pf in processed_files:
+            console.print(f"  - {pf}")
 
     # Example output
     console.print(f"[cyan]Target:[/cyan] {args.target}")
