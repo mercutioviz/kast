@@ -9,6 +9,7 @@ import shutil
 import datetime
 import json
 from kast.plugins.base import KastPlugin
+from pprint import pformat
 
 class Wafw00fPlugin(KastPlugin):
     def __init__(self, cli_args):
@@ -103,9 +104,21 @@ class Wafw00fPlugin(KastPlugin):
             except Exception:
                 findings = {}
 
+        self.debug(f"{self.name} raw findings:\n {pformat(findings)}")
+
+        # Filter out "Generic" WAF if multiple WAFs are detected
+        if 'results' in findings and isinstance(findings['results'], list):
+            waf_results = findings['results']
+            
+            # Check if we have multiple WAFs and at least one is "Generic"
+            if len(waf_results) > 1 and any(result.get('firewall') == 'Generic' for result in waf_results):
+                # Filter out the "Generic" entries
+                findings['results'] = [result for result in waf_results if result.get('firewall') != 'Generic']
+                self.debug(f"Removed Generic WAF entries as multiple WAFs were detected")
+
         #summary = self._generate_summary(findings)  # Implement this as needed
         summary = None
-        
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
