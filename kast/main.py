@@ -95,19 +95,23 @@ def main():
     console.print(f"[bold green]KAST - Kali Automated Scan Tool[/bold green]")
     log.info("KAST started with arguments: %s", args)
 
+    # Show dry run info if requested
+    if args.dry_run:
+        console.print("[yellow]Dry run mode enabled. No actions will be performed.[/yellow]")
+        log.info("Dry run mode enabled.")
+
     # Determine output directory
     if args.output_dir:
         output_dir = Path(args.output_dir).expanduser()
     else:
         now = datetime.now().strftime("%Y%m%d-%H%M%S")
         output_dir = Path.home() / "kast_results" / f"{args.target}-{now}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    log.info(f"Output directory: {output_dir}")
-
-    # Show dry run info if requested
     if args.dry_run:
-        console.print("[yellow]Dry run mode enabled. No actions will be performed.[/yellow]")
-        log.info("Dry run mode enabled.")
+        console.print(f"[yellow]Output directory (dry run): {output_dir}[/yellow]")
+        log.info(f"Dry run output directory: {output_dir}")
+    else:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        log.info(f"Output directory: {output_dir}")
 
     # Show report-only info if requested
     if args.report_only:

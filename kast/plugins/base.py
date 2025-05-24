@@ -1,6 +1,5 @@
-# base.py
 """
-File: base.py
+File: plugins/base.py
 Description: Base class for all KAST plugins. Provides required interface and properties.
 """
 
@@ -23,6 +22,7 @@ class KastPlugin(ABC):
         self.description = "Abstract base class for KAST plugins."
         self.scan_type = "passive"  # or "active"
         self.output_type = "stdout"  # or "file"
+        self.priority = 100  # Default priority (lower number = higher priority)
 
     @abstractmethod
     def run(self, target, output_dir):
@@ -50,6 +50,7 @@ class KastPlugin(ABC):
             "description": self.description,
             "scan_type": self.scan_type,
             "output_type": self.output_type,
+            "priority": self.priority,
         }
 
     def get_result_dict(self, disposition, results):

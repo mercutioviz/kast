@@ -1,6 +1,5 @@
-# wafw00f_plugin.py
 """
-File: wafw00f_plugin.py
+File: plugins/wafw00f_plugin.py
 Description: Plugin for running wafw00f as part of KAST.
 """
 
@@ -18,6 +17,7 @@ class Wafw00fPlugin(KastPlugin):
         self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
         self.scan_type = "passive"
         self.output_type = "file"
+        self.priority = 10  # High priority (lower number = higher priority)
 
     def is_available(self):
         """
