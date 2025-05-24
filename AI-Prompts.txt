@@ -1,0 +1,30 @@
+i am a solutions architect specializing in wafs. I am creating a python-based tool that automates web app scanning tools found in kali linux. i would like you to assist me with adding functionality to this tool that i call kast - kali automated scan tool. kast is modular. Here is the directory structure:
+pwd
+/opt/kast/kast
+
+┌──(kali㉿kali)-[/opt/kast/kast]
+└─$ tree
+.
+├── __init__.py
+├── __pycache__
+│   ├── __init__.cpython-313.pyc
+│   ├── main.cpython-313.pyc
+│   ├── orchestrator.cpython-313.pyc
+│   └── utils.cpython-313.pyc
+├── config.py
+├── main.py
+├── orchestrator.py
+├── plugins
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-313.pyc
+│   │   ├── base.cpython-313.pyc
+│   │   └── wafw00f_plugin.cpython-313.pyc
+│   ├── base.py
+│   ├── base.py.save
+│   └── wafw00f_plugin.py
+└── utils.py
+
+4 directories, 16 files
+
+Today I want to work on
