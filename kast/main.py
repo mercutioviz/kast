@@ -18,9 +18,17 @@ from kast.orchestrator import ScannerOrchestrator
 # Set up rich console for CLI output
 console = Console()
 
+# Version number
+KAST_VERSION = "2.0.0"
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="KAST - Kali Automated Scan Tool"
+    )
+    parser.add_argument(
+        "-V", "--version",
+        action="store_true",
+        help="Display the version of KAST and exit"
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -51,7 +59,7 @@ def parse_args():
     parser.add_argument(
         "-t", "--target",
         type=str,
-        required=True,
+        required=False,
         help="Target domain name to scan"
     )
     parser.add_argument(
@@ -86,6 +94,14 @@ def setup_logging(log_dir, verbose):
 
 def main():
     args = parse_args()
+
+    if args.version:
+        console.print(f"[bold cyan]KAST version {KAST_VERSION}[/bold cyan]")
+        sys.exit(0)
+
+    if not args.target:
+        console.print("[bold red]Error:[/bold red] --target is required unless using --version.")
+        sys.exit(1)
 
     # Set up logging
     setup_logging(args.log_dir, args.verbose)
