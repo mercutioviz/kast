@@ -5,8 +5,9 @@ Description: Plugin for running wafw00f as part of KAST.
 
 import subprocess
 import shutil
-import datetime
 import json
+import os
+from datetime import datetime
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 
@@ -19,6 +20,13 @@ class Wafw00fPlugin(KastPlugin):
         self.output_type = "file"
         self.priority = 10  # High priority (lower number = higher priority)
 
+    def setup(self, target, output_dir):
+        """
+        Optional setup step before the run.
+        You could add logic here to validate target, pre-create dirs, etc.
+        """
+        self.debug("Setup completed.")
+
     def is_available(self):
         """
         Check if wafw00f is installed and available in PATH.
@@ -28,10 +36,11 @@ class Wafw00fPlugin(KastPlugin):
     def run(self, target, output_dir):
         """
         Run wafw00f against the target and save output to a file.
-        Returns a result dictionary.
+        Returns a standardized result dictionary.
         """
-        timestamp = datetime.datetime.now().isoformat()
-        output_file = f"{output_dir}/wafw00f.json"
+        self.setup(target, output_dir)
+
+        output_file = os.path.join(output_dir, "wafw00f.json")
         cmd = [
             "wafw00f",
             target,
@@ -39,6 +48,7 @@ class Wafw00fPlugin(KastPlugin):
             "-f", "json",
             "-o", output_file
         ]
+
         if getattr(self.cli_args, "verbose", False):
             cmd.insert(1, "-v")
             self.debug(f"Running command: {' '.join(cmd)}")
@@ -46,8 +56,7 @@ class Wafw00fPlugin(KastPlugin):
         if not self.is_available():
             return self.get_result_dict(
                 disposition="fail",
-                results="wafw00f is not installed or not found in PATH.",
-                timestamp=timestamp
+                results="wafw00f is not installed or not found in PATH."
             )
 
         try:
@@ -55,79 +64,73 @@ class Wafw00fPlugin(KastPlugin):
             if proc.returncode != 0:
                 return self.get_result_dict(
                     disposition="fail",
-                    results=proc.stderr.strip(),
-                    timestamp=timestamp
+                    results=proc.stderr.strip()
                 )
-            # Read the output file
+
             with open(output_file, "r") as f:
                 results = json.load(f)
+
             return self.get_result_dict(
                 disposition="success",
-                results=results,
-                timestamp=timestamp
+                results=results
             )
+
         except Exception as e:
             return self.get_result_dict(
                 disposition="fail",
-                results=str(e),
-                timestamp=timestamp
+                results=str(e)
             )
 
-    def get_result_dict(self, disposition, results, timestamp=None):
-        """
-        Standardized result dictionary for plugin output.
-        """
-        if not timestamp:
-            timestamp = datetime.datetime.now().isoformat()
-        return {
-            "name": self.name,
-            "timestamp": timestamp,
-            "disposition": disposition,
-            "results": results
-        }
-
     def post_process(self, raw_output, output_dir):
-        import json
-        import os
-        from datetime import datetime
-
-        # If raw_output is a file path, load it
+        """
+        Clean up and normalize wafw00f output.
+        Filters out generic results if more specific ones exist.
+        """
+        # Load input if path to a file
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
             with open(raw_output, "r") as f:
                 findings = json.load(f)
         elif isinstance(raw_output, dict):
             findings = raw_output
         else:
-            # Try to parse string as JSON, fallback to empty dict
             try:
                 findings = json.loads(raw_output)
             except Exception:
                 findings = {}
 
-        self.debug(f"{self.name} raw findings:\n {pformat(findings)}")
+        self.debug(f"{self.name} raw findings:\n{pformat(findings)}")
 
-        # Filter out "Generic" WAF if multiple WAFs are detected
         if 'results' in findings and isinstance(findings['results'], list):
             waf_results = findings['results']
-            
-            # Check if we have multiple WAFs and at least one is "Generic"
-            if len(waf_results) > 1 and any(result.get('firewall') == 'Generic' for result in waf_results):
-                # Filter out the "Generic" entries
-                findings['results'] = [result for result in waf_results if result.get('firewall') != 'Generic']
-                self.debug(f"Removed Generic WAF entries as multiple WAFs were detected")
+            if len(waf_results) > 1 and any(r.get('firewall') == 'Generic' for r in waf_results):
+                findings['results'] = [r for r in waf_results if r.get('firewall') != 'Generic']
+                self.debug("Removed Generic WAF entries from findings.")
 
-        #summary = self._generate_summary(findings)  # Implement this as needed
-        summary = None
+        summary = self._generate_summary(findings)
+        self.debug(f"{self.name} summary: {summary}")
 
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
-            "timestamp": datetime.now().isoformat(),
-            "findings": findings if findings else {},
-            "summary": summary if summary else f"{self.name} did not produce any findings"
+            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "findings": findings,
+            "summary": summary or f"{self.name} did not produce any findings"
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
         with open(processed_path, "w") as f:
             json.dump(processed, f, indent=2)
+
         return processed_path
+
+    def _generate_summary(self, findings):
+        """
+        Generate a human-readable summary from wafw00f findings.
+        """
+        results = findings.get("results", []) if isinstance(findings, dict) else []
+        self.debug(f"{self.name} results: {pformat(results)}")
+        if not results:
+            return "No WAFs were detected."
+
+        waf_names = [entry.get("firewall", "Unknown") for entry in results]
+        return f"Detected {len(waf_names)} WAF(s): {', '.join(waf_names)}"
