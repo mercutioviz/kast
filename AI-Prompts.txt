@@ -6,25 +6,15 @@ pwd
 └─$ tree
 .
 ├── __init__.py
-├── __pycache__
-│   ├── __init__.cpython-313.pyc
-│   ├── main.cpython-313.pyc
-│   ├── orchestrator.cpython-313.pyc
-│   └── utils.cpython-313.pyc
 ├── config.py
 ├── main.py
 ├── orchestrator.py
 ├── plugins
-│   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── __init__.cpython-313.pyc
-│   │   ├── base.cpython-313.pyc
-│   │   └── wafw00f_plugin.cpython-313.pyc
-│   ├── base.py
-│   ├── base.py.save
-│   └── wafw00f_plugin.py
+│   ├── README.md
+│   ├── __init__.py
+│   ├── base.py
+│   ├── wafw00f_plugin.py
+│   └── whatweb_plugin.py
 └── utils.py
-
-4 directories, 16 files
 
 Today I want to work on
