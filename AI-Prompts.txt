@@ -1,9 +1,8 @@
 i am a solutions architect specializing in wafs. I am creating a python-based tool that automates web app scanning tools found in kali linux. i would like you to assist me with adding functionality to this tool that i call kast - kali automated scan tool. kast is modular. Here is the directory structure:
-pwd
-/opt/kast/kast
+pwd /opt/kast/kast
 
 ┌──(kali㉿kali)-[/opt/kast/kast]
-└─$ tree
+└─$ tree -I "*.pyc" -I "__pycache__"
 .
 ├── __init__.py
 ├── config.py

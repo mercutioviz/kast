@@ -127,10 +127,29 @@ class Wafw00fPlugin(KastPlugin):
         """
         Generate a human-readable summary from wafw00f findings.
         """
+        self.debug(f"_generate_summary called with findings type: {type(findings)}")
+        self.debug(f"_generate_summary findings content: {pformat(findings)}")
+        
         results = findings.get("results", []) if isinstance(findings, dict) else []
         self.debug(f"{self.name} results: {pformat(results)}")
+        
         if not results:
+            self.debug("No results found, returning 'No WAFs were detected.'")
             return "No WAFs were detected."
 
-        waf_names = [entry.get("firewall", "Unknown") for entry in results]
-        return f"Detected {len(waf_names)} WAF(s): {', '.join(waf_names)}"
+        # Filter for actually detected WAFs (where detected=True and firewall is not "None")
+        detected_wafs = [
+            entry for entry in results 
+            if entry.get("detected", False) and entry.get("firewall", "None") != "None"
+        ]
+        
+        self.debug(f"Detected WAFs after filtering: {pformat(detected_wafs)}")
+        
+        if not detected_wafs:
+            self.debug("No WAFs detected, returning 'No WAF detected'")
+            return "No WAF detected"
+        
+        waf_names = [entry.get("firewall", "Unknown") for entry in detected_wafs]
+        summary_text = f"Detected {len(waf_names)} WAF(s): {', '.join(waf_names)}"
+        self.debug(f"Generated summary: {summary_text}")
+        return summary_text
