@@ -34,7 +34,7 @@ class WhatWebPlugin(KastPlugin):
         """
         pass
 
-    def run(self, target, output_dir):
+    def run(self, target, output_dir, report_only):
         """
         Run WhatWeb against the target and save output to a file.
         Returns a result dictionary.
@@ -59,13 +59,17 @@ class WhatWebPlugin(KastPlugin):
             )
 
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-            if proc.returncode != 0:
-                return self.get_result_dict(
-                    disposition="fail",
-                    results=proc.stderr.strip(),
-                    timestamp=timestamp
-                )
+            if report_only:
+                self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
+
+            else:    
+                proc = subprocess.run(cmd, capture_output=True, text=True)
+                if proc.returncode != 0:
+                    return self.get_result_dict(
+                        disposition="fail",
+                        results=proc.stderr.strip()
+                    )
+
             # Read the output file
             with open(output_file, "r") as f:
                 results = json.load(f)
@@ -74,6 +78,7 @@ class WhatWebPlugin(KastPlugin):
                 results=results,
                 timestamp=timestamp
             )
+
         except Exception as e:
             return self.get_result_dict(
                 disposition="fail",

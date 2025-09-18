@@ -60,11 +60,12 @@ class KastPlugin(ABC):
         return True, ""
 
     @abstractmethod
-    def run(self, target, output_dir):
+    def run(self, target, output_dir, report_only):
         """
         Run the plugin scan.
         :param target: The target domain or IP to scan.
         :param output_dir: Directory to write output files, if applicable.
+        :param report_only: If True, do not execute the scan, only generate reports.
         :return: results dictionary
         """
         return self.get_result_dict("fail", "Not implemented.")

@@ -7,7 +7,7 @@ Description: Orchestrates the execution of KAST plugins, manages plugin lifecycl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class ScannerOrchestrator:
-    def __init__(self, plugins, cli_args, output_dir, log):
+    def __init__(self, plugins, cli_args, output_dir, log, report_only=False):
         """
         :param plugins: List of plugin classes (not instances)
         :param cli_args: Namespace from argparse
@@ -18,6 +18,7 @@ class ScannerOrchestrator:
         self.cli_args = cli_args
         self.output_dir = output_dir
         self.log = log
+        self.report_only = report_only
 
     def run(self):
         """
@@ -65,7 +66,7 @@ class ScannerOrchestrator:
             return plugin.get_result_dict("fail", "Tool not available.")
         try:
             self.log.info(f"Running plugin: {plugin.name}")
-            raw_result = plugin.run(self.cli_args.target, self.output_dir)
+            raw_result = plugin.run(self.cli_args.target, self.output_dir, self.report_only)
             self.log.info(f"Plugin {plugin.name} finished with disposition: {raw_result.get('disposition')}")
             processed_path = plugin.post_process(raw_result, self.output_dir)
             self.log.info(f"Plugin {plugin.name} post-processed output: {processed_path}")

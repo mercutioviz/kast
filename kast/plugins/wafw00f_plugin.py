@@ -33,7 +33,7 @@ class Wafw00fPlugin(KastPlugin):
         """
         return shutil.which("wafw00f") is not None
 
-    def run(self, target, output_dir):
+    def run(self, target, output_dir, report_only):
         """
         Run wafw00f against the target and save output to a file.
         Returns a standardized result dictionary.
@@ -60,12 +60,16 @@ class Wafw00fPlugin(KastPlugin):
             )
 
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-            if proc.returncode != 0:
-                return self.get_result_dict(
-                    disposition="fail",
-                    results=proc.stderr.strip()
-                )
+            if report_only:
+                self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
+
+            else:    
+                proc = subprocess.run(cmd, capture_output=True, text=True)
+                if proc.returncode != 0:
+                    return self.get_result_dict(
+                        disposition="fail",
+                        results=proc.stderr.strip()
+                    )
 
             with open(output_file, "r") as f:
                 results = json.load(f)

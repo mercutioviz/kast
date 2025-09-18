@@ -8,6 +8,7 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
+import json
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -19,7 +20,7 @@ from kast.orchestrator import ScannerOrchestrator
 console = Console()
 
 # Version number
-KAST_VERSION = "2.0.0"
+KAST_VERSION = "2.0.1"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -42,8 +43,8 @@ def parse_args():
     )
     parser.add_argument(
         "--report-only",
-        action="store_true",
-        help="Report only mode (no scanning, just reporting)"
+        type=str,
+        help="Report only modespecify the output directory containing raw JSON files)"
     )
     parser.add_argument(
         "--dry-run",
@@ -101,6 +102,8 @@ def main():
 
     if not args.target:
         console.print("[bold red]Error:[/bold red] --target is required unless using --version.")
+        if args.report_only:
+            console.print("[bold yellow]Note:[/bold yellow] --report-only mode still requires --target.")
         sys.exit(1)
 
     # Set up logging
@@ -122,6 +125,7 @@ def main():
     else:
         now = datetime.now().strftime("%Y%m%d-%H%M%S")
         output_dir = Path.home() / "kast_results" / f"{args.target}-{now}"
+
     if args.dry_run:
         console.print(f"[yellow]Output directory (dry run): {output_dir}[/yellow]")
         log.info(f"Dry run output directory: {output_dir}")
@@ -129,17 +133,27 @@ def main():
         output_dir.mkdir(parents=True, exist_ok=True)
         log.info(f"Output directory: {output_dir}")
 
-    # Show report-only info if requested
+    # Handle report-only mode
     if args.report_only:
-        console.print("[yellow]Report-only mode enabled. (Not yet implemented.)[/yellow]")
+        console.print("[yellow]Report-only mode enabled.[/yellow]")
         log.info("Report-only mode enabled.")
+        report_only=True
+
+        # Check output_dir exists
+        report_dir = Path(args.report_only)
+        if not report_dir.exists():
+            console.print(f"[bold red]Error:[/bold red] Output directory {report_dir} does not exist.")
+            sys.exit(1)
+        output_dir = report_dir
+    else:
+        report_only=False
 
     # Discover plugins
     plugins = discover_plugins(log)
     log.info(f"Discovered {len(plugins)} plugins: {[p.__name__ for p in plugins]}")
 
     # Launch orchestrator
-    orchestrator = ScannerOrchestrator(plugins, args, output_dir, log)
+    orchestrator = ScannerOrchestrator(plugins, args, output_dir, log, report_only)
     results = orchestrator.run()
     processed_files = list(output_dir.glob("*_processed.json"))
     if processed_files:
