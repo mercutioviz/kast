@@ -10,6 +10,8 @@ import os
 from datetime import datetime
 from kast.plugins.base import KastPlugin
 from pprint import pformat
+from collections import defaultdict
+from urllib.parse import urlparse, urlunparse
 
 class WhatWebPlugin(KastPlugin):
     def __init__(self, cli_args):
@@ -108,3 +110,56 @@ class WhatWebPlugin(KastPlugin):
         with open(processed_path, "w") as f:
             json.dump(processed, f, indent=2)
         return processed_path
+
+    def _generate_summary(self, findings):
+            """
+            Generate a JSON-array summary from WhatWeb JSON output.
+            Each entry in the returned list is a single-key dict where
+            the key is "<target> - HTTP <status>" and the value is
+            a semicolon-delimited list of detected technologies.
+            """
+            # Ensure we have a list of results
+            results = findings.get("results") if isinstance(findings, dict) else None
+            if not results or not isinstance(results, list):
+                return [{"No findings": f"No findings were produced by {self.name}." }]
+
+            # Bucket entries by normalized target URL
+            from collections import defaultdict
+            from urllib.parse import urlparse, urlunparse
+
+            buckets = defaultdict(list)
+            for entry in results:
+                raw_target = entry.get("target", "unknown")
+                parsed = urlparse(raw_target)
+                # Strip trailing slash from path
+                path = parsed.path.rstrip("/")
+                normalized = urlunparse(parsed._replace(path=path))
+                buckets[normalized].append(entry)
+
+            summary_list = []
+            for target, entries in buckets.items():
+                for idx, entry in enumerate(entries, start=1):
+                    status = entry.get("http_status", "N/A")
+                    plugins = entry.get("plugins", {})
+                    tech_list = []
+
+                    for plugin_name, data in plugins.items():
+                        if not data:
+                            continue
+                        if "version" in data and data["version"]:
+                            versions = ", ".join(data["version"])
+                            tech_list.append(f"{plugin_name} (v{versions})")
+                        elif "string" in data and data["string"]:
+                            examples = ", ".join(data["string"])
+                            tech_list.append(f"{plugin_name} [{examples}]")
+                        else:
+                            tech_list.append(plugin_name)
+
+                    techs = "; ".join(tech_list) if tech_list else "no detectable technologies"
+
+                    # If multiple entries share the same target, number them
+                    label = target if len(entries) == 1 else f"{target} (#{idx})"
+                    key = f"{label} - HTTP {status}"
+                    summary_list.append({key: techs})
+
+            return summary_list
