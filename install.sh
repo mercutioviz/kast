@@ -38,6 +38,12 @@ echo "Installing Python dependencies..."
 "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
 "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
+# Install npm
+apt install npm -y
+
+# Install MDN Observatory CLI tool
+npm install --global @mdn/mdn-http-observatory
+
 # Create launcher script
 echo "Creating launcher script at /usr/local/bin/kast..."
 cat > /usr/local/bin/kast <<EOF
