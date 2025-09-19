@@ -20,7 +20,7 @@ from kast.orchestrator import ScannerOrchestrator
 console = Console()
 
 # Version number
-KAST_VERSION = "2.0.1"
+KAST_VERSION = "2.1.0"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -106,17 +106,18 @@ def main():
             console.print("[bold yellow]Note:[/bold yellow] --report-only mode still requires --target.")
         sys.exit(1)
 
+    # Print startup info
+    console.print(f"[bold green]KAST - Kali Automated Scan Tool[/bold green]")
+
     # Set up logging
     setup_logging(args.log_dir, args.verbose)
     log = logging.getLogger("kast")
 
-    # Print startup info
-    console.print(f"[bold green]KAST - Kali Automated Scan Tool[/bold green]")
     log.info("KAST started with arguments: %s", args)
 
     # Show dry run info if requested
     if args.dry_run:
-        console.print("[yellow]Dry run mode enabled. No actions will be performed.[/yellow]")
+        #console.print("[yellow]Dry run mode enabled. No actions will be performed.[/yellow]")
         log.info("Dry run mode enabled.")
 
     # Determine output directory
@@ -127,7 +128,7 @@ def main():
         output_dir = Path.home() / "kast_results" / f"{args.target}-{now}"
 
     if args.dry_run:
-        console.print(f"[yellow]Output directory (dry run): {output_dir}[/yellow]")
+        #console.print(f"[yellow]Output directory (dry run): {output_dir}[/yellow]")
         log.info(f"Dry run output directory: {output_dir}")
     else:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -135,7 +136,7 @@ def main():
 
     # Handle report-only mode
     if args.report_only:
-        console.print("[yellow]Report-only mode enabled.[/yellow]")
+        #console.print("[yellow]Report-only mode enabled.[/yellow]")
         log.info("Report-only mode enabled.")
         report_only=True
 
@@ -162,12 +163,12 @@ def main():
             console.print(f"  - {pf}")
 
     # Example output
-    console.print(f"[cyan]Target:[/cyan] {args.target}")
-    console.print(f"[cyan]Mode:[/cyan] {args.mode}")
-    if args.parallel:
-        console.print("[cyan]Parallel mode enabled.[/cyan]")
-    if args.verbose:
-        console.print("[cyan]Verbose mode enabled.[/cyan]")
+    #console.print(f"[cyan]Target:[/cyan] {args.target}")
+    #console.print(f"[cyan]Mode:[/cyan] {args.mode}")
+    #if args.parallel:
+    #    console.print("[cyan]Parallel mode enabled.[/cyan]")
+    #if args.verbose:
+    #    console.print("[cyan]Verbose mode enabled.[/cyan]")
 
 if __name__ == "__main__":
     main()

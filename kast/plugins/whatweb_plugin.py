@@ -14,13 +14,14 @@ from collections import defaultdict
 from urllib.parse import urlparse, urlunparse
 
 class WhatWebPlugin(KastPlugin):
+    priority = 15  # High priority (lower number = higher priority)
+
     def __init__(self, cli_args):
         super().__init__(cli_args)
         self.name = "whatweb"
         self.description = "Identifies technologies used by a website."
         self.scan_type = "passive"
         self.output_type = "file"
-        self.priority = 15  # Executes after wafw00f (priority 10)
 
     def is_available(self):
         """
@@ -73,6 +74,7 @@ class WhatWebPlugin(KastPlugin):
             # Read the output file
             with open(output_file, "r") as f:
                 results = json.load(f)
+
             return self.get_result_dict(
                 disposition="success",
                 results=results,

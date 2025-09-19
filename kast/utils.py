@@ -25,4 +25,7 @@ def discover_plugins(log):
             obj = getattr(module, attr)
             if isinstance(obj, type) and hasattr(obj, "run") and hasattr(obj, "is_available") and not inspect.isabstract(obj):
                 plugins.append(obj)
+    
+    # Sort plugins by priority
+    plugins.sort(key=lambda x: x.priority)    
     return plugins

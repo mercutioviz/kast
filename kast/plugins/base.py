@@ -11,6 +11,7 @@ class KastPlugin(ABC):
     """
     Abstract base class for all KAST plugins.
     """
+    priority = 100  # Default priority (lower number = higher priority)
 
     def __init__(self, cli_args):
         """
@@ -22,7 +23,6 @@ class KastPlugin(ABC):
         self.description = "Abstract base class for KAST plugins."
         self.scan_type = "passive"  # or "active"
         self.output_type = "stdout"  # or "file"
-        self.priority = 100  # Default priority (lower number = higher priority)
         self.dependencies = []  # List of dependency specifications
 
     def setup(self, target, output_dir):
