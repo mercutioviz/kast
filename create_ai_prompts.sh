@@ -1,22 +1,18 @@
+#!/bin/bash
+
+# File to write the prompt into
+PROMPT_FILE="AI-Prompts.txt"
+
+# Run tree command and capture output
+TREE_OUTPUT=$(tree /opt/kast/kast -I "*.pyc" -I "__pycache__")
+
+# Write the enhanced prompt to the file
+cat <<EOF > "$PROMPT_FILE"
 # Role: I am a Solutions Architect specializing in Web Application Firewalls (WAFs).
 # Project: I'm building a Python-based tool called KAST (Kali Automated Scan Tool).
 # Purpose: KAST automates vulnerability scanning using tools available in Kali Linux.
 # Structure: KAST is modular. Here's the current directory layout:
-/opt/kast/kast
-├── __init__.py
-├── config.py
-├── main.py
-├── orchestrator.py
-├── plugins
-│   ├── README.md
-│   ├── __init__.py
-│   ├── base.py
-│   ├── observatory_plugin.py
-│   ├── wafw00f_plugin.py
-│   └── whatweb_plugin.py
-└── utils.py
-
-2 directories, 11 files
+$TREE_OUTPUT
 
 # Plugin Design:
 # - Each plugin represents a scanning tool and inherits from base.py
@@ -46,3 +42,6 @@
 # - Include error handling and logging
 # - Use only standard Python libraries
 # - Add comments explaining each step
+EOF
+
+echo "Prompt written to $PROMPT_FILE"
