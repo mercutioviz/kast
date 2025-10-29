@@ -90,7 +90,7 @@ class Wafw00fPlugin(KastPlugin):
     def post_process(self, raw_output, output_dir):
         """
         Clean up and normalize wafw00f output.
-        Filters out generic results if more specific ones exist.
+        Adds 'details' and 'issues' fields based on detection results.
         """
         # Load input if path to a file
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
@@ -106,21 +106,57 @@ class Wafw00fPlugin(KastPlugin):
 
         self.debug(f"{self.name} raw findings:\n{pformat(findings)}")
 
+        # Remove generic WAF entries if more specific ones exist
         if 'results' in findings and isinstance(findings['results'], list):
             waf_results = findings['results']
             if len(waf_results) > 1 and any(r.get('firewall') == 'Generic' for r in waf_results):
                 findings['results'] = [r for r in waf_results if r.get('firewall') != 'Generic']
                 self.debug("Removed Generic WAF entries from findings.")
 
+        results = findings.get("results", []) if isinstance(findings, dict) else []
+
+        # Initialize issues and details
+        issues = []
+        details = ""
+
+        # Case 1: No WAF detected
+        if not results or not any(r.get("detected", False) for r in results):
+            issues = ["No WAF Detected"]
+            details = "No WAF detected."
+
+        # Case 2: Generic WAF detected
+        elif any(r.get("firewall") == "Generic" for r in results):
+            issues = ["WAF Check Inconclusive"]
+            details = "A generic WAF was reported by wafw00f."
+
+        # Case 3: Specific WAF detected
+        else:
+            issues = []  # No issues if a specific WAF is found
+            first = next((r for r in results if r.get("detected", False)), {})
+            firewall = first.get("firewall", "Unknown")
+            manufacturer = first.get("manufacturer", "Unknown")
+            trigger_url = first.get("trigger_url", "N/A")
+
+            # Format details as multi-line string
+            details = (
+                f"WAF Detected: {firewall}\n"
+                f"Manufacturer: {manufacturer}\n"
+                f"Test URL: {trigger_url}"
+            )
+
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
+        self.debug(f"{self.name} issues: {issues}")
+        self.debug(f"{self.name} details:\n{details}")
 
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
-            "summary": summary or f"{self.name} did not produce any findings"
+            "summary": summary or f"{self.name} did not produce any findings",
+            "details": details,
+            "issues": issues
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -128,6 +164,7 @@ class Wafw00fPlugin(KastPlugin):
             json.dump(processed, f, indent=2)
 
         return processed_path
+
 
     def _generate_summary(self, findings):
         """

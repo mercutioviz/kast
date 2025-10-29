@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument(
         "--report-only",
         type=str,
-        help="Report only modespecify the output directory containing raw JSON files)"
+        help="Report only mode (specify the output directory containing raw JSON files)"
     )
     parser.add_argument(
         "--dry-run",
