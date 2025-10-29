@@ -131,8 +131,11 @@ def main():
         #console.print(f"[yellow]Output directory (dry run): {output_dir}[/yellow]")
         log.info(f"Dry run output directory: {output_dir}")
     else:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        log.info(f"Output directory: {output_dir}")
+        if args.report_only:
+            log.info(f"Report-only output directory: {output_dir}")
+        else:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            log.info(f"Output directory: {output_dir}")
 
     # Handle report-only mode
     if args.report_only:
