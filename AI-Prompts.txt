@@ -3,8 +3,9 @@
 # Purpose: KAST automates vulnerability scanning using tools available in Kali Linux.
 # Structure: KAST is modular. Here's the current directory layout:
 /opt/kast/kast
-├── __init__.py
 ├── config.py
+├── data
+│   └── issue_registry.json
 ├── main.py
 ├── orchestrator.py
 ├── plugins
@@ -14,9 +15,13 @@
 │   ├── observatory_plugin.py
 │   ├── wafw00f_plugin.py
 │   └── whatweb_plugin.py
+├── report_builder.py
+├── report_templates.py
+├── templates
+│   └── report_template.html
 └── utils.py
 
-2 directories, 11 files
+4 directories, 14 files
 
 # Plugin Design:
 # - Each plugin represents a scanning tool and inherits from base.py
