@@ -106,16 +106,32 @@ class ObservatoryPlugin(KastPlugin):
                 findings = {}
 
         self.debug(f"{self.name} raw findings:\n {pformat(findings)}")
+        
+        # Initialize issues and details
+        issues = []
+        details = ""
 
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
 
+        executive_summary = (
+            "-= Observatory grade and score summary =-\n"
+            f"{summary}"
+        )
+        self.debug(f"{self.name} executive_summary: {executive_summary}")
+
+        issues = self._find_issues(findings) 
+        self.debug(f"{self.name} issues: {issues}")
+        
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
-            "summary": summary or f"{self.name} did not produce any findings"
+            "summary": summary or f"{self.name} did not produce any findings",
+            "details": details,
+            "issues": issues,
+            "executive_summary": executive_summary
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -123,6 +139,21 @@ class ObservatoryPlugin(KastPlugin):
             json.dump(processed, f, indent=2)
 
         return processed_path
+
+    def _find_issues(self, findings):
+        """
+        Extract failed tests from Mozilla Observatory findings.
+        Returns a list of failed test result strings.
+        """
+        issues = []
+        tests = findings.get("results", {}).get("tests", {})
+        
+        for test_name, test_data in tests.items():
+            if test_data.get("pass") is False:  # Explicitly check for False
+                result = test_data.get("result", "Unknown issue")
+                issues.append(result)
+        
+        return issues
 
     def _generate_summary(self, findings):
         """

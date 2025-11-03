@@ -105,12 +105,20 @@ class WhatWebPlugin(KastPlugin):
 
         self.debug(f"{self.name} raw findings:\n {pformat(findings)}")
 
+        # Initialize issues and details
+        issues = []
+        details = ""
+        executive_summary = ""
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
-            "summary": self._generate_summary(findings)
+            "summary": self._generate_summary(findings),
+            "details": details,
+            "issues": issues,
+            "executive_summary": executive_summary
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")

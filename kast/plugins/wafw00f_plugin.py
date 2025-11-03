@@ -118,16 +118,19 @@ class Wafw00fPlugin(KastPlugin):
         # Initialize issues and details
         issues = []
         details = ""
+        executive_summary = ""
 
         # Case 1: No WAF detected
         if not results or not any(r.get("detected", False) for r in results):
             issues = ["No WAF Detected"]
             details = "No WAF detected."
+            executive_summary = "No WAFs were detected."
 
         # Case 2: Generic WAF detected
         elif any(r.get("firewall") == "Generic" for r in results):
             issues = ["WAF Check Inconclusive"]
             details = "A generic WAF was reported by wafw00f."
+            executive_summary = "WAF detection was inconclusive."
 
         # Case 3: Specific WAF detected
         else:
@@ -144,6 +147,8 @@ class Wafw00fPlugin(KastPlugin):
                 f"Test URL: {trigger_url}"
             )
 
+            executive_summary = f"Detected WAF: {firewall}."
+
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
@@ -156,7 +161,8 @@ class Wafw00fPlugin(KastPlugin):
             "findings": findings,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
-            "issues": issues
+            "issues": issues,
+            "executive_summary": executive_summary
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
