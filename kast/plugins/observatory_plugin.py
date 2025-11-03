@@ -120,9 +120,9 @@ class ObservatoryPlugin(KastPlugin):
         )
         self.debug(f"{self.name} executive_summary: {executive_summary}")
 
-        issues = self._find_issues(findings) 
+        issues = self._find_issues(findings)
         self.debug(f"{self.name} issues: {issues}")
-        
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
