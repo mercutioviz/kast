@@ -17,6 +17,10 @@ def discover_plugins(log):
     plugins_dir = Path(kast_dir) / "plugins"
     for file in plugins_dir.glob("*_plugin.py"):
         log.debug(f"Found plugin file: {file}")
+        # Skip template_plugin.py so TemplatePlugin is never loaded
+        if file.name == "template_plugin.py":
+            log.debug("Skipping template_plugin.py (not a real plugin)")
+            continue
         module_name = f"kast.plugins.{file.stem}"
         spec = importlib.util.spec_from_file_location(module_name, file)
         module = importlib.util.module_from_spec(spec)
@@ -24,6 +28,10 @@ def discover_plugins(log):
         for attr in dir(module):
             obj = getattr(module, attr)
             if isinstance(obj, type) and hasattr(obj, "run") and hasattr(obj, "is_available") and not inspect.isabstract(obj):
+                # Also skip TemplatePlugin by class name (defensive)
+                if obj.__name__ == "TemplatePlugin":
+                    log.debug("Skipping TemplatePlugin class (not a real plugin)")
+                    continue
                 plugins.append(obj)
     
     # Sort plugins by priority
