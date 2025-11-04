@@ -1,17 +1,20 @@
 {
   "TLSv1.0": {
+    "display_name": "TLSv1.0",
     "description": "TLSv1.0 is a deprecated encryption protocol that lacks modern security features.",
     "remediation": "Upgrade to TLSv1.2 or TLSv1.3. A WAF can enforce secure protocols by terminating TLS connections and redirecting traffic through secure channels.",
     "severity": "High",
     "category": "Encryption"
   },
   "X-Powered-By": {
+    "display_name": "X-Powered-By Header",
     "description": "The X-Powered-By header reveals server-side technologies, which can aid attackers in targeting known vulnerabilities.",
     "remediation": "Remove or obfuscate the X-Powered-By header. A WAF can help sanitize HTTP headers before they reach the client.",
     "severity": "Medium",
     "category": "Information Disclosure"
   },
   "Outdated Apache": {
+    "display_name": "Outdated Apache web server",
     "description": "The target is running an outdated version of the Apache web server, which may contain known vulnerabilities.",
     "remediation": "Update to the latest stable version of Apache. A WAF can provide virtual patching to mitigate known exploits until updates are applied.",
     "severity": "High",
