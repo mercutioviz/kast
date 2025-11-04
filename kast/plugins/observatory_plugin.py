@@ -106,22 +106,48 @@ class ObservatoryPlugin(KastPlugin):
                 findings = {}
 
         self.debug(f"{self.name} raw findings:\n {pformat(findings)}")
-        
+
+        # Normalize findings: sometimes the 'results' field is a JSON string
+        if isinstance(findings, dict) and "results" in findings and isinstance(findings["results"], str):
+            try:
+                findings["results"] = json.loads(findings["results"])
+                self.debug("Normalized 'results' field from JSON string to dict")
+            except Exception:
+                self.debug("Failed to parse 'results' field as JSON; leaving as-is")
+
+        # Debugging: log the 'results' field type and preview to help diagnose unexpected shapes
+        if isinstance(findings, dict):
+            r = findings.get("results")
+            try:
+                self.debug(f"'results' type: {type(r)}, preview: {pformat(r)[:200]}")
+            except Exception:
+                self.debug("Could not pretty-print 'results' preview")
+
         # Initialize issues and details
         issues = []
         details = ""
 
-        summary = self._generate_summary(findings)
-        self.debug(f"{self.name} summary: {summary}")
+        # If the run failed or produced no results, avoid parsing structured fields
+        if not findings or findings.get("disposition") != "success" or not findings.get("results"):
+            summary = f"{self.name} run failed: {findings.get('results') or 'No output'}"
+            self.debug(f"{self.name} summary (failure/no results): {summary}")
+            executive_summary = summary
+            # If results is a string, put it in details for visibility
+            if isinstance(findings.get("results"), str):
+                details = findings.get("results")
+            issues = []
+        else:
+            summary = self._generate_summary(findings)
+            self.debug(f"{self.name} summary: {summary}")
 
-        executive_summary = (
-            "-= Observatory grade and score summary =-\n"
-            f"{summary}"
-        )
-        self.debug(f"{self.name} executive_summary: {executive_summary}")
+            executive_summary = (
+                "-= Observatory grade and score summary =-\n"
+                f"{summary}"
+            )
+            self.debug(f"{self.name} executive_summary: {executive_summary}")
 
-        issues = self._find_issues(findings)
-        self.debug(f"{self.name} issues: {issues}")
+            issues = self._find_issues(findings)
+            self.debug(f"{self.name} issues: {issues}")
 
         processed = {
             "plugin-name": self.name,
