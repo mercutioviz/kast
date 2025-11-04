@@ -1,4 +1,5 @@
 import os
+import logging
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from kast.report_templates import (
     get_talking_point,
@@ -7,6 +8,9 @@ from kast.report_templates import (
     generate_executive_summary,
     get_issue_metadata
 )
+
+# Logger for warnings when registry entries are missing
+logger = logging.getLogger(__name__)
 
 def format_multiline_text(text):
     """
@@ -49,7 +53,25 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
     for plugin in plugin_results:
         # Normalize plugin name from various possible fields
         tool_name = plugin.get("plugin-name") or plugin.get("tool") or plugin.get("name", "Unknown Tool")
+        # Friendly reporter name: prefer explicit plugin display-name, then plugin description, then tool_name
+        reported_by = (
+            plugin.get("plugin-display-name")
+            or plugin.get("display_name")
+            or plugin.get("plugin-description")
+            or tool_name
+        )
+        # Tool display name and purpose for nicer rendering
+        display_name = (
+            plugin.get("plugin-display-name")
+            or plugin.get("display_name")
+            or plugin.get("plugin-description")
+            or tool_name
+        )
+        purpose = plugin.get("plugin-description") or plugin.get("description") or ""
+
         detailed_results[tool_name] = {
+            "display_name": display_name,
+            "purpose": purpose,
             "summary": format_multiline_text(plugin.get("summary", "")),
             "details": format_multiline_text(plugin.get("details", "")),
             "report": format_multiline_text(plugin.get("report", ""))
@@ -58,24 +80,45 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         # Handle both string and dict issues
         for issue in plugin.get("issues", []):
             if isinstance(issue, str):
-                # Convert string issue to dict format
+                # If the plugin returns a simple string issue identifier, use it as the id
+                # and also keep the original string as the description for visibility.
                 issue_dict = {
-                    "id": None,
+                    "id": issue,
                     "description": issue
                 }
             else:
                 issue_dict = issue
 
             issue_id = issue_dict.get("id")
+
+            # Normalize issue id (strip whitespace) and ensure it's a string when present
+            if isinstance(issue_id, str):
+                issue_id = issue_id.strip()
+
             issue_metadata = get_issue_metadata(issue_id) if issue_id else None
-            display_name = issue_metadata.get("display_name") if issue_metadata else None
+
+            # If metadata is missing, fall back to showing the raw id as the display name
+            if issue_metadata:
+                display_name = issue_metadata.get("display_name")
+                remediation = get_talking_point(issue_id)
+                severity = get_severity(issue_id)
+                category = get_category(issue_id)
+            else:
+                display_name = issue_id
+                remediation = "No specific remediation available"
+                severity = "Unknown"
+                category = "Uncategorized"
+                if issue_id:
+                    logger.warning(f"Issue ID '{issue_id}' not found in issue registry")
+
             all_issues.append({
                 "id": issue_id,
                 "display_name": display_name,
+                "reported_by": reported_by,
                 "description": issue_dict.get("description", ""),
-                "remediation": get_talking_point(issue_id) if issue_id else "No specific remediation available",
-                "severity": get_severity(issue_id) if issue_id else "Unknown",
-                "category": get_category(issue_id) if issue_id else "Uncategorized"
+                "remediation": remediation,
+                "severity": severity,
+                "category": category
             })
 
     # Generate executive summary

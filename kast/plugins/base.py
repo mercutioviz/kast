@@ -20,6 +20,7 @@ class KastPlugin(ABC):
         """
         self.cli_args = cli_args
         self.name = "BasePlugin"
+        self.display_name = "Base Plugin"
         self.description = "Abstract base class for KAST plugins."
         self.scan_type = "passive"  # or "active"
         self.output_type = "stdout"  # or "file"

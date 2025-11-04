@@ -17,6 +17,7 @@ class Wafw00fPlugin(KastPlugin):
     def __init__(self, cli_args):
         super().__init__(cli_args)
         self.name = "wafw00f"
+        self.display_name = "Wafw00f"
         self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
         self.scan_type = "passive"
         self.output_type = "file"
@@ -157,6 +158,7 @@ class Wafw00fPlugin(KastPlugin):
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
+            "plugin-display-name": getattr(self, 'display_name', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
             "summary": summary or f"{self.name} did not produce any findings",

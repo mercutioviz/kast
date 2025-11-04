@@ -5,6 +5,13 @@
     "remediation": "Upgrade to TLSv1.2 or TLSv1.3. A WAF can enforce secure protocols by terminating TLS connections and redirecting traffic through secure channels.",
     "severity": "High",
     "category": "Encryption"
+  },  
+  "TLSv1.1": {
+    "display_name": "TLSv1.1",
+    "description": "TLSv1.1 is a deprecated encryption protocol that lacks modern security features.",
+    "remediation": "Upgrade to TLSv1.2 or TLSv1.3. A WAF can enforce secure protocols by terminating TLS connections and redirecting traffic through secure channels.",
+    "severity": "Medium",
+    "category": "Encryption"
   },
   "X-Powered-By": {
     "display_name": "X-Powered-By Header",
@@ -19,5 +26,26 @@
     "remediation": "Update to the latest stable version of Apache. A WAF can provide virtual patching to mitigate known exploits until updates are applied.",
     "severity": "High",
     "category": "Software Version"
+  },
+  "csp-implemented-with-unsafe-inline": {
+    "display_name": "Content Security Policy with unsafe-inline",
+    "description": "The Content Security Policy (CSP) allows 'unsafe-inline' scripts or styles, which can expose the application to cross-site scripting (XSS) attacks.",
+    "remediation": "Refactor inline scripts and styles to use external resources with integrity checks. A WAF can help mitigate XSS risks by inspecting and filtering malicious payloads in HTTP requests.",
+    "severity": "High",
+    "category": "Content Security"
+  },
+  "sri-not-implemented-but-external-scripts-loaded-securely": {
+    "display_name": "Subresource Integrity not implemented",
+    "description": "External scripts are loaded over HTTPS but lack Subresource Integrity (SRI) attributes, which help ensure the integrity of third-party resources.",
+    "remediation": "Add SRI attributes to all externally loaded scripts and styles. A WAF can monitor and block tampered resources or suspicious third-party requests.",
+    "severity": "Medium",
+    "category": "Content Security"
+  },
+  "x-frame-options-header-invalid": {
+    "display_name": "Invalid X-Frame-Options header",
+    "description": "The X-Frame-Options header is present but misconfigured, potentially allowing clickjacking attacks via iframe embedding.",
+    "remediation": "Correct the X-Frame-Options header to 'DENY' or 'SAMEORIGIN'. A WAF can enforce proper header policies and block framing attempts from unauthorized sources.",
+    "severity": "Medium",
+    "category": "Clickjacking Protection"
   }
 }

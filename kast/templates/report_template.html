@@ -15,15 +15,16 @@
     {% for issue in issues %}
     <div class="issue">
         <strong>{{ issue.display_name if issue.display_name else issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
-        <em>{{ issue.description }}</em><br>
-        <span>Remediation: {{ issue.remediation }}</span>
+    <em>Reported by: {{ issue.reported_by }} (issue id: {{ issue.id }})</em><br>
+    <span>Remediation: {{ issue.remediation }}</span>
     </div>
     {% endfor %}
 
     <h2>Detailed Results by Tool</h2>
     {% for tool, result in detailed_results.items() %}
     <div class="tool-section">
-        <h3>{{ tool }}</h3>
+        <h3>{{ result.display_name if result.display_name else tool }}</h3>
+        <p><strong>Purpose:</strong> {{ result.purpose }}</p>
         <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
         <p><strong>Details:</strong> {{ result.details|safe }}</p>
         <p><strong>Report Notes:</strong> {{ result.report|safe }}</p>

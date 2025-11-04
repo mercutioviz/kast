@@ -17,6 +17,7 @@ class ObservatoryPlugin(KastPlugin):
     def __init__(self, cli_args):
         super().__init__(cli_args)
         self.name = "mozilla_observatory"
+        self.display_name = "Mozilla Observatory"
         self.description = "Runs Mozilla Observatory to analyze web application security."
         self.scan_type = "passive"
         self.output_type = "stdout"
@@ -152,6 +153,7 @@ class ObservatoryPlugin(KastPlugin):
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
+            "plugin-display-name": getattr(self, 'display_name', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
             "summary": summary or f"{self.name} did not produce any findings",

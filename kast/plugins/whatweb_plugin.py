@@ -19,6 +19,7 @@ class WhatWebPlugin(KastPlugin):
     def __init__(self, cli_args):
         super().__init__(cli_args)
         self.name = "whatweb"
+        self.display_name = "WhatWeb"
         self.description = "Identifies technologies used by a website."
         self.scan_type = "passive"
         self.output_type = "file"
@@ -113,6 +114,7 @@ class WhatWebPlugin(KastPlugin):
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
+            "plugin-display-name": getattr(self, 'display_name', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
             "summary": self._generate_summary(findings),
