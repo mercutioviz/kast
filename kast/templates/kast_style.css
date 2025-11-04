@@ -53,3 +53,10 @@ code {
     margin: 0.5em 0;
     line-height: 1.5;
 }
+
+.tree-view { font-family: monospace; font-size: 0.97em; }
+.tree-toggle { cursor: pointer; color: #075985; font-weight: bold; margin-right: 0.2em; }
+.tree-key { color: #0a3a5a; }
+.tree-leaf { color: #365b6a; }
+.tree-collapsed > .tree-children { display: none; }
+.tree-children { margin-left: 1.2em; border-left: 1px dotted #bcd; padding-left: 0.5em; }

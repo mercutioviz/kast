@@ -26,9 +26,121 @@
         <h3>{{ result.display_name if result.display_name else tool }}</h3>
         <p><strong>Purpose:</strong> {{ result.purpose }}</p>
         <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
-        <p><strong>Details:</strong> {{ result.details|safe }}</p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> {{ result.timestamp }}</div>
+                <div><strong>Disposition:</strong> {{ result.disposition }}</div>
+                <div><strong>Results:</strong>
+                    <div class="tree-json" data-json='{{ result.results | tojson }}'></div>
+                </div>
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{{ result.findings | tojson(indent=2) }}</pre>
+            </div>
+        </div>
         <p><strong>Report Notes:</strong> {{ result.report|safe }}</p>
     </div>
     {% endfor %}
+
+    <script>
+    function toggleDetails(btn) {
+        var section = btn.nextElementSibling;
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            btn.textContent = 'Hide details';
+        } else {
+            section.style.display = 'none';
+            btn.textContent = 'Show details';
+        }
+    }
+    function toggleRaw(btn) {
+        var pre = btn.nextElementSibling;
+        if (pre.style.display === 'none') {
+            pre.style.display = 'block';
+            btn.textContent = 'Hide raw JSON';
+        } else {
+            pre.style.display = 'none';
+            btn.textContent = 'Show raw JSON';
+        }
+    }
+    </script>
+    <!-- Tree-view CSS moved to kast_style.css -->
+    <script>
+    function toggleTreeNode(el) {
+        var parent = el.parentNode;
+        parent.classList.toggle('tree-collapsed');
+        el.textContent = parent.classList.contains('tree-collapsed') ? '[+]' : '[-]';
+    }
+    function renderTree(obj) {
+        function createNode(key, value, depth) {
+            var type = typeof value;
+            if (value && type === 'object') {
+                var isArray = Array.isArray(value);
+                var node = document.createElement('div');
+                node.className = 'tree-node';
+                var toggle = document.createElement('span');
+                toggle.className = 'tree-toggle';
+                toggle.onclick = function() { toggleTreeNode(toggle); };
+                node.appendChild(toggle);
+                var keySpan = document.createElement('span');
+                keySpan.className = 'tree-key';
+                keySpan.textContent = key + (isArray ? ' [ ]' : '');
+                node.appendChild(keySpan);
+                var children = document.createElement('div');
+                children.className = 'tree-children';
+                for (var k in value) {
+                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                        children.appendChild(createNode(k, value[k], depth + 1));
+                    }
+                }
+                node.appendChild(children);
+                // Collapse nodes deeper than top-level by default and set initial toggle symbol
+                if (depth > 0) {
+                    node.classList.add('tree-collapsed');
+                    toggle.textContent = '[+]';
+                } else {
+                    toggle.textContent = '[-]';
+                }
+                return node;
+            } else {
+                var leaf = document.createElement('div');
+                leaf.className = 'tree-leaf';
+                leaf.innerHTML = '<span class="tree-key">' + key + ':</span> ' + escapeHtml(String(value));
+                return leaf;
+            }
+        }
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(c) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c];
+            });
+        }
+        var root = document.createElement('div');
+        root.className = 'tree-view';
+        if (obj && typeof obj === 'object') {
+            for (var k in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                    root.appendChild(createNode(k, obj[k], 0));
+                }
+            }
+        } else {
+            root.textContent = String(obj);
+        }
+        return root;
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.tree-json').forEach(function(el) {
+            var data = el.getAttribute('data-json');
+            if (data) {
+                try {
+                    var obj = JSON.parse(data);
+                    var tree = renderTree(obj);
+                    el.appendChild(tree);
+                } catch (e) {
+                    el.textContent = 'Error rendering tree: ' + e;
+                }
+            }
+        });
+    });
+    </script>
 </body>
 </html>
