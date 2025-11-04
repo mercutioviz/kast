@@ -2,6 +2,8 @@
 
 set -e
 
+cat assets/mascot.ans
+
 # Require root
 if [[ $EUID -ne 0 ]]; then
    echo "This installer must be run as root (use sudo)" 1>&2
