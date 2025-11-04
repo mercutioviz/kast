@@ -2,16 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>KAST Scan Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 2em; }
-        h1, h2 { color: #333; }
-        .issue { margin-bottom: 1em; }
-        .tool-section { margin-top: 2em; }
-    </style>
+    <title>KAST Scan Report{% if target %} - {{ target }}{% endif %}</title>
+    <link rel="stylesheet" href="kast_style.css">
 </head>
 <body>
-    <h1>KAST Scan Report</h1>
+    <h1>KAST Scan Report{% if target %} — {{ target }}{% endif %}</h1>
 
     <h2>Executive Summary</h2>
     <p>{{ executive_summary }}</p>
@@ -19,7 +14,7 @@
     <h2>Issues Found</h2>
     {% for issue in issues %}
     <div class="issue">
-        <strong>{{ issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
+        <strong>{{ issue.display_name if issue.display_name else issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
         <em>{{ issue.description }}</em><br>
         <span>Remediation: {{ issue.remediation }}</span>
     </div>
@@ -29,9 +24,9 @@
     {% for tool, result in detailed_results.items() %}
     <div class="tool-section">
         <h3>{{ tool }}</h3>
-        <p><strong>Summary:</strong> {{ result.summary }}</p>
-        <p><strong>Details:</strong> {{ result.details }}</p>
-        <p><strong>Report Notes:</strong> {{ result.report }}</p>
+        <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
+        <p><strong>Details:</strong> {{ result.details|safe }}</p>
+        <p><strong>Report Notes:</strong> {{ result.report|safe }}</p>
     </div>
     {% endfor %}
 </body>
