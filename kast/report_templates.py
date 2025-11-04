@@ -62,9 +62,13 @@ def format_issue_for_report(issue):
     remediation = get_talking_point(issue_id)
     severity = get_severity(issue_id)
     category = get_category(issue_id)
+    
+    # Get display name from issue registry, fallback to issue_id if not found
+    issue_metadata = get_issue_metadata(issue_id)
+    display_name = issue_metadata.get("display_name", issue_id) if issue_metadata else issue_id
 
     return (
-        f"- **{issue_id}** ({severity}, {category})\n"
+        f"- **{display_name}** ({severity}, {category})\n"
         f"  - Description: {description}\n"
         f"  - Remediation: {remediation}\n"
     )

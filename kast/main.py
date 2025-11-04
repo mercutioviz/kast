@@ -20,7 +20,7 @@ from kast.orchestrator import ScannerOrchestrator
 console = Console()
 
 # Version number
-KAST_VERSION = "2.1.0"
+KAST_VERSION = "2.3.0"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -164,14 +164,22 @@ def main():
         console.print("[green]Post-processed JSON files created:[/green]")
         for pf in processed_files:
             console.print(f"  - {pf}")
-
-    # Example output
-    #console.print(f"[cyan]Target:[/cyan] {args.target}")
-    #console.print(f"[cyan]Mode:[/cyan] {args.mode}")
-    #if args.parallel:
-    #    console.print("[cyan]Parallel mode enabled.[/cyan]")
-    #if args.verbose:
-    #    console.print("[cyan]Verbose mode enabled.[/cyan]")
+        
+        # Generate HTML report
+        try:
+            report_path = output_dir / 'kast_report.html'
+            plugin_results = []
+            for pf in processed_files:
+                with open(pf) as f:
+                    plugin_results.append(json.load(f))
+            
+            from kast.report_builder import generate_html_report
+            generate_html_report(plugin_results, str(report_path), args.target)
+            console.print(f"[green]Report generated:[/green] {report_path}")
+            log.info(f"HTML report generated at {report_path}")
+        except Exception as e:
+            console.print(f"[bold red]Error generating report:[/bold red] {str(e)}")
+            log.exception("Failed to generate HTML report")
 
 if __name__ == "__main__":
     main()
