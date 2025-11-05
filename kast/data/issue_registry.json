@@ -48,4 +48,187 @@
     "severity": "Medium",
     "category": "Clickjacking Protection"
   }
+  ,
+  "No WAF Detected": {
+    "display_name": "No WAF Detected",
+    "description": "No Web Application Firewall (WAF) was detected protecting the target. This may leave the application exposed to a wide range of attacks.",
+    "remediation": "Deploy a WAF in front of the application to provide an additional layer of security against common web attacks.",
+    "severity": "High",
+    "category": "WAF Detection"
+  },
+  "WAF Check Inconclusive": {
+    "display_name": "WAF Check Inconclusive",
+    "description": "The presence of a Web Application Firewall (WAF) could not be reliably determined. This may be due to evasive WAF configurations or network issues.",
+    "remediation": "Review network architecture and WAF configuration. Consider using multiple detection methods to confirm WAF presence.",
+    "severity": "High",
+    "category": "WAF Detection"
+  },
+  "cookies-session-without-secure-flag": {
+    "display_name": "Session Cookie Without Secure Flag",
+    "description": "A session cookie is set without the 'Secure' flag, allowing it to be transmitted over unencrypted connections.",
+    "remediation": "Set the 'Secure' flag on all session cookies to ensure they are only sent over HTTPS.",
+    "severity": "High",
+    "category": "Cookie Security"
+  },
+  "cookies-without-secure-flag": {
+    "display_name": "Cookie Without Secure Flag",
+    "description": "One or more cookies are set without the 'Secure' flag, increasing the risk of interception over unencrypted connections.",
+    "remediation": "Set the 'Secure' flag on all cookies to ensure they are only sent over HTTPS.",
+    "severity": "Medium",
+    "category": "Cookie Security"
+  },
+  "csp-not-implemented": {
+    "display_name": "Content Security Policy Not Implemented",
+    "description": "No Content Security Policy (CSP) is present, leaving the application more vulnerable to cross-site scripting (XSS) and other code injection attacks.",
+    "remediation": "Implement a strong Content Security Policy header to restrict the sources of scripts, styles, and other resources.",
+    "severity": "High",
+    "category": "Content Security"
+  },
+  "hsts-header-invalid": {
+    "display_name": "Invalid HSTS Header",
+    "description": "The HTTP Strict Transport Security (HSTS) header is present but misconfigured, which may prevent proper enforcement of HTTPS-only connections.",
+    "remediation": "Correct the HSTS header to include a valid 'max-age' and consider adding 'includeSubDomains' and 'preload' directives.",
+    "severity": "Medium",
+    "category": "Transport Security"
+  },
+  "hsts-implemented-max-age-less-than-six-months": {
+    "display_name": "HSTS Max-Age Less Than Six Months",
+    "description": "The HSTS header is implemented but the 'max-age' value is less than the recommended six months, reducing its effectiveness.",
+    "remediation": "Set the HSTS 'max-age' directive to at least 15768000 seconds (six months) for better protection.",
+    "severity": "Low",
+    "category": "Transport Security"
+  },
+  "hsts-invalid-cert": {
+    "display_name": "HSTS with Invalid Certificate",
+    "description": "HSTS is enabled but the SSL/TLS certificate is invalid, which can cause browsers to block access and reduce user trust.",
+    "remediation": "Ensure a valid, trusted SSL/TLS certificate is installed when using HSTS.",
+    "severity": "High",
+    "category": "Transport Security"
+  },
+  "hsts-not-implemented": {
+    "display_name": "HSTS Not Implemented",
+    "description": "The HTTP Strict Transport Security (HSTS) header is not present, allowing browsers to connect over insecure HTTP.",
+    "remediation": "Implement the HSTS header to enforce HTTPS connections and protect against protocol downgrade attacks.",
+    "severity": "High",
+    "category": "Transport Security"
+  },
+  "redirection-off-host-from-http": {
+    "display_name": "Redirection Off-Host from HTTP",
+    "description": "HTTP requests are redirected to a different host, which may expose users to phishing or man-in-the-middle attacks.",
+    "remediation": "Review and restrict HTTP redirections to trusted hosts only. A WAF can help enforce safe redirection policies.",
+    "severity": "Medium",
+    "category": "Redirection"
+  },
+  "referrer-policy-unsafe": {
+    "display_name": "Unsafe Referrer Policy",
+    "description": "The Referrer-Policy header is missing or set to an unsafe value, potentially leaking sensitive information in HTTP requests.",
+    "remediation": "Set a strict Referrer-Policy header such as 'no-referrer' or 'strict-origin-when-cross-origin'.",
+    "severity": "Medium",
+    "category": "Information Disclosure"
+  },
+  "sri-not-implemented-and-external-scripts-not-loaded-securely": {
+    "display_name": "SRI Not Implemented and External Scripts Not Loaded Securely",
+    "description": "External scripts are loaded without Subresource Integrity (SRI) and not all are loaded over secure (HTTPS) connections, increasing the risk of resource tampering.",
+    "remediation": "Load all external scripts over HTTPS and add SRI attributes to ensure resource integrity.",
+    "severity": "High",
+    "category": "Content Security"
+  },
+  "x-content-type-options-not-implemented": {
+    "display_name": "X-Content-Type-Options Not Implemented",
+    "description": "The X-Content-Type-Options header is missing, which can allow browsers to perform MIME type sniffing and potentially execute malicious files.",
+    "remediation": "Add the X-Content-Type-Options header with the value 'nosniff' to prevent MIME type sniffing.",
+    "severity": "Medium",
+    "category": "HTTP Headers"
+  },
+  "x-frame-options-not-implemented": {
+    "display_name": "X-Frame-Options Not Implemented",
+    "description": "The X-Frame-Options header is missing, making the application vulnerable to clickjacking attacks via iframe embedding.",
+    "remediation": "Add the X-Frame-Options header with the value 'DENY' or 'SAMEORIGIN' to protect against clickjacking.",
+    "severity": "High",
+    "category": "Clickjacking Protection"
+  },
+  "cookies-anticsrf-without-samesite-flag": {
+      "display_name": "Session Cookie Without SameSite Flag",
+      "description": "A session cookie is set without the SameSite attribute, increasing the risk of CSRF attacks.",
+      "remediation": "Set the SameSite attribute to Strict or Lax to restrict cross-site cookie transmission.",
+      "severity": "High",
+      "category": "Cookie Security"
+  },
+  "cookies-samesite-flag-invalid": {
+      "display_name": "Invalid SameSite Attribute",
+      "description": "The SameSite attribute is present but misconfigured, which may not effectively prevent CSRF.",
+      "remediation": "Use valid values like Strict, Lax, or None with Secure for cross-site cookies.",
+      "severity": "Medium",
+      "category": "Cookie Security"
+  },
+  "cookies-session-without-httponly-flag": {
+      "display_name": "Session Cookie Without HttpOnly Flag",
+      "description": "A session cookie is set without the HttpOnly flag, making it accessible via client-side scripts.",
+      "remediation": "Set the HttpOnly flag to prevent access from JavaScript and reduce XSS risks.",
+      "severity": "High",
+      "category": "Cookie Security"
+  },
+  "cookies-session-without-secure-flag-but-protected-by-hsts": {
+      "display_name": "Session Cookie Without Secure Flag but Protected by HSTS",
+      "description": "A session cookie lacks the Secure flag but is transmitted over HTTPS due to HSTS.",
+      "remediation": "Set the Secure flag explicitly to ensure cookie transmission only over HTTPS.",
+      "severity": "Medium",
+      "category": "Cookie Security"
+  },
+  "cookies-without-secure-flag-but-protected-by-hsts": {
+      "display_name": "Cookie Without Secure Flag but Protected by HSTS",
+      "description": "One or more cookies lack the Secure flag but are protected by HSTS.",
+      "remediation": "Add the Secure flag to all cookies to enforce HTTPS transmission.",
+      "severity": "Low",
+      "category": "Cookie Security"
+  },
+  "csp-not-implemented-but-reporting-enabled": {
+      "display_name": "CSP Not Implemented but Reporting Enabled",
+      "description": "CSP reporting is enabled, but no actual policy is enforced, leaving the app vulnerable to XSS.",
+      "remediation": "Implement a strong CSP policy along with reporting to detect and block violations.",
+      "severity": "Medium",
+      "category": "Content Security"
+  },
+  "hsts-not-implemented-no-https": {
+      "display_name": "HSTS Not Implemented and No HTTPS",
+      "description": "The site does not use HTTPS and lacks HSTS, exposing users to downgrade and MITM attacks.",
+      "remediation": "Enable HTTPS and implement HSTS to enforce secure connections.",
+      "severity": "High",
+      "category": "Transport Security"
+  },
+  "redirection-missing": {
+      "display_name": "Missing Redirection",
+      "description": "No redirection is configured from HTTP to HTTPS, allowing insecure access.",
+      "remediation": "Configure redirection from HTTP to HTTPS to enforce secure connections.",
+      "severity": "High",
+      "category": "Redirection"
+  },
+  "redirection-not-to-https": {
+      "display_name": "Redirection Not to HTTPS",
+      "description": "Redirection occurs but does not lead to an HTTPS endpoint, risking insecure transmission.",
+      "remediation": "Ensure all redirections lead to HTTPS URLs.",
+      "severity": "Medium",
+      "category": "Redirection"
+  },
+  "redirection-not-to-https-on-initial-redirection": {
+      "display_name": "Initial Redirection Not to HTTPS",
+      "description": "The first redirection from HTTP does not lead to HTTPS, exposing initial requests.",
+      "remediation": "Configure initial redirection to point directly to HTTPS.",
+      "severity": "Medium",
+      "category": "Redirection"
+  },
+  "referrer-policy-header-invalid": {
+      "display_name": "Invalid Referrer Policy Header",
+      "description": "The Referrer-Policy header is present but misconfigured, potentially leaking sensitive data.",
+      "remediation": "Use secure values like no-referrer, strict-origin, or strict-origin-when-cross-origin.",
+      "severity": "Medium",
+      "category": "Information Disclosure"
+  },
+  "x-content-type-options-header-invalid": {
+      "display_name": "Invalid X-Content-Type-Options Header",
+      "description": "The X-Content-Type-Options header is present but incorrectly configured, allowing MIME sniffing.",
+      "remediation": "Set the header to nosniff to prevent MIME type sniffing.",
+      "severity": "Medium",
+      "category": "HTTP Headers"
+  }
 }
