@@ -127,7 +127,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
             })
 
     # Generate executive summary
-    executive_summary = generate_executive_summary(all_issues)
+    executive_summary = format_multiline_text(generate_executive_summary(all_issues))
 
     # Ensure stylesheet is copied into the output directory so the generated HTML can reference it
     output_dir = os.path.dirname(output_path) or os.getcwd()
