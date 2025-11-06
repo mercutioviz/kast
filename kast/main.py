@@ -32,6 +32,11 @@ def parse_args():
         help="Display the version of KAST and exit"
     )
     parser.add_argument(
+        "-ls", "--list-plugins",
+        action="store_true",
+        help="List all available plugins and exit"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose mode"
@@ -93,11 +98,57 @@ def setup_logging(log_dir, verbose):
     )
     logging.debug(f"Logging initialized. Log file: {log_file}")
 
+def list_plugins():
+    """
+    List all available plugins with their descriptions.
+    """
+    # Create a minimal logger for plugin discovery
+    logging.basicConfig(level=logging.CRITICAL)
+    log = logging.getLogger("kast")
+    
+    # Discover plugins
+    plugins = discover_plugins(log)
+    
+    console.print("[bold cyan]Available KAST Plugins:[/bold cyan]\n")
+    
+    if not plugins:
+        console.print("[yellow]No plugins found.[/yellow]")
+        return
+    
+    # Display each plugin with its description
+    for plugin_class in plugins:
+        # Instantiate plugin with minimal args to get metadata
+        class MinimalArgs:
+            verbose = False
+        
+        try:
+            plugin_instance = plugin_class(MinimalArgs())
+            name = plugin_instance.name
+            description = plugin_instance.description
+            scan_type = plugin_instance.scan_type
+            priority = plugin_instance.priority
+            available = plugin_instance.is_available()
+            
+            # Format availability status
+            status = "[green]✓[/green]" if available else "[red]✗[/red]"
+            
+            console.print(f"{status} [bold]{name}[/bold] (priority: {priority}, type: {scan_type})")
+            console.print(f"  {description}")
+            if not available:
+                console.print(f"  [dim red]Tool not available in PATH[/dim red]")
+            console.print()
+        except Exception as e:
+            console.print(f"[red]Error loading plugin {plugin_class.__name__}: {e}[/red]\n")
+
 def main():
     args = parse_args()
 
     if args.version:
         console.print(f"[bold cyan]KAST version {KAST_VERSION}[/bold cyan]")
+        sys.exit(0)
+
+    if args.list_plugins:
+        list_plugins()
         sys.exit(0)
 
     if not args.target:
