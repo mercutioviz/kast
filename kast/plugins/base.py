@@ -20,7 +20,7 @@ class KastPlugin(ABC):
         """
         self.cli_args = cli_args
         self.name = "BasePlugin"
-        self.display_name = "Base Plugin"
+        self.display_name = "Base Plugin"  # Human-readable name for reports
         self.description = "Abstract base class for KAST plugins."
         self.scan_type = "passive"  # or "active"
         self.output_type = "stdout"  # or "file"
@@ -85,6 +85,7 @@ class KastPlugin(ABC):
         """
         return {
             "name": self.name,
+            "display_name": getattr(self, 'display_name', self.name),
             "description": self.description,
             "scan_type": self.scan_type,
             "output_type": self.output_type,
@@ -118,6 +119,22 @@ class KastPlugin(ABC):
     def post_process(self, raw_output, output_dir):
         """
         Post-process the raw output from the plugin.
+        
+        This method should normalize the plugin output and extract key information
+        for reporting. The processed output should be saved as a JSON file with
+        the following standard fields:
+        
+        Required fields:
+        - plugin-name: The plugin's name (self.name)
+        - plugin-description: The plugin's description
+        - plugin-display-name: Human-readable name (self.display_name)
+        - timestamp: ISO format timestamp
+        - findings: The raw or normalized findings data
+        - summary: Human-readable summary of findings (use _generate_summary())
+        - details: Formatted multi-line string with key details
+        - issues: List of identified issues (empty list if none)
+        - executive_summary: High-level summary for executive reports
+        
         :param raw_output: Raw output (string, dict, or file path)
         :param output_dir: Directory to write processed JSON
         :return: Path to processed JSON file
@@ -126,10 +143,18 @@ class KastPlugin(ABC):
 
     def _generate_summary(self, findings):
         """
-        Generate a simple summary from plugin findings.
-        Should be overridden in subclass if needed.
+        Generate a human-readable summary from plugin findings.
         
-        :param findings: Raw or processed findings
+        This method provides a default implementation that can be overridden
+        in subclasses to provide tool-specific summaries. The summary should
+        be a concise, human-readable description of what was found.
+        
+        Example overrides:
+        - For vulnerability scanners: "Found 3 high, 5 medium, 2 low severity issues"
+        - For WAF detection: "Detected WAF: Cloudflare"
+        - For subdomain enumeration: "Discovered 42 subdomains"
+        
+        :param findings: Raw or processed findings (dict, list, or other)
         :return: str summary of findings
         """
         if not findings:
