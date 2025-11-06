@@ -37,6 +37,11 @@ def parse_args():
         help="List all available plugins and exit"
     )
     parser.add_argument(
+        "--run-only",
+        type=str,
+        help="Run only specified plugins (comma-separated list of plugin names)"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose mode"
@@ -206,6 +211,35 @@ def main():
     # Discover plugins
     plugins = discover_plugins(log)
     log.info(f"Discovered {len(plugins)} plugins: {[p.__name__ for p in plugins]}")
+
+    # Filter plugins if --run-only is specified
+    if args.run_only:
+        requested_plugins = [name.strip() for name in args.run_only.split(',')]
+        log.info(f"--run-only specified: {requested_plugins}")
+        
+        # Create a mapping of plugin names to plugin classes
+        plugin_map = {}
+        for plugin_cls in plugins:
+            class MinimalArgs:
+                verbose = False
+            try:
+                plugin_instance = plugin_cls(MinimalArgs())
+                plugin_map[plugin_instance.name] = plugin_cls
+            except Exception as e:
+                log.error(f"Error instantiating plugin {plugin_cls.__name__}: {e}")
+        
+        # Validate requested plugins
+        invalid_plugins = [name for name in requested_plugins if name not in plugin_map]
+        
+        if invalid_plugins:
+            console.print(f"[bold red]Error:[/bold red] Invalid plugin name(s): {', '.join(invalid_plugins)}")
+            console.print()
+            list_plugins()
+            sys.exit(1)
+        
+        # Filter to only requested plugins
+        plugins = [plugin_map[name] for name in requested_plugins if name in plugin_map]
+        log.info(f"Filtered to {len(plugins)} plugin(s): {[p.__name__ for p in plugins]}")
 
     # Launch orchestrator
     orchestrator = ScannerOrchestrator(plugins, args, output_dir, log, report_only)
