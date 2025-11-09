@@ -244,15 +244,15 @@ class Wafw00fPlugin(KastPlugin):
             trigger_url = first.get("trigger_url", "N/A")
 
             # Format details as multi-line string
-            details = f"WAF Detected: {firewall}\n"
-            details += f"Manufacturer: {manufacturer}\n"
+            details = f"<b>WAF Detected:</b> {firewall}\n"
+            details += f"<b>Manufacturer:</b> {manufacturer}\n"
             
             # Add test URLs if any were found
             for test_url in test_urls:
-                details += f"Test URL: {test_url}\n"
+                details += f"<b>Test URL:</b> {test_url}\n"
             
             # Add trigger URL
-            details += f"Trigger URL: {trigger_url}"
+            details += f"<b>Trigger URL:</b> {trigger_url}"
 
             executive_summary = f"Detected WAF: {firewall}."
 
