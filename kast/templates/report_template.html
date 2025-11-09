@@ -35,6 +35,9 @@
             <div class="details-collapsible" style="display:none; margin-top:0.5em;">
                 <div><strong>Timestamp:</strong> {{ result.timestamp }}</div>
                 <div><strong>Disposition:</strong> {{ result.disposition }}</div>
+                {% if result.details %}
+                <div><strong>Details:</strong> {{ result.details|safe }}</div>
+                {% endif %}
                 <div><strong>Results:</strong>
                     <div class="tree-json" data-json='{{ result.results | tojson }}'></div>
                 </div>

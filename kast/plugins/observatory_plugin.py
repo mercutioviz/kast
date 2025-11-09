@@ -42,7 +42,7 @@ class ObservatoryPlugin(KastPlugin):
         """
         self.setup(target, output_dir)
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
-        output_file = os.path.join(output_dir, "observatory.json")
+        output_file = os.path.join(output_dir, "mozilla_observatory.json")
         self.debug(f"Output file will be: {output_file}")
 
         cmd = [

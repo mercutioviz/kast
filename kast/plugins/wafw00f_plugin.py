@@ -47,12 +47,13 @@ class Wafw00fPlugin(KastPlugin):
             "wafw00f",
             target,
             "-a",
+            "-vvv",
             "-f", "json",
             "-o", output_file
         ]
 
         if getattr(self.cli_args, "verbose", False):
-            cmd.insert(1, "-v")
+            #cmd.insert(1, "-v")
             self.debug(f"Running command: {' '.join(cmd)}")
 
         if not self.is_available():
@@ -68,6 +69,67 @@ class Wafw00fPlugin(KastPlugin):
 
             else:    
                 proc = subprocess.run(cmd, capture_output=True, text=True)
+                
+                # Save STDOUT/STDERR to file
+                stdout_file = os.path.join(output_dir, "wafw00f_stdout.txt")
+                combined_output = ""
+                if proc.stdout:
+                    combined_output += "=== STDOUT ===\n" + proc.stdout + "\n"
+                if proc.stderr:
+                    combined_output += "=== STDERR ===\n" + proc.stderr + "\n"
+                
+                with open(stdout_file, "w") as f:
+                    f.write(combined_output)
+                
+                # Check for TLS version error in STDERR
+                tls_error_detected = False
+                if proc.stderr:
+                    for line in proc.stderr.split('\n'):
+                        if line.startswith("ERROR:") and "TLSV1_ALERT_PROTOCOL_VERSION" in line:
+                            tls_error_detected = True
+                            self.debug("TLS version error detected, will retry with HTTP")
+                            break
+                
+                # If TLS error detected, retry with HTTP
+                if tls_error_detected:
+                    # Rename the error output file
+                    error_stdout_file = os.path.join(output_dir, "wafw00f_stdout_error.txt")
+                    os.rename(stdout_file, error_stdout_file)
+                    self.debug(f"Renamed {stdout_file} to {error_stdout_file}")
+                    
+                    # Modify target to use HTTP instead of HTTPS
+                    http_target = target.replace("https://", "http://")
+                    if not http_target.startswith("http://"):
+                        http_target = "http://" + http_target
+                    
+                    self.debug(f"Retrying with HTTP target: {http_target}")
+                    
+                    # Update command with HTTP target
+                    http_cmd = [
+                        "wafw00f",
+                        http_target,
+                        "-a",
+                        "-vvv",
+                        "-f", "json",
+                        "-o", output_file
+                    ]
+                    
+                    if getattr(self.cli_args, "verbose", False):
+                        self.debug(f"Running HTTP command: {' '.join(http_cmd)}")
+                    
+                    # Run wafw00f with HTTP
+                    proc = subprocess.run(http_cmd, capture_output=True, text=True)
+                    
+                    # Save new STDOUT/STDERR to wafw00f_stdout.txt
+                    combined_output = ""
+                    if proc.stdout:
+                        combined_output += "=== STDOUT ===\n" + proc.stdout + "\n"
+                    if proc.stderr:
+                        combined_output += "=== STDERR ===\n" + proc.stderr + "\n"
+                    
+                    with open(stdout_file, "w") as f:
+                        f.write(combined_output)
+                
                 if proc.returncode != 0:
                     return self.get_result_dict(
                         disposition="fail",
@@ -116,6 +178,28 @@ class Wafw00fPlugin(KastPlugin):
 
         results = findings.get("results", []) if isinstance(findings, dict) else []
 
+        # Extract test URLs from wafw00f_stdout.txt
+        test_urls = []
+        stdout_file = os.path.join(output_dir, "wafw00f_stdout.txt")
+        if os.path.exists(stdout_file):
+            try:
+                with open(stdout_file, "r") as f:
+                    for line in f:
+                        if line.startswith("DEBUG:urllib3.connectionpool:") and "GET /?" in line:
+                            # Extract the URL from the line
+                            # Format: DEBUG:urllib3.connectionpool:http://example.com:80 "GET /?param=value HTTP/1.1" 302 0
+                            parts = line.split('"')
+                            if len(parts) >= 2:
+                                # Get the part with "GET /? ..."
+                                get_part = parts[1]
+                                # Extract just the path with query string
+                                if get_part.startswith("GET "):
+                                    url_path = get_part.split()[1]  # Get the second part (the URL path)
+                                    test_urls.append(url_path)
+                self.debug(f"Extracted {len(test_urls)} test URLs from wafw00f_stdout.txt")
+            except Exception as e:
+                self.debug(f"Error reading wafw00f_stdout.txt: {e}")
+
         # Initialize issues and details
         issues = []
         details = ""
@@ -125,12 +209,30 @@ class Wafw00fPlugin(KastPlugin):
         if not results or not any(r.get("detected", False) for r in results):
             issues = ["No WAF Detected"]
             details = "No WAF detected."
+            
+            # Add test URLs if any were found
+            if test_urls:
+                details += "\n"
+                for test_url in test_urls:
+                    details += f"Test URL: {test_url}\n"
+                # Remove trailing newline
+                details = details.rstrip('\n')
+            
             executive_summary = "No WAFs were detected."
 
         # Case 2: Generic WAF detected
         elif any(r.get("firewall") == "Generic" for r in results):
             issues = ["WAF Check Inconclusive"]
             details = "A generic WAF was reported by wafw00f."
+            
+            # Add test URLs if any were found
+            if test_urls:
+                details += "\n"
+                for test_url in test_urls:
+                    details += f"Test URL: {test_url}\n"
+                # Remove trailing newline
+                details = details.rstrip('\n')
+            
             executive_summary = "WAF detection was inconclusive."
 
         # Case 3: Specific WAF detected
@@ -142,11 +244,15 @@ class Wafw00fPlugin(KastPlugin):
             trigger_url = first.get("trigger_url", "N/A")
 
             # Format details as multi-line string
-            details = (
-                f"WAF Detected: {firewall}\n"
-                f"Manufacturer: {manufacturer}\n"
-                f"Test URL: {trigger_url}"
-            )
+            details = f"WAF Detected: {firewall}\n"
+            details += f"Manufacturer: {manufacturer}\n"
+            
+            # Add test URLs if any were found
+            for test_url in test_urls:
+                details += f"Test URL: {test_url}\n"
+            
+            # Add trigger URL
+            details += f"Trigger URL: {trigger_url}"
 
             executive_summary = f"Detected WAF: {firewall}."
 
