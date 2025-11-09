@@ -30,6 +30,9 @@
         <h3>{{ result.display_name if result.display_name else tool }}</h3>
         <p><strong>Purpose:</strong> {{ result.purpose }}</p>
         <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
+        {% if result.custom_html %}
+        {{ result.custom_html|safe }}
+        {% endif %}
         <div>
             <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
             <div class="details-collapsible" style="display:none; margin-top:0.5em;">
