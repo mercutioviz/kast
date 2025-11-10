@@ -79,7 +79,8 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
             "timestamp": plugin.get("timestamp"),
             "disposition": plugin.get("findings", {}).get("disposition") or plugin.get("disposition"),
             "results": plugin.get("findings", {}).get("results") or plugin.get("results"),
-            "findings": plugin.get("findings")
+            "findings": plugin.get("findings"),
+            "custom_html": plugin.get("custom_html", "")
         }
 
         # Handle both string and dict issues

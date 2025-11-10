@@ -31,7 +31,9 @@
         <p><strong>Purpose:</strong> {{ result.purpose }}</p>
         <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
         {% if result.custom_html %}
+        <div class="custom-html-section">
         {{ result.custom_html|safe }}
+        </div>
         {% endif %}
         <div>
             <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>

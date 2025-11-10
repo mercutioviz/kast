@@ -155,6 +155,28 @@ class Wafw00fPlugin(KastPlugin):
         Clean up and normalize wafw00f output.
         Adds 'details' and 'issues' fields based on detection results.
         """
+        # Handle the case where raw_output is a result dict with disposition='fail'
+        if isinstance(raw_output, dict) and raw_output.get('disposition') == 'fail':
+            # Plugin failed, create a minimal processed output
+            error_message = raw_output.get('results', 'Unknown error')
+            processed = {
+                "plugin-name": self.name,
+                "plugin-description": self.description,
+                "plugin-display-name": getattr(self, 'display_name', None),
+                "timestamp": raw_output.get('timestamp', datetime.utcnow().isoformat(timespec="milliseconds")),
+                "findings": {},
+                "summary": f"Plugin failed: {error_message}",
+                "details": f"The {self.name} plugin encountered an error: {error_message}",
+                "issues": [],
+                "executive_summary": f"Plugin failed to execute."
+            }
+            
+            processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
+            with open(processed_path, "w") as f:
+                json.dump(processed, f, indent=2)
+            
+            return processed_path
+        
         # Load input if path to a file
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
             with open(raw_output, "r") as f:
