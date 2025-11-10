@@ -48,7 +48,7 @@ class SubfinderPlugin(KastPlugin):
         if not self.is_available():
             return self.get_result_dict(
                 disposition="fail",
-                results="wafw00f is not installed or not found in PATH.",
+                results="subfinder is not installed or not found in PATH.",
                 timestamp=timestamp
             )
 
