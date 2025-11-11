@@ -127,6 +127,12 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
                 "category": category
             })
 
+    # Define severity order for sorting (highest to lowest)
+    severity_order = {"High": 0, "Medium": 1, "Low": 2, "Info": 3, "Unknown": 4}
+    
+    # Sort issues by severity (highest first)
+    all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "Unknown"), 4))
+    
     # Generate executive summary
     executive_summary = format_multiline_text(generate_executive_summary(all_issues))
 

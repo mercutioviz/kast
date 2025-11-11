@@ -19,6 +19,27 @@ h1, h2, h3 {
   border: 1px solid #cfe6fb;
 }
 
+/* Severity-based color coding */
+.issue.severity-high {
+  background: #fcc;
+  border: 1px solid #fcc;
+}
+
+.issue.severity-medium {
+  background: #ffd4a8;
+  border: 1px solid #ffd4a8;
+}
+
+.issue.severity-low {
+  background: #fff49d;
+  border: 1px solid #fff49d;
+}
+
+.issue.severity-info {
+  background: #cfe6fb;
+  border: 1px solid #cfe6fb;
+}
+
 .tool-section {
   margin-top: 1.5em;
   padding: 1em;

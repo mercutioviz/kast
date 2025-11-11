@@ -17,7 +17,7 @@
 
     <h2>Issues Found</h2>
     {% for issue in issues %}
-    <div class="issue">
+    <div class="issue severity-{{ issue.severity|lower }}">
         <strong>{{ issue.display_name if issue.display_name else issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
     <em>Reported by: {{ issue.reported_by }} (issue id: {{ issue.id }})</em><br>
     <span>Remediation: {{ issue.remediation }}</span>
