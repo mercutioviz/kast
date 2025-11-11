@@ -5,6 +5,8 @@ Description: Orchestrates the execution of KAST plugins, manages plugin lifecycl
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from datetime import datetime
 
 class ScannerOrchestrator:
     def __init__(self, plugins, cli_args, output_dir, log, report_only=False):
@@ -19,6 +21,7 @@ class ScannerOrchestrator:
         self.output_dir = output_dir
         self.log = log
         self.report_only = report_only
+        self.plugin_timings = []
 
     def run(self):
         """
@@ -60,17 +63,60 @@ class ScannerOrchestrator:
 
     def _run_plugin(self, plugin_cls):
         plugin = plugin_cls(self.cli_args)
-        self.log.info(f"Checking availability for plugin: {plugin.name}")
+        plugin_name = plugin.name
+        
+        # Initialize timing info
+        timing_info = {
+            "plugin_name": plugin_name,
+            "start_timestamp": None,
+            "end_timestamp": None,
+            "duration_seconds": None,
+            "status": "skipped"
+        }
+        
+        self.log.info(f"Checking availability for plugin: {plugin_name}")
         if not plugin.is_available():
-            self.log.error(f"Plugin {plugin.name} is not available. Skipping.")
+            self.log.error(f"Plugin {plugin_name} is not available. Skipping.")
+            timing_info["status"] = "unavailable"
+            self.plugin_timings.append(timing_info)
             return plugin.get_result_dict("fail", "Tool not available.")
+        
         try:
-            self.log.info(f"Running plugin: {plugin.name}")
+            # Capture start time
+            start_time = time.time()
+            timing_info["start_timestamp"] = datetime.now().isoformat()
+            
+            self.log.info(f"Running plugin: {plugin_name}")
             raw_result = plugin.run(self.cli_args.target, self.output_dir, self.report_only)
-            self.log.info(f"Plugin {plugin.name} finished with disposition: {raw_result.get('disposition')}")
+            self.log.info(f"Plugin {plugin_name} finished with disposition: {raw_result.get('disposition')}")
             processed_path = plugin.post_process(raw_result, self.output_dir)
-            self.log.info(f"Plugin {plugin.name} post-processed output: {processed_path}")
+            self.log.info(f"Plugin {plugin_name} post-processed output: {processed_path}")
+            
+            # Capture end time
+            end_time = time.time()
+            timing_info["end_timestamp"] = datetime.now().isoformat()
+            timing_info["duration_seconds"] = round(end_time - start_time, 2)
+            timing_info["status"] = raw_result.get('disposition', 'unknown')
+            
+            self.plugin_timings.append(timing_info)
             return raw_result
         except Exception as e:
-            self.log.exception(f"Plugin {plugin.name} failed with exception: {e}")
+            # Capture end time even on failure
+            end_time = time.time()
+            timing_info["end_timestamp"] = datetime.now().isoformat()
+            if timing_info["start_timestamp"]:
+                timing_info["duration_seconds"] = round(end_time - start_time, 2)
+            timing_info["status"] = "failed"
+            timing_info["error"] = str(e)
+            
+            self.plugin_timings.append(timing_info)
+            self.log.exception(f"Plugin {plugin_name} failed with exception: {e}")
             return plugin.get_result_dict("fail", str(e))
+    
+    def get_plugin_timings(self):
+        """
+        Return the list of plugin timing information.
+        
+        :return: List of dictionaries containing plugin timing data
+        """
+        return self.plugin_timings

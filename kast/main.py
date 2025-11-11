@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import json
+import time
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -145,6 +146,21 @@ def list_plugins():
         except Exception as e:
             console.print(f"[red]Error loading plugin {plugin_class.__name__}: {e}[/red]\n")
 
+def write_kast_info(output_dir, kast_info):
+    """
+    Write kast execution information to kast_info.json
+    
+    :param output_dir: Directory where the JSON file will be written
+    :param kast_info: Dictionary containing kast execution information
+    """
+    try:
+        info_file = output_dir / "kast_info.json"
+        with open(info_file, 'w') as f:
+            json.dump(kast_info, f, indent=2)
+        logging.getLogger("kast").info(f"Kast info written to {info_file}")
+    except Exception as e:
+        logging.getLogger("kast").error(f"Failed to write kast_info.json: {e}")
+
 def main():
     args = parse_args()
 
@@ -156,11 +172,14 @@ def main():
         list_plugins()
         sys.exit(0)
 
-    if not args.target:
-        console.print("[bold red]Error:[/bold red] --target is required unless using --version.")
-        if args.report_only:
-            console.print("[bold yellow]Note:[/bold yellow] --report-only mode still requires --target.")
+    # Handle target requirement - can be extracted from kast_info.json in report-only mode
+    if not args.target and not args.report_only:
+        console.print("[bold red]Error:[/bold red] --target is required unless using --version or --report-only.")
         sys.exit(1)
+
+    # Capture start time
+    start_time = time.time()
+    start_timestamp = datetime.now().isoformat()
 
     # Print startup info
     console.print(f"[bold green]KAST - Kali Automated Scan Tool[/bold green]")
@@ -205,6 +224,34 @@ def main():
             console.print(f"[bold red]Error:[/bold red] Output directory {report_dir} does not exist.")
             sys.exit(1)
         output_dir = report_dir
+        
+        # If target not provided, try to extract it from kast_info.json
+        if not args.target:
+            kast_info_path = output_dir / "kast_info.json"
+            if not kast_info_path.exists():
+                console.print(f"[bold red]Error:[/bold red] kast_info.json not found in {output_dir}")
+                console.print("[yellow]Either provide --target or ensure kast_info.json exists in the report directory.[/yellow]")
+                sys.exit(1)
+            
+            try:
+                with open(kast_info_path, 'r') as f:
+                    kast_info = json.load(f)
+                
+                # Extract target from cli_arguments
+                if 'cli_arguments' in kast_info and 'target' in kast_info['cli_arguments']:
+                    args.target = kast_info['cli_arguments']['target']
+                    log.info(f"Target extracted from kast_info.json: {args.target}")
+                    console.print(f"[cyan]Target extracted from kast_info.json:[/cyan] {args.target}")
+                else:
+                    console.print(f"[bold red]Error:[/bold red] Target not found in kast_info.json")
+                    console.print("[yellow]The kast_info.json file must contain cli_arguments.target[/yellow]")
+                    sys.exit(1)
+            except json.JSONDecodeError as e:
+                console.print(f"[bold red]Error:[/bold red] Failed to parse kast_info.json: {e}")
+                sys.exit(1)
+            except Exception as e:
+                console.print(f"[bold red]Error:[/bold red] Failed to read kast_info.json: {e}")
+                sys.exit(1)
     else:
         report_only=False
 
@@ -244,6 +291,31 @@ def main():
     # Launch orchestrator
     orchestrator = ScannerOrchestrator(plugins, args, output_dir, log, report_only)
     results = orchestrator.run()
+    
+    # Capture end time
+    end_time = time.time()
+    end_timestamp = datetime.now().isoformat()
+    
+    # Write kast_info.json if not in dry-run or report-only mode
+    if not args.dry_run and not report_only:
+        kast_info = {
+            "kast_version": KAST_VERSION,
+            "start_timestamp": start_timestamp,
+            "end_timestamp": end_timestamp,
+            "duration_seconds": round(end_time - start_time, 2),
+            "cli_arguments": {
+                "target": args.target,
+                "mode": args.mode,
+                "parallel": args.parallel,
+                "verbose": args.verbose,
+                "output_dir": str(output_dir),
+                "run_only": args.run_only,
+                "log_dir": args.log_dir
+            },
+            "plugins": orchestrator.get_plugin_timings()
+        }
+        write_kast_info(output_dir, kast_info)
+    
     processed_files = list(output_dir.glob("*_processed.json"))
     if processed_files:
         console.print("[green]Post-processed JSON files created:[/green]")
