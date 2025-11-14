@@ -56,8 +56,12 @@ class SubfinderPlugin(KastPlugin):
             if report_only:
                 self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
 
-            else:    
+            else: 
+                # Create empty subfinder.json first, so that kast-web knows we are running
+                in_progress_file = os.path.join(output_dir, "subfinder.json")
+                open(in_progress_file, 'a').close()
                 proc = subprocess.run(cmd, capture_output=True, text=True)
+                os.remove(in_progress_file)
                 if proc.returncode != 0:
                     return self.get_result_dict(
                         disposition="fail",

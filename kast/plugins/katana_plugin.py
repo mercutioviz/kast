@@ -64,8 +64,12 @@ class KatanaPlugin(KastPlugin):
                     disposition="success",
                     results={"target": target, "urls": []}
                 )
-            else:    
+            else:
+                # Create empty katana.json file first, so that kast-web knows we are running
+                in_progress_file = os.path.join(output_dir, "katana.json")
+                open(in_progress_file, 'a').close()
                 proc = subprocess.run(cmd, capture_output=True, text=True)
+                os.remove(in_progress_file)
                 if proc.returncode != 0:
                     return self.get_result_dict(
                         disposition="fail",

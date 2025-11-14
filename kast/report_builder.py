@@ -9,6 +9,7 @@ from kast.report_templates import (
     get_issue_metadata
 )
 
+
 # Logger for warnings when registry entries are missing
 logger = logging.getLogger(__name__)
 

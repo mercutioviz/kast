@@ -118,6 +118,8 @@ class Wafw00fPlugin(KastPlugin):
                         self.debug(f"Running HTTP command: {' '.join(http_cmd)}")
                     
                     # Run wafw00f with HTTP
+                    # Create empty output_file first, so that kast-web knows we are running
+                    open(output_file, 'a').close()
                     proc = subprocess.run(http_cmd, capture_output=True, text=True)
                     
                     # Save new STDOUT/STDERR to wafw00f_stdout.txt
