@@ -21,6 +21,7 @@ class KatanaPlugin(KastPlugin):
         self.display_name = "Katana"
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"
+        self.command_executed = None  # Store the command for reporting
 
     def is_available(self):
         """
@@ -48,6 +49,9 @@ class KatanaPlugin(KastPlugin):
         if getattr(self.cli_args, "verbose", False):
             cmd.insert(1, "-v")
             self.debug(f"Running command: {' '.join(cmd)}")
+
+        # Store command for reporting
+        self.command_executed = ' '.join(cmd)
 
         if not self.is_available():
             return self.get_result_dict(
@@ -150,6 +154,9 @@ class KatanaPlugin(KastPlugin):
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
 
+        # Format command for report notes
+        report_notes = self._format_command_for_report()
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
@@ -159,7 +166,8 @@ class KatanaPlugin(KastPlugin):
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,
-            "executive_summary": executive_summary
+            "executive_summary": executive_summary,
+            "report": report_notes
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -167,6 +175,16 @@ class KatanaPlugin(KastPlugin):
             json.dump(processed, f, indent=2)
 
         return processed_path
+
+    def _format_command_for_report(self):
+        """
+        Format the executed command for the report notes section.
+        Returns HTML-formatted command with dark blue color and monospace font.
+        """
+        if not self.command_executed:
+            return "Command not available"
+        
+        return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
     def _extract_url_path(self, full_url, target):
         """

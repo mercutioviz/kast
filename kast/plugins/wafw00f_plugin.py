@@ -21,6 +21,7 @@ class Wafw00fPlugin(KastPlugin):
         self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
         self.scan_type = "passive"
         self.output_type = "file"
+        self.command_executed = None  # Store the command for reporting
 
     def setup(self, target, output_dir):
         """
@@ -55,6 +56,9 @@ class Wafw00fPlugin(KastPlugin):
         if getattr(self.cli_args, "verbose", False):
             #cmd.insert(1, "-v")
             self.debug(f"Running command: {' '.join(cmd)}")
+
+        # Store command for reporting
+        self.command_executed = ' '.join(cmd)
 
         if not self.is_available():
             return self.get_result_dict(
@@ -285,6 +289,9 @@ class Wafw00fPlugin(KastPlugin):
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
 
+        # Format command for report notes
+        report_notes = self._format_command_for_report()
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
@@ -294,7 +301,8 @@ class Wafw00fPlugin(KastPlugin):
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,
-            "executive_summary": executive_summary
+            "executive_summary": executive_summary,
+            "report": report_notes
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -303,6 +311,16 @@ class Wafw00fPlugin(KastPlugin):
 
         return processed_path
 
+
+    def _format_command_for_report(self):
+        """
+        Format the executed command for the report notes section.
+        Returns HTML-formatted command with dark blue color and monospace font.
+        """
+        if not self.command_executed:
+            return "Command not available"
+        
+        return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
     def _generate_summary(self, findings):
         """
