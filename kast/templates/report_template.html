@@ -13,6 +13,17 @@
     <h1>KAST Scan Report{% if target %} — {{ target }}{% endif %}</h1>
 
     <h2>Executive Summary</h2>
+    {% if plugin_executive_summaries %}
+    <h4>Scan Findings</h4>
+    {% for plugin_summary in plugin_executive_summaries %}
+    <div class="plugin-executive-summary">
+        
+        {{ plugin_summary.summary|safe }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    
+    <h4>Potential Issues</h4>
     {{ executive_summary|safe }}
 
     <h2>Issues Found</h2>

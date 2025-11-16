@@ -50,6 +50,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
     """
     all_issues = []
     detailed_results = {}
+    plugin_executive_summaries = []
 
     for plugin in plugin_results:
         # Normalize plugin name from various possible fields
@@ -70,10 +71,19 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         )
         purpose = plugin.get("plugin-description") or plugin.get("description") or ""
 
+        # Collect executive summary if present
+        exec_summary = plugin.get("executive_summary", "")
+        if exec_summary:
+            plugin_executive_summaries.append({
+                "plugin_name": display_name,
+                "summary": format_multiline_text(exec_summary)
+            })
+
         # Pass through extra fields for collapsible details
         detailed_results[tool_name] = {
             "display_name": display_name,
             "purpose": purpose,
+            "website_url": plugin.get("plugin-website-url"),
             "summary": format_multiline_text(plugin.get("summary", "")),
             "details": format_multiline_text(plugin.get("details", "")),
             "report": format_multiline_text(plugin.get("report", "")),
@@ -152,6 +162,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
     # Render the HTML report
     html_content = template.render(
         executive_summary=executive_summary,
+        plugin_executive_summaries=plugin_executive_summaries,
         issues=all_issues,
         detailed_results=detailed_results,
         target=target
