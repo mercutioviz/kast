@@ -27,7 +27,15 @@
     <h2>Detailed Results by Tool</h2>
     {% for tool, result in detailed_results.items() %}
     <div class="tool-section">
-        <h3>{{ result.display_name if result.display_name else tool }}</h3>
+        <h3>
+        {% if result.website_url %}
+            <a href="{{ result.website_url }}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                {{ result.display_name if result.display_name else tool }}
+            </a>
+        {% else %}
+            {{ result.display_name if result.display_name else tool }}
+        {% endif %}
+        </h3>
         <p><strong>Purpose:</strong> {{ result.purpose }}</p>
         <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
         {% if result.custom_html %}

@@ -18,6 +18,8 @@ class TemplatePlugin(KastPlugin):
         super().__init__(cli_args)
         self.name = "template_tool"
         self.display_name = "Template Tool"  # Human-readable name for reports
+        self.description = "Description of tool"
+        self.website_url = "https://example.com/subfinder"  # Replace with actual website
         self.description = "Template plugin for new KAST integrations."
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"

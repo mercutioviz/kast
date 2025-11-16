@@ -19,6 +19,7 @@ class Wafw00fPlugin(KastPlugin):
         self.name = "wafw00f"
         self.display_name = "Wafw00f"
         self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
+        self.website_url = "https://github.com/EnableSecurity/wafw00f"
         self.scan_type = "passive"
         self.output_type = "file"
         self.command_executed = None  # Store the command for reporting
@@ -296,6 +297,7 @@ class Wafw00fPlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
+            "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
             "summary": summary or f"{self.name} did not produce any findings",

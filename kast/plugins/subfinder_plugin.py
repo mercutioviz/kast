@@ -19,6 +19,7 @@ class SubfinderPlugin(KastPlugin):
         self.name = "subfinder"
         self.description = "Subdomain finder."
         self.display_name = "Subfinder"
+        self.website_url = "https://github.com/projectdiscovery/subfinder"
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"
         self.command_executed = None  # Store the command for reporting
@@ -139,6 +140,7 @@ class SubfinderPlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
+            "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
             "summary": summary or f"{self.name} did not produce any findings",

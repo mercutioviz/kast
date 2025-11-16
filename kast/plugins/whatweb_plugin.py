@@ -21,6 +21,7 @@ class WhatWebPlugin(KastPlugin):
         self.name = "whatweb"
         self.display_name = "WhatWeb"
         self.description = "Identifies technologies used by a website."
+        self.website_url = "https://github.com/urbanadventurer/whatweb"
         self.scan_type = "passive"
         self.output_type = "file"
         self.command_executed = None  # Store the command for reporting
@@ -122,6 +123,7 @@ class WhatWebPlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
+            "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
             "summary": self._generate_summary(findings),

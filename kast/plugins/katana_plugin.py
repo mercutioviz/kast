@@ -19,6 +19,7 @@ class KatanaPlugin(KastPlugin):
         self.name = "katana"
         self.description = "Site crawler and URL finder."
         self.display_name = "Katana"
+        self.website_url = "https://github.com/projectdiscovery/katana"
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"
         self.command_executed = None  # Store the command for reporting
@@ -161,6 +162,7 @@ class KatanaPlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
+            "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": {"urls": parsed_urls},
             "summary": summary or f"{self.name} did not produce any findings",
