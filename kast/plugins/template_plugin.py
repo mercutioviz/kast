@@ -23,6 +23,7 @@ class TemplatePlugin(KastPlugin):
         self.description = "Template plugin for new KAST integrations."
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"
+        self.command_executed = None 
 
     def setup(self, target, output_dir):
         """
