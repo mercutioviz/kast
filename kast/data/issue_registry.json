@@ -230,5 +230,320 @@
       "remediation": "Set the header to nosniff to prevent MIME type sniffing. A WAF can correct the X-Content-Type-Options header to properly prevent MIME sniffing.",
       "severity": "Medium",
       "category": "HTTP Headers"
+  },
+  "BREACH": {
+      "display_name": "BREACH Attack Vulnerability",
+      "description": "The server is potentially vulnerable to BREACH attacks due to HTTP compression being enabled. BREACH can exploit compressed HTTPS responses to extract sensitive data.",
+      "remediation": "Disable HTTP compression for sensitive content, implement CSRF tokens with random per-request values, or use length-hiding techniques. A WAF can help mitigate BREACH by disabling compression for sensitive endpoints.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "LUCKY13": {
+      "display_name": "LUCKY13 Vulnerability",
+      "description": "The server uses obsolete TLS CBC ciphers that are potentially vulnerable to LUCKY13 timing attacks.",
+      "remediation": "Disable CBC mode ciphers and prefer AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF with TLS termination can enforce modern cipher suites.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "SWEET32": {
+      "display_name": "SWEET32 Vulnerability",
+      "description": "The server uses 64-bit block ciphers (like 3DES) that are vulnerable to birthday attacks when large amounts of data are encrypted.",
+      "remediation": "Disable 64-bit block ciphers (3DES, Blowfish) and use 128-bit block ciphers or better. A WAF can enforce strong cipher configurations.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "LOGJAM": {
+      "display_name": "LOGJAM Vulnerability",
+      "description": "The server may be vulnerable to LOGJAM attacks due to weak Diffie-Hellman key exchange parameters.",
+      "remediation": "Disable export-grade cipher suites, use DH parameters of at least 2048 bits, or prefer ECDHE over DHE. A WAF can terminate TLS with strong DH parameters.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "LOGJAM-common_primes": {
+      "display_name": "LOGJAM Common Primes",
+      "description": "The server uses common Diffie-Hellman primes that may be vulnerable to pre-computation attacks.",
+      "remediation": "Generate unique DH parameters or use ECDHE key exchange. A WAF can provide TLS termination with strong, unique DH parameters.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "BEAST": {
+      "display_name": "BEAST Attack Vulnerability",
+      "description": "The server supports SSL 3.0 or TLS 1.0 with CBC ciphers, making it vulnerable to BEAST attacks.",
+      "remediation": "Disable SSL 3.0 and TLS 1.0, or at minimum disable CBC ciphers on these protocols. Upgrade to TLS 1.2 or higher. A WAF can enforce modern protocol versions.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "DROWN": {
+      "display_name": "DROWN Attack Vulnerability",
+      "description": "The server or a server sharing the same certificate supports SSLv2, making it vulnerable to DROWN attacks that can decrypt TLS sessions.",
+      "remediation": "Disable SSLv2 on all servers using the same certificate. Ensure no services accept SSLv2 connections. A WAF can prevent SSLv2 connections entirely.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "DROWN_hint": {
+      "display_name": "Potential DROWN Vulnerability",
+      "description": "While this server doesn't support SSLv2, the certificate may be used elsewhere with SSLv2 enabled, creating DROWN vulnerability risk.",
+      "remediation": "Verify that no other services using the same certificate accept SSLv2 connections. Replace or rotate certificates if necessary.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "POODLE_SSL": {
+      "display_name": "POODLE SSL Vulnerability",
+      "description": "The server supports SSL 3.0, making it vulnerable to POODLE attacks that can decrypt secure connections.",
+      "remediation": "Disable SSL 3.0 entirely and use TLS 1.2 or higher. A WAF can block SSL 3.0 connections and enforce modern protocols.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "fallback_SCSV": {
+      "display_name": "TLS Fallback SCSV Not Supported",
+      "description": "The server does not support TLS_FALLBACK_SCSV, which protects against protocol downgrade attacks.",
+      "remediation": "Enable TLS_FALLBACK_SCSV support in the server configuration. A WAF can provide protection against downgrade attacks.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "FREAK": {
+      "display_name": "FREAK Attack Vulnerability",
+      "description": "The server supports export-grade RSA cipher suites, making it vulnerable to FREAK attacks.",
+      "remediation": "Disable all export-grade cipher suites. A WAF can enforce strong cipher configurations without export-grade options.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "CRIME_TLS": {
+      "display_name": "CRIME TLS Vulnerability",
+      "description": "The server has TLS compression enabled, making it potentially vulnerable to CRIME attacks.",
+      "remediation": "Disable TLS-level compression. A WAF with TLS termination can ensure compression is disabled.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "ROBOT": {
+      "display_name": "ROBOT Attack Vulnerability",
+      "description": "The server may be vulnerable to ROBOT (Return Of Bleichenbacher's Oracle Threat) attacks on RSA encryption.",
+      "remediation": "Update the TLS implementation to prevent oracle attacks, or disable RSA key exchange in favor of (EC)DHE. A WAF can mitigate by using modern key exchange methods.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "secure_renego": {
+      "display_name": "Secure Renegotiation Not Supported",
+      "description": "The server does not support secure TLS renegotiation, which can lead to MitM attacks.",
+      "remediation": "Enable secure renegotiation support or disable renegotiation entirely. A WAF can handle renegotiation securely.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "secure_client_renego": {
+      "display_name": "Insecure Client Renegotiation",
+      "description": "The server allows insecure client-initiated renegotiation, which can lead to DoS attacks.",
+      "remediation": "Disable client-initiated renegotiation. A WAF can control renegotiation behavior.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "heartbleed": {
+      "display_name": "Heartbleed Vulnerability",
+      "description": "The server is vulnerable to the Heartbleed bug (CVE-2014-0160), which can leak memory contents including private keys and sensitive data.",
+      "remediation": "Update OpenSSL to a patched version immediately, revoke and replace all certificates and private keys. A WAF cannot fully mitigate this; server-side patching is required.",
+      "severity": "Critical",
+      "category": "Encryption"
+  },
+  "CCS": {
+      "display_name": "CCS Injection Vulnerability",
+      "description": "The server is vulnerable to ChangeCipherSpec (CCS) injection attacks that can lead to MitM attacks.",
+      "remediation": "Update the TLS implementation to a version that properly validates CCS messages. A WAF with updated TLS stack can prevent CCS injection.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "ticketbleed": {
+      "display_name": "Ticketbleed Vulnerability",
+      "description": "The server is vulnerable to Ticketbleed (CVE-2016-9244), which can leak memory contents through session tickets.",
+      "remediation": "Update the TLS implementation or disable session tickets. A WAF can disable session ticket support.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc014": {
+      "display_name": "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
+      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc013": {
+      "display_name": "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
+      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x0035": {
+      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA",
+      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x002f": {
+      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA",
+      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x003d": {
+      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA256",
+      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x003c": {
+      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA256",
+      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc024": {
+      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",
+      "description": "Weak cipher suite using CBC mode. While it has forward secrecy and strong authentication, CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc023": {
+      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+      "description": "Weak cipher suite using CBC mode. While it has forward secrecy and strong authentication, CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc028": {
+      "display_name": "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+      "description": "Weak cipher suite using CBC mode. While it has forward secrecy, CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc027": {
+      "display_name": "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+      "description": "Weak cipher suite using CBC mode. While it has forward secrecy, CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x009c": {
+      "display_name": "TLS_RSA_WITH_AES_128_GCM_SHA256",
+      "description": "Cipher suite using RSA key exchange without forward secrecy. While AES-GCM is secure, RSA key exchange means past sessions can be decrypted if the private key is compromised.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x009d": {
+      "display_name": "TLS_RSA_WITH_AES_256_GCM_SHA384",
+      "description": "Cipher suite using RSA key exchange without forward secrecy. While AES-GCM is secure, RSA key exchange means past sessions can be decrypted if the private key is compromised.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x000a": {
+      "display_name": "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+      "description": "Weak cipher suite using 3DES encryption with only 112 bits of security, RSA key exchange without forward secrecy, and SHA-1 HMAC. Vulnerable to SWEET32 attacks.",
+      "remediation": "Disable this cipher suite immediately and use modern ciphers with at least 128-bit security. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc012": {
+      "display_name": "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
+      "description": "Weak cipher suite using 3DES encryption with only 112 bits of security and SHA-1 HMAC. Vulnerable to SWEET32 attacks despite having forward secrecy.",
+      "remediation": "Disable this cipher suite and use AES-128 or stronger encryption. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Medium",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc00a": {
+      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
+      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
+      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc009": {
+      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
+      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
+      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc077": {
+      "display_name": "TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384",
+      "description": "Weak cipher suite using Camellia encryption and CBC mode. While Camellia is secure, CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x3d": {
+      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA256",
+      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x35": {
+      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA",
+      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc0": {
+      "display_name": "TLS_ECDH_RSA_WITH_NULL_SHA",
+      "description": "Extremely weak cipher suite with no encryption (NULL cipher). This provides no confidentiality protection whatsoever.",
+      "remediation": "Disable this cipher suite immediately and use strong encryption algorithms. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "High",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x84": {
+      "display_name": "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA",
+      "description": "Weak cipher suite using RSA key exchange, Camellia encryption, CBC mode, and SHA-1 HMAC. RSA lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xc076": {
+      "display_name": "TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+      "description": "Weak cipher suite using Camellia encryption and CBC mode. While it has forward secrecy and SHA-256, CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x3c": {
+      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA256",
+      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x2f": {
+      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA",
+      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_xba": {
+      "display_name": "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA",
+      "description": "Weak cipher suite using RSA key exchange, Camellia encryption, CBC mode, and SHA-1 HMAC. RSA lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x41": {
+      "display_name": "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+      "description": "Weak cipher suite using RSA key exchange, Camellia encryption, and CBC mode. While it uses SHA-256, RSA lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
+      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Low",
+      "category": "Encryption"
+  },
+  "cipher-tls1_2_x0a": {
+      "display_name": "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+      "description": "Weak cipher suite using 3DES encryption with only 112 bits of security, RSA key exchange without forward secrecy, and SHA-1 HMAC. Vulnerable to SWEET32 attacks.",
+      "remediation": "Disable this cipher suite immediately and use modern ciphers with at least 128-bit security. A WAF can make it easier to modify front-end TLS settings.",
+      "severity": "Medium",
+      "category": "Encryption"
   }
 }
