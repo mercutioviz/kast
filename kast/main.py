@@ -80,6 +80,12 @@ def parse_args():
         help="Parallel mode: run tools simultaneously"
     )
     parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=5,
+        help="Maximum number of parallel workers (default: 5, only used with --parallel)"
+    )
+    parser.add_argument(
         "-l", "--log-dir",
         type=str,
         default="/var/log/kast/",

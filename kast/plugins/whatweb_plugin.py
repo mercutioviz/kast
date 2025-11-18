@@ -116,8 +116,19 @@ class WhatWebPlugin(KastPlugin):
         details = ""
         executive_summary = ""
 
+        # Detect domain redirects and generate recommendations
+        redirect_recommendations = self._detect_domain_redirects(findings)
+        if redirect_recommendations:
+            executive_summary = "\n".join(redirect_recommendations)
+
         # Format command for report notes
         report_notes = self._format_command_for_report()
+
+        # Properly structure the findings
+        structured_findings = {
+            "disposition": "success" if findings else "fail",
+            "results": findings
+        }
 
         processed = {
             "plugin-name": self.name,
@@ -125,7 +136,7 @@ class WhatWebPlugin(KastPlugin):
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
-            "findings": findings,
+            "findings": structured_findings,
             "summary": self._generate_summary(findings),
             "details": details,
             "issues": issues,
@@ -137,6 +148,73 @@ class WhatWebPlugin(KastPlugin):
         with open(processed_path, "w") as f:
             json.dump(processed, f, indent=2)
         return processed_path
+
+    def _detect_domain_redirects(self, findings):
+        """
+        Detect redirects that change the domain name (not just protocol changes).
+        Returns a list of recommendation strings for the executive summary.
+        """
+        recommendations = []
+        
+        # Handle both list and dict formats
+        if isinstance(findings, list):
+            results = findings
+        elif isinstance(findings, dict):
+            results = findings.get("results", [])
+        else:
+            results = []
+        
+        # Track redirects we've already seen to avoid duplicates
+        seen_redirects = set()
+        
+        for entry in results:
+            # Check if this is a redirect (301 or 302)
+            http_status = entry.get("http_status")
+            if http_status not in [301, 302]:
+                continue
+            
+            # Get the target and redirect location
+            target = entry.get("target", "")
+            plugins = entry.get("plugins", {})
+            redirect_location = plugins.get("RedirectLocation", {}).get("string", [])
+            
+            if not redirect_location:
+                continue
+            
+            # RedirectLocation string is typically a list with one element
+            redirect_url = redirect_location[0] if isinstance(redirect_location, list) else redirect_location
+            
+            # Parse both URLs to extract domains
+            try:
+                target_parsed = urlparse(target)
+                redirect_parsed = urlparse(redirect_url)
+                
+                target_domain = target_parsed.netloc.lower()
+                redirect_domain = redirect_parsed.netloc.lower()
+                
+                # Skip if domains are the same (e.g., just http->https redirect)
+                if target_domain == redirect_domain:
+                    continue
+                
+                # Create a unique key for this redirect pair
+                redirect_key = (target_domain, redirect_domain)
+                if redirect_key in seen_redirects:
+                    continue
+                
+                seen_redirects.add(redirect_key)
+                
+                # Generate recommendation
+                recommendation = (
+                    f"Recommend running a scan on {redirect_domain}, which was the "
+                    f"target redirection location from {target_domain}"
+                )
+                recommendations.append(recommendation)
+                
+            except Exception as e:
+                self.debug(f"Error parsing redirect URLs: {e}")
+                continue
+        
+        return recommendations
 
     def _format_command_for_report(self):
         """

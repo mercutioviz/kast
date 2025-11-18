@@ -7,6 +7,7 @@ Description: Orchestrates the execution of KAST plugins, manages plugin lifecycl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 from datetime import datetime
+import threading
 
 class ScannerOrchestrator:
     def __init__(self, plugins, cli_args, output_dir, log, report_only=False):
@@ -22,6 +23,7 @@ class ScannerOrchestrator:
         self.log = log
         self.report_only = report_only
         self.plugin_timings = []
+        self.timings_lock = threading.Lock()  # Thread-safe access to plugin_timings
 
     def run(self):
         """
@@ -37,21 +39,42 @@ class ScannerOrchestrator:
             return []
 
         # Filter plugins by scan type (active/passive)
-        selected_plugins = [
-            p for p in self.plugins
-            if getattr(p(self.cli_args), "scan_type", "passive") == self.cli_args.mode
-        ]
+        # Cache plugin metadata to avoid creating unnecessary temporary instances
+        selected_plugins = []
+        for plugin_cls in self.plugins:
+            try:
+                # Create instance once to check scan_type
+                plugin_instance = plugin_cls(self.cli_args)
+                if getattr(plugin_instance, "scan_type", "passive") == self.cli_args.mode:
+                    selected_plugins.append(plugin_cls)
+            except Exception as e:
+                self.log.error(f"Error instantiating plugin {plugin_cls.__name__} for filtering: {e}")
 
         if self.cli_args.parallel:
-            self.log.info("Running plugins in parallel mode.")
-            with ThreadPoolExecutor() as executor:
+            # Get max_workers from CLI args, default to 5 for conservative security scanning
+            max_workers = getattr(self.cli_args, 'max_workers', 5)
+            self.log.info(f"Running plugins in parallel mode with max {max_workers} workers.")
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_plugin = {
                     executor.submit(self._run_plugin, plugin_cls): plugin_cls
                     for plugin_cls in selected_plugins
                 }
                 for future in as_completed(future_to_plugin):
-                    result = future.result()
-                    results.append(result)
+                    plugin_cls = future_to_plugin[future]
+                    plugin_name = getattr(plugin_cls, '__name__', 'Unknown')
+                    try:
+                        result = future.result()
+                        results.append(result)
+                    except Exception as e:
+                        self.log.error(f"Future for plugin {plugin_name} raised an exception: {e}")
+                        # Create a minimal plugin instance to get result_dict format
+                        try:
+                            plugin_instance = plugin_cls(self.cli_args)
+                            error_result = plugin_instance.get_result_dict("fail", f"Future exception: {str(e)}")
+                            results.append(error_result)
+                        except Exception as inner_e:
+                            self.log.error(f"Could not create error result for {plugin_name}: {inner_e}")
         else:
             self.log.info("Running plugins sequentially.")
             for plugin_cls in selected_plugins:
@@ -74,11 +97,16 @@ class ScannerOrchestrator:
             "status": "skipped"
         }
         
+        # Initialize start_time to None to avoid undefined variable in exception handler
+        start_time = None
+        
         self.log.info(f"Checking availability for plugin: {plugin_name}")
         if not plugin.is_available():
             self.log.error(f"Plugin {plugin_name} is not available. Skipping.")
             timing_info["status"] = "unavailable"
-            self.plugin_timings.append(timing_info)
+            # Thread-safe append
+            with self.timings_lock:
+                self.plugin_timings.append(timing_info)
             return plugin.get_result_dict("fail", "Tool not available.")
         
         try:
@@ -98,18 +126,23 @@ class ScannerOrchestrator:
             timing_info["duration_seconds"] = round(end_time - start_time, 2)
             timing_info["status"] = raw_result.get('disposition', 'unknown')
             
-            self.plugin_timings.append(timing_info)
+            # Thread-safe append
+            with self.timings_lock:
+                self.plugin_timings.append(timing_info)
             return raw_result
         except Exception as e:
             # Capture end time even on failure
             end_time = time.time()
             timing_info["end_timestamp"] = datetime.now().isoformat()
-            if timing_info["start_timestamp"]:
+            # Only calculate duration if start_time was set
+            if start_time is not None:
                 timing_info["duration_seconds"] = round(end_time - start_time, 2)
             timing_info["status"] = "failed"
             timing_info["error"] = str(e)
             
-            self.plugin_timings.append(timing_info)
+            # Thread-safe append
+            with self.timings_lock:
+                self.plugin_timings.append(timing_info)
             self.log.exception(f"Plugin {plugin_name} failed with exception: {e}")
             return plugin.get_result_dict("fail", str(e))
     
