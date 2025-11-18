@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KAST Scan Report - demo.example.com</title>
+    <link rel="stylesheet" href="kast_style.css">
+            <style>
+                /* Quick test background: only set the image so you can see the raw result */
+                body { background-image: url('../assets/background.png'); }
+            </style>
+</head>
+<body>
+    <h1>KAST Scan Report — demo.example.com</h1>
+
+    <h2>Executive Summary</h2>
+    
+    <h3>Plugin Findings</h3>
+    
+    <div class="plugin-executive-summary">
+        <strong>Wafw00f:</strong>
+        <p class="report-paragraph">No WAFs were detected.</p>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        <strong>Mozilla Observatory:</strong>
+        <p class="report-paragraph">-= Observatory grade and score summary =-</p>
+<p class="report-paragraph">Grade: B, Score: 75, Tests Passed: 8, Tests Failed: 2</p>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        <strong>Katana:</strong>
+        <p class="report-paragraph">Detected 23 URLs.</p>
+    </div>
+    
+    
+    
+    <h3>Potential Issues</h3>
+    <p class="report-paragraph">3 potential issues were identified.</p>
+<p class="report-paragraph">Categories involved: Content Security, Issue ID not found., WAF Detection.</p>
+<p class="report-paragraph">Severity breakdown: High=2, Medium=0, Low=0.</p>
+
+    <h2>Issues Found</h2>
+    
+    <div class="issue severity-high">
+        <strong>No WAF Detected</strong> (High, WAF Detection)<br>
+    <em>Reported by: Wafw00f (issue id: No WAF Detected)</em><br>
+    <span>Remediation: Deploy a WAF in front of the application to provide an additional layer of security against common web attacks.</span>
+    </div>
+    
+    <div class="issue severity-high">
+        <strong>Content Security Policy with unsafe-inline</strong> (High, Content Security)<br>
+    <em>Reported by: Mozilla Observatory (issue id: csp-implemented-with-unsafe-inline)</em><br>
+    <span>Remediation: Refactor inline scripts and styles to use external resources with integrity checks. A WAF can help mitigate XSS risks by inspecting and filtering malicious payloads in HTTP requests.</span>
+    </div>
+    
+    <div class="issue severity-unknown">
+        <strong>x-content-type-options-not-set</strong> (Unknown, Uncategorized)<br>
+    <em>Reported by: Mozilla Observatory (issue id: x-content-type-options-not-set)</em><br>
+    <span>Remediation: No specific remediation available</span>
+    </div>
+    
+
+    <h2>Detailed Results by Tool</h2>
+    
+    <div class="tool-section">
+        <h3>
+        
+            <a href="https://github.com/EnableSecurity/wafw00f" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Wafw00f
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Detects and identifies Web Application Firewalls (WAFs)</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">No WAF detected</p></p>
+        
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2025-11-16T21:00:00.000</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">No WAF detected.</p></div>
+                
+                <div><strong>Results:</strong>
+                    <div class="tree-json" data-json='null'></div>
+                </div>
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success"
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+    <div class="tool-section">
+        <h3>
+        
+            <a href="https://developer.mozilla.org/en-US/blog/mdn-http-observatory-launch/" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Mozilla Observatory
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Runs Mozilla Observatory to analyze web application security</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Grade: B, Score: 75, Tests Passed: 8, Tests Failed: 2</p></p>
+        
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2025-11-16T21:05:00.000</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Observatory scan completed</p></div>
+                
+                <div><strong>Results:</strong>
+                    <div class="tree-json" data-json='null'></div>
+                </div>
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success"
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+    <div class="tool-section">
+        <h3>
+        
+            <a href="https://github.com/projectdiscovery/katana" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Katana
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Site crawler and URL finder</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Detected 23 unique URL(s).</p></p>
+        
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2025-11-16T21:10:00.000</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Detected 23 unique URL(s).</p></div>
+                
+                <div><strong>Results:</strong>
+                    <div class="tree-json" data-json='{"urls": ["/", "/about", "/contact"]}'></div>
+                </div>
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success",
+  "results": {
+    "urls": [
+      "/",
+      "/about",
+      "/contact"
+    ]
+  }
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+    <div class="tool-section">
+        <h3>
+        
+            <a href="https://github.com/urbanadventurer/whatweb" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                WhatWeb
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Identifies technologies used by a website</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Detected various technologies</p></p>
+        
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2025-11-16T21:15:00.000</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Technologies found: Apache, PHP, jQuery</p></div>
+                
+                <div><strong>Results:</strong>
+                    <div class="tree-json" data-json='null'></div>
+                </div>
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success"
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+
+    <script>
+    function toggleDetails(btn) {
+        var section = btn.nextElementSibling;
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            btn.textContent = 'Hide details';
+        } else {
+            section.style.display = 'none';
+            btn.textContent = 'Show details';
+        }
+    }
+    function toggleRaw(btn) {
+        var pre = btn.nextElementSibling;
+        if (pre.style.display === 'none') {
+            pre.style.display = 'block';
+            btn.textContent = 'Hide raw JSON';
+        } else {
+            pre.style.display = 'none';
+            btn.textContent = 'Show raw JSON';
+        }
+    }
+    </script>
+    <!-- Tree-view CSS moved to kast_style.css -->
+    <script>
+    function toggleTreeNode(el) {
+        var parent = el.parentNode;
+        parent.classList.toggle('tree-collapsed');
+        el.textContent = parent.classList.contains('tree-collapsed') ? '[+]' : '[-]';
+    }
+    function renderTree(obj) {
+        function createNode(key, value, depth) {
+            var type = typeof value;
+            if (value && type === 'object') {
+                var isArray = Array.isArray(value);
+                var node = document.createElement('div');
+                node.className = 'tree-node';
+                var toggle = document.createElement('span');
+                toggle.className = 'tree-toggle';
+                toggle.onclick = function() { toggleTreeNode(toggle); };
+                node.appendChild(toggle);
+                var keySpan = document.createElement('span');
+                keySpan.className = 'tree-key';
+                keySpan.textContent = key + (isArray ? ' [ ]' : '');
+                node.appendChild(keySpan);
+                var children = document.createElement('div');
+                children.className = 'tree-children';
+                for (var k in value) {
+                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                        children.appendChild(createNode(k, value[k], depth + 1));
+                    }
+                }
+                node.appendChild(children);
+                // Collapse nodes deeper than top-level by default and set initial toggle symbol
+                if (depth > 0) {
+                    node.classList.add('tree-collapsed');
+                    toggle.textContent = '[+]';
+                } else {
+                    toggle.textContent = '[-]';
+                }
+                return node;
+            } else {
+                var leaf = document.createElement('div');
+                leaf.className = 'tree-leaf';
+                leaf.innerHTML = '<span class="tree-key">' + key + ':</span> ' + escapeHtml(String(value));
+                return leaf;
+            }
+        }
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(c) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c];
+            });
+        }
+        var root = document.createElement('div');
+        root.className = 'tree-view';
+        if (obj && typeof obj === 'object') {
+            for (var k in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                    root.appendChild(createNode(k, obj[k], 0));
+                }
+            }
+        } else {
+            root.textContent = String(obj);
+        }
+        return root;
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.tree-json').forEach(function(el) {
+            var data = el.getAttribute('data-json');
+            if (data) {
+                try {
+                    var obj = JSON.parse(data);
+                    var tree = renderTree(obj);
+                    el.appendChild(tree);
+                } catch (e) {
+                    el.textContent = 'Error rendering tree: ' + e;
+                }
+            }
+        });
+    });
+    </script>
+</body>
+</html>
