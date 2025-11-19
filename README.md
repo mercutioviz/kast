@@ -38,7 +38,7 @@
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/kast.git
+   git clone https://github.com/mercutioviz/kast.git
    cd kast
    ```
 
