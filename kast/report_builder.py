@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from kast.report_templates import (
     get_talking_point,
@@ -29,6 +30,30 @@ def format_multiline_text(text):
         paragraphs = str(text).split('\n')
     
     return '\n'.join(f'<p class="report-paragraph">{p}</p>' for p in paragraphs if str(p).strip())
+
+def format_multiline_text_as_list(text):
+    """
+    Converts newline-separated text or lists into HTML bulleted list.
+    Handles both string input (split by newlines) and list input.
+    """
+    if not text:
+        return ""
+    
+    # Handle list input
+    if isinstance(text, list):
+        items = text
+    # Handle string input
+    else:
+        items = str(text).split('\n')
+    
+    # Filter out empty items
+    items = [item for item in items if str(item).strip()]
+    
+    if not items:
+        return ""
+    
+    list_items = '\n'.join(f'<li>{item}</li>' for item in items)
+    return f'<ul class="executive-summary-list">\n{list_items}\n</ul>'
 
 # Set up Jinja2 environment
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), 'templates')
@@ -76,7 +101,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         if exec_summary:
             plugin_executive_summaries.append({
                 "plugin_name": display_name,
-                "summary": format_multiline_text(exec_summary)
+                "summary": format_multiline_text_as_list(exec_summary)
             })
 
         # Pass through extra fields for collapsible details
@@ -145,7 +170,23 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
     all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "Unknown"), 4))
     
     # Generate executive summary
-    executive_summary = format_multiline_text(generate_executive_summary(all_issues))
+    executive_summary = format_multiline_text_as_list(generate_executive_summary(all_issues))
+    
+    # Calculate severity counts for badges
+    severity_counts = {
+        "High": sum(1 for issue in all_issues if issue.get("severity") == "High"),
+        "Medium": sum(1 for issue in all_issues if issue.get("severity") == "Medium"),
+        "Low": sum(1 for issue in all_issues if issue.get("severity") == "Low"),
+        "Info": sum(1 for issue in all_issues if issue.get("severity") == "Info"),
+    }
+    
+    # Prepare metadata for report header
+    scan_metadata = {
+        "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total_issues": len(all_issues),
+        "total_plugins": len(plugin_results),
+        "severity_counts": severity_counts
+    }
 
     # Ensure stylesheet is copied into the output directory so the generated HTML can reference it
     output_dir = os.path.dirname(output_path) or os.getcwd()
@@ -165,7 +206,8 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         plugin_executive_summaries=plugin_executive_summaries,
         issues=all_issues,
         detailed_results=detailed_results,
-        target=target
+        target=target,
+        scan_metadata=scan_metadata
     )
 
     # Save to file
