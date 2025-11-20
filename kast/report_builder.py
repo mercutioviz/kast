@@ -1,5 +1,7 @@
 import os
 import logging
+import json
+import base64
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from kast.report_templates import (
@@ -62,8 +64,9 @@ env = Environment(
     autoescape=select_autoescape(['html', 'xml'])
 )
 
-# Load the HTML template
+# Load templates
 template = env.get_template('report_template.html')
+template_pdf = env.get_template('report_template_pdf.html')
 
 def generate_html_report(plugin_results, output_path='kast_report.html', target=None):
     """
@@ -215,3 +218,269 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         f.write(html_content)
 
     print(f"Report saved to {output_path}")
+
+
+def image_to_base64(image_path):
+    """
+    Convert image file to base64 data URI.
+    
+    Args:
+        image_path (str): Path to the image file
+        
+    Returns:
+        str: Base64-encoded data URI or None if file doesn't exist
+    """
+    try:
+        if not os.path.exists(image_path):
+            return None
+            
+        with open(image_path, 'rb') as f:
+            data = base64.b64encode(f.read()).decode()
+        
+        # Determine MIME type from extension
+        ext = os.path.splitext(image_path)[1][1:].lower()
+        mime_types = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'svg': 'image/svg+xml'
+        }
+        mime_type = mime_types.get(ext, 'image/png')
+        
+        return f'data:{mime_type};base64,{data}'
+    except Exception as e:
+        logger.warning(f"Failed to encode image {image_path}: {e}")
+        return None
+
+
+def format_json_for_pdf(data, max_depth=5, current_depth=0):
+    """
+    Convert JSON data to formatted HTML for PDF display.
+    Limits depth to avoid overly large outputs.
+    
+    Args:
+        data: JSON-serializable data
+        max_depth (int): Maximum nesting depth to display
+        current_depth (int): Current depth (internal use)
+        
+    Returns:
+        str: Formatted HTML representation
+    """
+    if data is None:
+        return '<span class="json-null">null</span>'
+    
+    if current_depth >= max_depth:
+        return '<span class="json-truncated">[... truncated ...]</span>'
+    
+    try:
+        if isinstance(data, dict):
+            if not data:
+                return '<span class="json-empty">{}</span>'
+            
+            items = []
+            for key, value in data.items():
+                formatted_value = format_json_for_pdf(value, max_depth, current_depth + 1)
+                items.append(f'<div class="json-item"><span class="json-key">"{key}":</span> {formatted_value}</div>')
+            
+            indent = '  ' * current_depth
+            return '<div class="json-object">{<div class="json-contents">' + ''.join(items) + '</div>}</div>'
+        
+        elif isinstance(data, list):
+            if not data:
+                return '<span class="json-empty">[]</span>'
+            
+            items = []
+            for item in data:
+                formatted_item = format_json_for_pdf(item, max_depth, current_depth + 1)
+                items.append(f'<div class="json-item">{formatted_item}</div>')
+            
+            return '<div class="json-array">[<div class="json-contents">' + ''.join(items) + '</div>]</div>'
+        
+        elif isinstance(data, str):
+            # Escape HTML and limit very long strings
+            escaped = data.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            if len(escaped) > 200:
+                escaped = escaped[:200] + '...'
+            return f'<span class="json-string">"{escaped}"</span>'
+        
+        elif isinstance(data, bool):
+            return f'<span class="json-boolean">{str(data).lower()}</span>'
+        
+        elif isinstance(data, (int, float)):
+            return f'<span class="json-number">{data}</span>'
+        
+        else:
+            return f'<span class="json-value">{str(data)}</span>'
+    
+    except Exception as e:
+        logger.warning(f"Error formatting JSON for PDF: {e}")
+        return f'<pre class="json-display">{json.dumps(data, indent=2)}</pre>'
+
+
+def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=None):
+    """
+    Generates a PDF report from plugin results using WeasyPrint.
+    
+    Args:
+        plugin_results (list): List of plugin result dictionaries.
+        output_path (str): Path to save the generated PDF report.
+        target (str): Target URL/domain being scanned.
+    """
+    try:
+        from weasyprint import HTML, CSS
+        from weasyprint.text.fonts import FontConfiguration
+    except ImportError:
+        print("Error: WeasyPrint is not installed. Install it with: pip install weasyprint")
+        print("Note: WeasyPrint may require additional system dependencies.")
+        return
+    
+    # Prepare data similar to HTML report
+    all_issues = []
+    detailed_results = {}
+    plugin_executive_summaries = []
+
+    for plugin in plugin_results:
+        # Normalize plugin name from various possible fields
+        tool_name = plugin.get("plugin-name") or plugin.get("tool") or plugin.get("name", "Unknown Tool")
+        # Friendly reporter name
+        reported_by = (
+            plugin.get("plugin-display-name")
+            or plugin.get("display_name")
+            or plugin.get("plugin-description")
+            or tool_name
+        )
+        # Tool display name and purpose
+        display_name = (
+            plugin.get("plugin-display-name")
+            or plugin.get("display_name")
+            or plugin.get("plugin-description")
+            or tool_name
+        )
+        purpose = plugin.get("plugin-description") or plugin.get("description") or ""
+
+        # Collect executive summary
+        exec_summary = plugin.get("executive_summary", "")
+        if exec_summary:
+            plugin_executive_summaries.append({
+                "plugin_name": display_name,
+                "summary": format_multiline_text_as_list(exec_summary)
+            })
+
+        # For PDF, pre-render JSON structures
+        results_data = plugin.get("findings", {}).get("results") or plugin.get("results")
+        results_html = ""
+        if results_data:
+            results_html = format_json_for_pdf(results_data)
+
+        # Pass through fields for detailed results
+        detailed_results[tool_name] = {
+            "display_name": display_name,
+            "purpose": purpose,
+            "website_url": plugin.get("plugin-website-url"),
+            "summary": format_multiline_text(plugin.get("summary", "")),
+            "details": format_multiline_text(plugin.get("details", "")),
+            "report": format_multiline_text(plugin.get("report", "")),
+            "timestamp": plugin.get("timestamp"),
+            "disposition": plugin.get("findings", {}).get("disposition") or plugin.get("disposition"),
+            "results": None,  # Set to None for PDF mode to avoid JSON serialization issues
+            "results_html": results_html,  # Pre-rendered for PDF
+            "findings": plugin.get("findings"),
+            "findings_json": json.dumps(plugin.get("findings"), indent=2) if plugin.get("findings") else "",
+            "custom_html": plugin.get("custom_html", "")
+        }
+
+        # Handle issues
+        for issue in plugin.get("issues", []):
+            if isinstance(issue, str):
+                issue_dict = {"id": issue, "description": issue}
+            else:
+                issue_dict = issue
+
+            issue_id = issue_dict.get("id")
+            if isinstance(issue_id, str):
+                issue_id = issue_id.strip()
+
+            issue_metadata = get_issue_metadata(issue_id) if issue_id else None
+
+            if issue_metadata:
+                display_name = issue_metadata.get("display_name")
+                remediation = get_talking_point(issue_id)
+                severity = get_severity(issue_id)
+                category = get_category(issue_id)
+            else:
+                display_name = issue_id
+                remediation = "No specific remediation available"
+                severity = "Unknown"
+                category = "Uncategorized"
+                if issue_id:
+                    logger.warning(f"Issue ID '{issue_id}' not found in issue registry")
+
+            all_issues.append({
+                "id": issue_id,
+                "display_name": display_name,
+                "reported_by": reported_by,
+                "description": issue_dict.get("description", ""),
+                "remediation": remediation,
+                "severity": severity,
+                "category": category
+            })
+
+    # Sort issues by severity
+    severity_order = {"High": 0, "Medium": 1, "Low": 2, "Info": 3, "Unknown": 4}
+    all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "Unknown"), 4))
+    
+    # Generate executive summary
+    executive_summary = format_multiline_text_as_list(generate_executive_summary(all_issues))
+    
+    # Calculate severity counts
+    severity_counts = {
+        "High": sum(1 for issue in all_issues if issue.get("severity") == "High"),
+        "Medium": sum(1 for issue in all_issues if issue.get("severity") == "Medium"),
+        "Low": sum(1 for issue in all_issues if issue.get("severity") == "Low"),
+        "Info": sum(1 for issue in all_issues if issue.get("severity") == "Info"),
+    }
+    
+    # Prepare metadata
+    scan_metadata = {
+        "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total_issues": len(all_issues),
+        "total_plugins": len(plugin_results),
+        "severity_counts": severity_counts
+    }
+
+    # Convert images to base64 for embedding
+    assets_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets')
+    logo_path = os.path.join(assets_dir, 'kast-logo.png')
+    logo_base64 = image_to_base64(logo_path)
+
+    # Render HTML content using PDF-specific template
+    html_content = template_pdf.render(
+        executive_summary=executive_summary,
+        plugin_executive_summaries=plugin_executive_summaries,
+        issues=all_issues,
+        detailed_results=detailed_results,
+        target=target,
+        scan_metadata=scan_metadata,
+        logo_base64=logo_base64
+    )
+
+    # Set up base URL for resolving relative paths
+    base_url = f'file://{os.path.abspath(TEMPLATE_DIR)}/'
+    
+    # Configure fonts for proper rendering
+    font_config = FontConfiguration()
+    
+    # Load PDF-specific CSS with absolute path
+    css_path = os.path.join(TEMPLATE_DIR, 'kast_style_pdf.css')
+    css = CSS(filename=css_path, font_config=font_config)
+    
+    # Generate PDF
+    try:
+        html_obj = HTML(string=html_content, base_url=base_url)
+        html_obj.write_pdf(output_path, stylesheets=[css], font_config=font_config)
+        print(f"PDF report saved to {output_path}")
+    except Exception as e:
+        print(f"Error generating PDF: {e}")
+        logger.error(f"PDF generation failed: {e}", exc_info=True)
+        raise

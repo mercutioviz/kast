@@ -58,6 +58,12 @@ def parse_args():
         help="Report only mode (specify the output directory containing raw JSON files)"
     )
     parser.add_argument(
+        "--format",
+        choices=["html", "pdf", "both"],
+        default="html",
+        help="Output format for the report (default: html)"
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Dry run mode (show what would be done, but don't execute)"
@@ -328,21 +334,32 @@ def main():
         for pf in processed_files:
             console.print(f"  - {pf}")
         
-        # Generate HTML report
+        # Generate report(s) based on format option
         try:
-            report_path = output_dir / 'kast_report.html'
             plugin_results = []
             for pf in processed_files:
                 with open(pf) as f:
                     plugin_results.append(json.load(f))
             
-            from kast.report_builder import generate_html_report
-            generate_html_report(plugin_results, str(report_path), args.target)
-            console.print(f"[green]Report generated:[/green] {report_path}")
-            log.info(f"HTML report generated at {report_path}")
+            from kast.report_builder import generate_html_report, generate_pdf_report
+            
+            # Generate HTML report
+            if args.format in ['html', 'both']:
+                html_path = output_dir / 'kast_report.html'
+                generate_html_report(plugin_results, str(html_path), args.target)
+                console.print(f"[green]HTML report generated:[/green] {html_path}")
+                log.info(f"HTML report generated at {html_path}")
+            
+            # Generate PDF report
+            if args.format in ['pdf', 'both']:
+                pdf_path = output_dir / 'kast_report.pdf'
+                generate_pdf_report(plugin_results, str(pdf_path), args.target)
+                console.print(f"[green]PDF report generated:[/green] {pdf_path}")
+                log.info(f"PDF report generated at {pdf_path}")
+                
         except Exception as e:
             console.print(f"[bold red]Error generating report:[/bold red] {str(e)}")
-            log.exception("Failed to generate HTML report")
+            log.exception("Failed to generate report")
 
 if __name__ == "__main__":
     main()

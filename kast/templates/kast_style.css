@@ -342,3 +342,96 @@ code {
 .details-toggle:active, .raw-toggle:active {
   transform: translateY(0);
 }
+
+/* PDF-specific print styles */
+@media print {
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 2cm;
+  }
+  
+  /* Reset background for print */
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Adjust header for print */
+  .report-header {
+    background: #0c4a6e;
+    page-break-after: avoid;
+  }
+  
+  /* Control page breaks - avoid breaking within these elements */
+  .issue, .tool-section, .severity-badge {
+    page-break-inside: avoid;
+  }
+  
+  /* Keep headers with their content */
+  h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  /* Show all collapsible content */
+  .details-collapsible, .raw-collapsible {
+    display: block !important;
+  }
+  
+  /* Hide interactive buttons in PDF */
+  .details-toggle, .raw-toggle {
+    display: none;
+  }
+  
+  /* Remove hover effects */
+  .severity-badge:hover, .tool-section:hover, 
+  .details-toggle:hover, .raw-toggle:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  /* Ensure colors are preserved */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* Adjust footer for print */
+  .report-footer {
+    page-break-before: auto;
+    margin-top: 2em;
+  }
+  
+  /* Ensure proper spacing for executive summary */
+  .plugin-executive-summary, .executive-summary-list {
+    page-break-inside: avoid;
+  }
+  
+  /* JSON display formatting for PDF */
+  .json-display {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    background: #f8f9fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 4px;
+    padding: 1em;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    page-break-inside: auto;
+  }
+  
+  /* Tree view adjustments for PDF */
+  .tree-view {
+    page-break-inside: auto;
+  }
+  
+  .tree-toggle {
+    display: none;
+  }
+  
+  .tree-children {
+    display: block !important;
+  }
+}

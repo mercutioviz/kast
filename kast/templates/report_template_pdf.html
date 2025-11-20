@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KAST Security Scan Report{% if target %} - {{ target }}{% endif %}</title>
+    <link rel="stylesheet" href="kast_style_pdf.css">
+</head>
+<body>
+    <!-- Report Cover Page -->
+    <div class="cover-page">
+        <div class="cover-header">
+            {% if logo_base64 %}
+            <img src="{{ logo_base64 }}" alt="KAST Logo" class="cover-logo">
+            {% endif %}
+            <h1 class="cover-title">Security Scan Report</h1>
+        </div>
+        
+        <div class="cover-metadata">
+            <div class="cover-target">
+                <span class="label">Target:</span>
+                <span class="value">{{ target }}</span>
+            </div>
+            <div class="cover-date">
+                <span class="label">Scan Date:</span>
+                <span class="value">{{ scan_metadata.scan_date }}</span>
+            </div>
+        </div>
+        
+        <!-- Severity Summary on Cover -->
+        <div class="cover-summary">
+            <h2>Summary of Findings</h2>
+            <div class="severity-grid">
+                <div class="severity-card high">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.High }}</div>
+                    <div class="severity-label">High Severity</div>
+                </div>
+                <div class="severity-card medium">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Medium }}</div>
+                    <div class="severity-label">Medium Severity</div>
+                </div>
+                <div class="severity-card low">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Low }}</div>
+                    <div class="severity-label">Low Severity</div>
+                </div>
+                <div class="severity-card info">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Info }}</div>
+                    <div class="severity-label">Informational</div>
+                </div>
+            </div>
+            <div class="total-summary">
+                <strong>Total Issues:</strong> {{ scan_metadata.total_issues }} |
+                <strong>Plugins Run:</strong> {{ scan_metadata.total_plugins }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Break after cover -->
+    <div class="page-break"></div>
+
+    <!-- Executive Summary Section -->
+    <div class="section">
+        <h1 class="section-title">Executive Summary</h1>
+        
+        {% if plugin_executive_summaries %}
+        <h2 class="subsection-title">Scan Findings</h2>
+        {% for plugin_summary in plugin_executive_summaries %}
+        <div class="executive-summary-block">
+            <h3 class="plugin-name">{{ plugin_summary.plugin_name }}</h3>
+            {{ plugin_summary.summary|safe }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        <h2 class="subsection-title">Potential Issues</h2>
+        <div class="executive-summary-content">
+            {{ executive_summary|safe }}
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Issues Found Section -->
+    <div class="section">
+        <h1 class="section-title">Issues Found</h1>
+        
+        {% if not issues %}
+        <p class="no-issues">No security issues were identified during this scan.</p>
+        {% else %}
+        
+        <!-- Group issues by severity -->
+        {% set high_issues = issues|selectattr("severity", "equalto", "High")|list %}
+        {% set medium_issues = issues|selectattr("severity", "equalto", "Medium")|list %}
+        {% set low_issues = issues|selectattr("severity", "equalto", "Low")|list %}
+        {% set info_issues = issues|selectattr("severity", "equalto", "Info")|list %}
+        
+        {% if high_issues %}
+        <h2 class="severity-heading high-heading">High Severity Issues</h2>
+        {% for issue in high_issues %}
+        <div class="issue-card high-issue">
+            <div class="issue-header">
+                <span class="issue-title">{{ issue.display_name if issue.display_name else issue.id }}</span>
+                <span class="issue-category">{{ issue.category }}</span>
+            </div>
+            <div class="issue-meta">
+                <strong>Reported by:</strong> {{ issue.reported_by }}
+            </div>
+            {% if issue.description and issue.description != issue.id %}
+            <div class="issue-description">{{ issue.description }}</div>
+            {% endif %}
+            <div class="issue-remediation">
+                <strong>Remediation:</strong> {{ issue.remediation }}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if medium_issues %}
+        <h2 class="severity-heading medium-heading">Medium Severity Issues</h2>
+        {% for issue in medium_issues %}
+        <div class="issue-card medium-issue">
+            <div class="issue-header">
+                <span class="issue-title">{{ issue.display_name if issue.display_name else issue.id }}</span>
+                <span class="issue-category">{{ issue.category }}</span>
+            </div>
+            <div class="issue-meta">
+                <strong>Reported by:</strong> {{ issue.reported_by }}
+            </div>
+            {% if issue.description and issue.description != issue.id %}
+            <div class="issue-description">{{ issue.description }}</div>
+            {% endif %}
+            <div class="issue-remediation">
+                <strong>Remediation:</strong> {{ issue.remediation }}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if low_issues %}
+        <h2 class="severity-heading low-heading">Low Severity Issues</h2>
+        {% for issue in low_issues %}
+        <div class="issue-card low-issue">
+            <div class="issue-header">
+                <span class="issue-title">{{ issue.display_name if issue.display_name else issue.id }}</span>
+                <span class="issue-category">{{ issue.category }}</span>
+            </div>
+            <div class="issue-meta">
+                <strong>Reported by:</strong> {{ issue.reported_by }}
+            </div>
+            {% if issue.description and issue.description != issue.id %}
+            <div class="issue-description">{{ issue.description }}</div>
+            {% endif %}
+            <div class="issue-remediation">
+                <strong>Remediation:</strong> {{ issue.remediation }}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if info_issues %}
+        <h2 class="severity-heading info-heading">Informational</h2>
+        {% for issue in info_issues %}
+        <div class="issue-card info-issue">
+            <div class="issue-header">
+                <span class="issue-title">{{ issue.display_name if issue.display_name else issue.id }}</span>
+                <span class="issue-category">{{ issue.category }}</span>
+            </div>
+            <div class="issue-meta">
+                <strong>Reported by:</strong> {{ issue.reported_by }}
+            </div>
+            {% if issue.description and issue.description != issue.id %}
+            <div class="issue-description">{{ issue.description }}</div>
+            {% endif %}
+            <div class="issue-remediation">
+                <strong>Remediation:</strong> {{ issue.remediation }}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% endif %}
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Detailed Results Section -->
+    <div class="section">
+        <h1 class="section-title">Detailed Results by Tool</h1>
+        
+        {% for tool, result in detailed_results.items() %}
+        <div class="tool-block">
+            <h2 class="tool-name">{{ result.display_name if result.display_name else tool }}</h2>
+            
+            <div class="tool-info">
+                <div class="tool-purpose">
+                    <strong>Purpose:</strong> {{ result.purpose }}
+                </div>
+                {% if result.website_url %}
+                <div class="tool-url">
+                    <strong>Website:</strong> {{ result.website_url }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="tool-summary">
+                <strong>Summary:</strong>
+                {{ result.summary|safe }}
+            </div>
+            
+            {% if result.custom_html %}
+            <div class="tool-custom">
+                {{ result.custom_html|safe }}
+            </div>
+            {% endif %}
+            
+            <div class="tool-details">
+                <div class="detail-row">
+                    <strong>Timestamp:</strong> {{ result.timestamp }}
+                </div>
+                <div class="detail-row">
+                    <strong>Disposition:</strong> {{ result.disposition }}
+                </div>
+                {% if result.details %}
+                <div class="detail-row">
+                    <strong>Details:</strong>
+                    {{ result.details|safe }}
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if result.results_html %}
+            <div class="tool-results">
+                <strong>Results:</strong>
+                <div class="json-display">{{ result.results_html|safe }}</div>
+            </div>
+            {% endif %}
+            
+            {% if result.report %}
+            <div class="tool-report">
+                <strong>Report Notes:</strong>
+                {{ result.report|safe }}
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if not loop.last %}
+        <div class="tool-separator"></div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Page Footer (repeated on each page via CSS) -->
+    <div class="page-footer">
+        <div class="footer-left">
+            {% if logo_base64 %}
+            <img src="{{ logo_base64 }}" alt="KAST" class="footer-logo">
+            {% endif %}
+            <span>KAST Security Scanner</span>
+        </div>
+        <div class="footer-center">
+            <span>{{ target }}</span>
+        </div>
+        <div class="footer-right">
+            <span>Generated: {{ scan_metadata.scan_date }}</span>
+        </div>
+    </div>
+</body>
+</html>
