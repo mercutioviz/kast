@@ -169,12 +169,34 @@
 
     <div class="page-break"></div>
 
-    <!-- Detailed Tool Results -->
+    <!-- Tool Index Page -->
     <div class="section">
         <h1 class="section-title">Detailed Results by Tool</h1>
         
+        <div class="tool-index">
+            <p class="tool-index-intro">This section provides detailed results from each security tool that was executed during the scan. Click on any tool name below to navigate directly to its results.</p>
+            
+            <div class="tool-index-grid">
+                {% for tool_name, tool in detailed_results.items() %}
+                <div class="tool-index-item">
+                    <a href="#tool-{{ tool_name|lower|replace(' ', '-')|replace('.', '-') }}" class="tool-index-link">
+                        <div class="tool-index-name">{{ tool.display_name if tool.display_name else tool_name }}</div>
+                        {% if tool.purpose %}
+                        <div class="tool-index-purpose">{{ tool.purpose }}</div>
+                        {% endif %}
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Detailed Tool Results -->
+    <div class="section">
         {% for tool_name, tool in detailed_results.items() %}
-        <div class="tool">
+        <div class="tool" id="tool-{{ tool_name|lower|replace(' ', '-')|replace('.', '-') }}">
             <h2 class="tool-name">{{ tool.display_name if tool.display_name else tool_name }}</h2>
             
             <div class="tool-info">

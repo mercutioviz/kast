@@ -223,6 +223,61 @@ body {
     border-radius: 3px;
 }
 
+/* ===== TOOL INDEX ===== */
+.tool-index {
+    margin: 2em 0;
+}
+
+.tool-index-intro {
+    margin-bottom: 2em;
+    padding: 1em;
+    background: #e7f5ff;
+    border-left: 4px solid #1971c2;
+    border-radius: 4px;
+    font-size: 10pt;
+    line-height: 1.6;
+}
+
+.tool-index-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1em;
+    margin-bottom: 2em;
+}
+
+.tool-index-item {
+    page-break-inside: avoid;
+}
+
+.tool-index-link {
+    display: block;
+    padding: 1em;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+}
+
+.tool-index-link:hover {
+    background: #e9ecef;
+    border-color: #083344;
+}
+
+.tool-index-name {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #083344;
+    margin-bottom: 0.5em;
+}
+
+.tool-index-purpose {
+    font-size: 9pt;
+    color: #495057;
+    line-height: 1.4;
+}
+
 /* ===== TOOL RESULTS ===== */
 .tool {
     margin-bottom: 2em;

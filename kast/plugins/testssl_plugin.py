@@ -138,6 +138,38 @@ class TestsslPlugin(KastPlugin):
         
         scan_data = scan_results[0] if scan_results else {}
         
+        # Check for scan problems (connection failures, etc.)
+        if scan_data.get("id") == "scanProblem" and scan_data.get("severity") == "FATAL":
+            scan_problem_msg = scan_data.get("finding", "Unknown scan problem")
+            self.debug(f"Scan problem detected: {scan_problem_msg}")
+            
+            # Set concise summary for connection failures
+            summary = "Unable to complete TLS scan."
+            
+            # Format command for report notes
+            report_notes = self._format_command_for_report()
+            
+            # Build processed result for scan failure
+            processed = {
+                "plugin-name": self.name,
+                "plugin-description": self.description,
+                "plugin-display-name": getattr(self, 'display_name', None),
+                "plugin-website-url": getattr(self, 'website_url', None),
+                "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "findings": findings,
+                "summary": summary or f"{self.name} did not produce any findings",
+                "details": f"Unable to complete SSL/TLS scan:\n\n{scan_problem_msg}",
+                "issues": [],
+                "executive_summary": f"SSL/TLS scan could not be completed. {scan_problem_msg}",
+                "report": report_notes
+            }
+            
+            processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
+            with open(processed_path, "w") as f:
+                json.dump(processed, f, indent=2)
+            
+            return processed_path
+        
         # Extract vulnerabilities and cipher tests
         vulnerabilities = scan_data.get("vulnerabilities", [])
         cipher_tests = scan_data.get("cipherTests", [])
