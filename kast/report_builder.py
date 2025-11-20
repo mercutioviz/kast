@@ -16,10 +16,51 @@ from kast.report_templates import (
 # Logger for warnings when registry entries are missing
 logger = logging.getLogger(__name__)
 
+def add_word_break_opportunities(text):
+    """
+    Add word-break opportunities (<wbr> tags) to long strings, especially URLs.
+    This helps prevent overflow in PDF rendering.
+    HTML-aware: doesn't insert <wbr> inside HTML tags.
+    
+    Args:
+        text (str): The text to process
+        
+    Returns:
+        str: Text with <wbr> tags inserted at appropriate break points
+    """
+    if not text or len(text) < 80:
+        return text
+    
+    result = []
+    inside_tag = False
+    i = 0
+    
+    while i < len(text):
+        char = text[i]
+        
+        # Track if we're inside an HTML tag
+        if char == '<':
+            inside_tag = True
+            result.append(char)
+        elif char == '>':
+            inside_tag = False
+            result.append(char)
+        # Only add <wbr> after delimiters if we're NOT inside an HTML tag
+        elif not inside_tag and char in ['/', '?', '&', '=', '-', '_', '.', ':', ';', ',']:
+            result.append(char)
+            result.append('<wbr>')
+        else:
+            result.append(char)
+        
+        i += 1
+    
+    return ''.join(result)
+
 def format_multiline_text(text):
     """
     Converts newline-separated text or lists into HTML paragraphs.
     Handles both string input (split by newlines) and list input.
+    Adds word-break opportunities for long strings (like URLs).
     """
     if not text:
         return ""
@@ -31,12 +72,28 @@ def format_multiline_text(text):
     else:
         paragraphs = str(text).split('\n')
     
-    return '\n'.join(f'<p class="report-paragraph">{p}</p>' for p in paragraphs if str(p).strip())
+    # Add word-break opportunities to each paragraph to handle long URLs
+    formatted_paragraphs = []
+    for p in paragraphs:
+        if str(p).strip():
+            # Add word-break opportunities for long strings
+            formatted_p = add_word_break_opportunities(str(p))
+            formatted_paragraphs.append(f'<p class="report-paragraph">{formatted_p}</p>')
+    
+    return '\n'.join(formatted_paragraphs)
 
-def format_multiline_text_as_list(text):
+def generate_tool_anchor_id(tool_name):
+    """
+    Generate an anchor ID for a tool section that matches the template format.
+    Converts tool name to lowercase and replaces spaces and dots with hyphens.
+    """
+    return tool_name.lower().replace(' ', '-').replace('.', '-')
+
+def format_multiline_text_as_list(text, tool_name=None):
     """
     Converts newline-separated text or lists into HTML bulleted list.
     Handles both string input (split by newlines) and list input.
+    If tool_name is provided, wraps it in an anchor link.
     """
     if not text:
         return ""
@@ -54,7 +111,18 @@ def format_multiline_text_as_list(text):
     if not items:
         return ""
     
-    list_items = '\n'.join(f'<li>{item}</li>' for item in items)
+    # If tool_name is provided, add anchor link to each item
+    if tool_name:
+        tool_anchor = generate_tool_anchor_id(tool_name)
+        formatted_items = []
+        for item in items:
+            # Wrap the entire item text in an anchor link
+            linked_item = f'<a href="#tool-{tool_anchor}" style="color: inherit; text-decoration: underline; cursor: pointer;">{item}</a>'
+            formatted_items.append(f'<li>{linked_item}</li>')
+        list_items = '\n'.join(formatted_items)
+    else:
+        list_items = '\n'.join(f'<li>{item}</li>' for item in items)
+    
     return f'<ul class="executive-summary-list">\n{list_items}\n</ul>'
 
 # Set up Jinja2 environment
@@ -104,7 +172,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         if exec_summary:
             plugin_executive_summaries.append({
                 "plugin_name": display_name,
-                "summary": format_multiline_text_as_list(exec_summary)
+                "summary": format_multiline_text_as_list(exec_summary, tool_name)
             })
 
         # Pass through extra fields for collapsible details
@@ -299,10 +367,20 @@ def format_json_for_pdf(data, max_depth=3, current_depth=0):
             return '<div class="json-array">[<div class="json-contents">' + ''.join(items) + '</div>]</div>'
         
         elif isinstance(data, str):
-            # Escape HTML and limit very long strings
+            # Escape HTML
             escaped = data.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            if len(escaped) > 200:
-                escaped = escaped[:200] + '...'
+            
+            # For very long strings (like URLs), add word-break opportunities
+            # Add <wbr> (word break opportunity) tags after common URL delimiters
+            if len(escaped) > 80:
+                # Add break opportunities after URL-like characters
+                for char in ['/', '?', '&', '=', '-', '_', '.', ':', ';', ',']:
+                    escaped = escaped.replace(char, char + '<wbr>')
+            
+            # Still truncate extremely long strings but with higher limit
+            if len(escaped) > 500:
+                escaped = escaped[:500] + '...'
+            
             return f'<span class="json-string">"{escaped}"</span>'
         
         elif isinstance(data, bool):

@@ -50,34 +50,34 @@
 
     <!-- Severity Summary Badges -->
     <div class="severity-badges">
-        <div class="severity-badge severity-badge-high">
+        <a href="#high-issues" class="severity-badge severity-badge-high" style="text-decoration: none; color: inherit; cursor: pointer;">
             <span class="badge-icon">🔴</span>
             <div class="badge-content">
                 <span class="badge-count">{{ scan_metadata.severity_counts.High }}</span>
                 <span class="badge-label">High</span>
             </div>
-        </div>
-        <div class="severity-badge severity-badge-medium">
+        </a>
+        <a href="#medium-issues" class="severity-badge severity-badge-medium" style="text-decoration: none; color: inherit; cursor: pointer;">
             <span class="badge-icon">🟠</span>
             <div class="badge-content">
                 <span class="badge-count">{{ scan_metadata.severity_counts.Medium }}</span>
                 <span class="badge-label">Medium</span>
             </div>
-        </div>
-        <div class="severity-badge severity-badge-low">
+        </a>
+        <a href="#low-issues" class="severity-badge severity-badge-low" style="text-decoration: none; color: inherit; cursor: pointer;">
             <span class="badge-icon">🟡</span>
             <div class="badge-content">
                 <span class="badge-count">{{ scan_metadata.severity_counts.Low }}</span>
                 <span class="badge-label">Low</span>
             </div>
-        </div>
-        <div class="severity-badge severity-badge-info">
+        </a>
+        <a href="#info-issues" class="severity-badge severity-badge-info" style="text-decoration: none; color: inherit; cursor: pointer;">
             <span class="badge-icon">🔵</span>
             <div class="badge-content">
                 <span class="badge-count">{{ scan_metadata.severity_counts.Info }}</span>
                 <span class="badge-label">Info</span>
             </div>
-        </div>
+        </a>
     </div>
 
     <h2><span class="section-icon">🛡️</span> Executive Summary</h2>
@@ -95,17 +95,24 @@
     {{ executive_summary|safe }}
 
     <h2><span class="section-icon">⚠️</span> Issues Found</h2>
-    {% for issue in issues %}
-    <div class="issue severity-{{ issue.severity|lower }}">
-        <strong>{{ issue.display_name if issue.display_name else issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
-    <em>Reported by: {{ issue.reported_by }} (issue id: {{ issue.id }})</em><br>
-    <span>Remediation: {{ issue.remediation }}</span>
-    </div>
+    {% set severity_levels = ['High', 'Medium', 'Low', 'Info'] %}
+    {% for severity in severity_levels %}
+        {% set severity_issues = issues | selectattr('severity', 'equalto', severity) | list %}
+        {% if severity_issues %}
+        <h3 id="{{ severity|lower }}-issues" style="margin-top: 1.5em; color: #1e40af;">{{ severity }} Severity Issues</h3>
+        {% for issue in severity_issues %}
+        <div class="issue severity-{{ issue.severity|lower }}">
+            <strong>{{ issue.display_name if issue.display_name else issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
+        <em>Reported by: {{ issue.reported_by }} (issue id: {{ issue.id }})</em><br>
+        <span>Remediation: {{ issue.remediation }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
     {% endfor %}
 
     <h2><span class="section-icon">🔍</span> Detailed Results by Tool</h2>
     {% for tool, result in detailed_results.items() %}
-    <div class="tool-section">
+    <div class="tool-section" id="tool-{{ tool|lower|replace(' ', '-')|replace('.', '-') }}">
         <h3>
         {% if result.website_url %}
             <a href="{{ result.website_url }}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
