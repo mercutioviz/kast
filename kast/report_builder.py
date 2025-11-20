@@ -374,6 +374,9 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
         if results_data:
             results_html = format_json_for_pdf(results_data)
 
+        # Use PDF-specific custom HTML if available, otherwise fall back to regular custom HTML
+        custom_html_for_pdf = plugin.get("custom_html_pdf") or plugin.get("custom_html", "")
+        
         # Pass through fields for detailed results
         detailed_results[tool_name] = {
             "display_name": display_name,
@@ -388,7 +391,7 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
             "results_html": results_html,  # Pre-rendered for PDF
             "findings": plugin.get("findings"),
             "findings_json": json.dumps(plugin.get("findings"), indent=2) if plugin.get("findings") else "",
-            "custom_html": plugin.get("custom_html", ""),
+            "custom_html": custom_html_for_pdf,  # Use PDF version for PDF reports
             "results_message": plugin.get("results_message")  # Custom message for results section
         }
 

@@ -101,10 +101,15 @@ class KatanaPlugin(KastPlugin):
                 results=str(e)
             )
 
-    def post_process(self, raw_output, output_dir):
+    def post_process(self, raw_output, output_dir, pdf_mode=False):
         """
         Normalize output, extract issues, and build executive_summary.
         Parse katana output to extract only URL paths after the target domain.
+        
+        Args:
+            raw_output: Raw plugin output
+            output_dir: Directory containing output files
+            pdf_mode: If True, generate PDF-friendly truncated output
         """
         self.debug(f"{self.name} post_process called with raw_output type: {type(raw_output)}")
         self.debug(f"{self.name} post_process raw_output: {pformat(raw_output)}")
@@ -151,8 +156,9 @@ class KatanaPlugin(KastPlugin):
         summary = self._generate_summary(parsed_urls)
         executive_summary = self._generate_executive_summary(parsed_urls)
         
-        # Generate custom HTML for URL display
+        # Generate both HTML and PDF versions of URL display
         custom_html = self._generate_url_display_html(parsed_urls)
+        custom_html_pdf = self._generate_pdf_url_list(parsed_urls)
         
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
@@ -174,6 +180,7 @@ class KatanaPlugin(KastPlugin):
             "executive_summary": executive_summary,
             "report": report_notes,
             "custom_html": custom_html,
+            "custom_html_pdf": custom_html_pdf,
             "results_message": "📋 View URL details below"
         }
 
@@ -402,3 +409,40 @@ class KatanaPlugin(KastPlugin):
             'Other': '📦'
         }
         return icons.get(group_name, '📄')
+
+    def _generate_pdf_url_list(self, parsed_urls, max_urls=75):
+        """
+        Generate a PDF-friendly truncated URL list.
+        Shows the first max_urls URLs in a simple list format with a truncation notice.
+        
+        Args:
+            parsed_urls: List of URL paths
+            max_urls: Maximum number of URLs to display (default: 75)
+            
+        Returns:
+            HTML string with truncated URL list
+        """
+        if not parsed_urls:
+            return "<p>No URLs found.</p>"
+        
+        total_count = len(parsed_urls)
+        display_urls = parsed_urls[:max_urls]
+        truncated_count = total_count - len(display_urls)
+        
+        html = '<div class="pdf-url-list">'
+        html += f'<div class="pdf-url-header"><strong>Discovered URLs</strong> (showing {len(display_urls)} of {total_count})</div>'
+        html += '<ul class="pdf-url-items">'
+        
+        for url in display_urls:
+            # Escape HTML characters in URL
+            safe_url = url.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            html += f'<li class="pdf-url-item"><code>{safe_url}</code></li>'
+        
+        html += '</ul>'
+        
+        if truncated_count > 0:
+            html += f'<div class="pdf-url-truncation">📋 <strong>Note:</strong> {truncated_count} additional URL(s) not shown in PDF. View the full interactive HTML report for complete URL list with search and filtering capabilities.</div>'
+        
+        html += '</div>'
+        
+        return html
