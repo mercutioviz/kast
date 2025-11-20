@@ -173,7 +173,8 @@ class KatanaPlugin(KastPlugin):
             "issues": issues,
             "executive_summary": executive_summary,
             "report": report_notes,
-            "custom_html": custom_html
+            "custom_html": custom_html,
+            "results_message": "📋 View URL details below"
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")

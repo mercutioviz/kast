@@ -119,7 +119,8 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
             "disposition": plugin.get("findings", {}).get("disposition") or plugin.get("disposition"),
             "results": plugin.get("findings", {}).get("results") or plugin.get("results"),
             "findings": plugin.get("findings"),
-            "custom_html": plugin.get("custom_html", "")
+            "custom_html": plugin.get("custom_html", ""),
+            "results_message": plugin.get("results_message")  # Custom message for results section
         }
 
         # Handle both string and dict issues
@@ -387,7 +388,8 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
             "results_html": results_html,  # Pre-rendered for PDF
             "findings": plugin.get("findings"),
             "findings_json": json.dumps(plugin.get("findings"), indent=2) if plugin.get("findings") else "",
-            "custom_html": plugin.get("custom_html", "")
+            "custom_html": plugin.get("custom_html", ""),
+            "results_message": plugin.get("results_message")  # Custom message for results section
         }
 
         # Handle issues

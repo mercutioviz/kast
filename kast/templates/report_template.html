@@ -117,11 +117,6 @@
         </h3>
         <p><strong>Purpose:</strong> {{ result.purpose }}</p>
         <p><strong>Summary:</strong> {{ result.summary|safe }}</p>
-        {% if result.custom_html %}
-        <div class="custom-html-section">
-        {{ result.custom_html|safe }}
-        </div>
-        {% endif %}
         <div>
             <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
             <div class="details-collapsible" style="display:none; margin-top:0.5em;">
@@ -131,12 +126,19 @@
                 <div><strong>Details:</strong> {{ result.details|safe }}</div>
                 {% endif %}
                 <div><strong>Results:</strong>
-                    {% if pdf_mode and result.results_html %}
+                    {% if result.results_message %}
+                    <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">{{ result.results_message }}</div>
+                    {% elif pdf_mode and result.results_html %}
                     <div class="json-display">{{ result.results_html|safe }}</div>
                     {% else %}
                     <div class="tree-json" data-json='{{ result.results | tojson }}'></div>
                     {% endif %}
                 </div>
+                {% if result.custom_html %}
+                <div class="custom-html-section" style="margin-top: 1em;">
+                {{ result.custom_html|safe }}
+                </div>
+                {% endif %}
                 <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
                 <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{{ result.findings | tojson(indent=2) }}</pre>
             </div>
