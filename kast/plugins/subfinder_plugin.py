@@ -100,9 +100,14 @@ class SubfinderPlugin(KastPlugin):
                 results=str(e)
             )
 
-    def post_process(self, raw_output, output_dir):
+    def post_process(self, raw_output, output_dir, pdf_mode=False):
         """
         Normalize output, extract issues, and build executive_summary.
+        
+        Args:
+            raw_output: Raw plugin output
+            output_dir: Directory containing output files
+            pdf_mode: If True, generate PDF-friendly truncated output
         """
         # Load input if path to a file
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
@@ -122,13 +127,29 @@ class SubfinderPlugin(KastPlugin):
         findings = self._deduplicate_findings(findings)
         self.debug(f"{self.name} deduplicated findings:\n{pformat(findings)}")
 
+        # Extract subdomain data
+        results = findings.get("results", []) if isinstance(findings, dict) else []
+        subdomains = []
+        for entry in results:
+            host = entry.get("host", "")
+            source = entry.get("source", "unknown")
+            subdomains.append({"host": host, "source": source})
+        
+        # Sort by host name
+        subdomains.sort(key=lambda x: x["host"])
+
         # Initialize issues and details
         issues = []
-        details = ""
+        subdomain_count = len(subdomains)
+        details = f"Detected {subdomain_count} unique subdomain(s)."
 
         summary = self._generate_summary(findings)
         executive_summary = self._generate_executive_summary(findings)
-        custom_html = self._generate_custom_html(findings)
+        
+        # Generate both HTML and PDF versions of subdomain display
+        custom_html = self._generate_subdomain_display_html(subdomains)
+        custom_html_pdf = self._generate_pdf_subdomain_list(subdomains)
+        
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -147,8 +168,10 @@ class SubfinderPlugin(KastPlugin):
             "details": details,
             "issues": issues,
             "executive_summary": executive_summary,
+            "report": report_notes,
             "custom_html": custom_html,
-            "report": report_notes
+            "custom_html_pdf": custom_html_pdf,
+            "results_message": "📋 View subdomain details below"
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -181,19 +204,7 @@ class SubfinderPlugin(KastPlugin):
             return "No subdomains detected"
 
         count = len(detected_subdomains)
-        
-        # Generate a concise summary instead of listing all subdomains
-        # The full list is available in the custom HTML table below
-        if count <= 10:
-            # For small numbers, we can list them
-            subdomain_names = detected_subdomains
-            summary_text = f"Detected {count} subdomain(s): {', '.join(subdomain_names)}"
-        else:
-            # For large numbers, just show the count and refer to the table
-            summary_text = f"Detected {count} unique subdomain(s). See the table below for the complete list."
-        
-        self.debug(f"Generated summary: {summary_text}")
-        return summary_text
+        return f"Detected {count} unique subdomain(s)."
 
     def _generate_executive_summary(self, findings):
         """
@@ -256,189 +267,399 @@ class SubfinderPlugin(KastPlugin):
         
         return findings
 
-    def _generate_custom_html(self, findings):
+    def _group_subdomains_by_source(self, subdomains):
         """
-        Generate custom HTML for displaying subdomains in a sortable table with pagination.
+        Group subdomains by their source.
+        Returns a dictionary where keys are source names and values are lists of subdomains.
         """
-        results = findings.get("results", []) if isinstance(findings, dict) else []
+        groups = {}
         
-        if not results:
-            return ""
+        for subdomain in subdomains:
+            source = subdomain['source']
+            if source not in groups:
+                groups[source] = []
+            groups[source].append(subdomain)
         
-        # Extract subdomain data
-        subdomains = []
-        for entry in results:
-            host = entry.get("host", "")
-            source = entry.get("source", "unknown")
-            subdomains.append({"host": host, "source": source})
-        
-        # Sort by host name
-        subdomains.sort(key=lambda x: x["host"])
-        
-        # Generate HTML
-        html = """
-<div class="subfinder-table-container">
-    <div style="margin-bottom: 1em;">
-        <button id="subfinder-toggle-btn" onclick="toggleSubfinderTable()" 
-                style="padding: 0.5em 1em; background: #075985; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 1em;">
-            Hide Table
-        </button>
-        <span style="color: #365b6a; font-weight: bold;">
-            <span id="subfinder-total-count">0</span> subdomains found
-        </span>
-    </div>
-    <div id="subfinder-table-wrapper">
-        <div style="margin-bottom: 1em;">
-            <input type="text" id="subfinder-search" placeholder="Search subdomains..." 
-                   style="padding: 0.5em; width: 300px; border: 1px solid #cfe6fb; border-radius: 4px;">
-            <span style="margin-left: 1em; color: #365b6a;">
-                Showing <span id="subfinder-visible-count">0</span> of <span id="subfinder-total-count-2">0</span> subdomains
-            </span>
-        </div>
-    <table id="subfinder-table" style="width: 100%; border-collapse: collapse; background: white;">
-        <thead>
-            <tr style="background: #e6f0fa; border-bottom: 2px solid #075985;">
-                <th style="padding: 0.75em; text-align: left; cursor: pointer; user-select: none;" onclick="sortSubfinderTable(0)">
-                    Subdomain <span id="sort-icon-0">▼</span>
-                </th>
-                <th style="padding: 0.75em; text-align: left; cursor: pointer; user-select: none;" onclick="sortSubfinderTable(1)">
-                    Source <span id="sort-icon-1"></span>
-                </th>
-            </tr>
-        </thead>
-        <tbody id="subfinder-tbody">
-"""
-        
-        # Add rows
-        for i, subdomain in enumerate(subdomains):
-            row_class = "subfinder-row" + (" subfinder-hidden" if i >= 50 else "")
-            html += f"""
-            <tr class="{row_class}" style="border-bottom: 1px solid #e6eef6;">
-                <td style="padding: 0.5em; font-family: monospace;">{subdomain['host']}</td>
-                <td style="padding: 0.5em; color: #365b6a;">{subdomain['source']}</td>
-            </tr>
-"""
-        
-        html += """
-        </tbody>
-    </table>
-    <div id="subfinder-show-more" style="margin-top: 1em; text-align: center;">
-        <button onclick="showAllSubfinderRows()" style="padding: 0.5em 1.5em; background: #075985; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Show All Results
-        </button>
-    </div>
-    </div>
-</div>
+        return groups
 
-<script>
-(function() {
-    let subfinderSortOrder = [1, 0]; // [column, direction] - 0: asc, 1: desc
-    let subfinderTableVisible = true;
-    
-    window.toggleSubfinderTable = function() {
-        const wrapper = document.getElementById('subfinder-table-wrapper');
-        const btn = document.getElementById('subfinder-toggle-btn');
-        subfinderTableVisible = !subfinderTableVisible;
-        
-        if (subfinderTableVisible) {
-            wrapper.style.display = 'block';
-            btn.textContent = 'Hide Table';
-        } else {
-            wrapper.style.display = 'none';
-            btn.textContent = 'Show Table';
+    def _get_source_icon(self, source_name):
+        """
+        Return an appropriate icon emoji for the source type.
+        """
+        icons = {
+            'censys': '🔍',
+            'certspotter': '📜',
+            'crtsh': '🔐',
+            'dnsdumpster': '💾',
+            'hackertarget': '🎯',
+            'rapiddns': '⚡',
+            'securitytrails': '🛡️',
+            'shodan': '🔎',
+            'threatcrowd': '👥',
+            'virustotal': '🦠',
+            'wayback': '🕰️',
+            'alienvault': '👽',
+            'binaryedge': '🔢',
+            'bufferover': '📊',
+            'urlscan': '🌐',
+            'unknown': '❓'
         }
-    };
-    
-    function updateSubfinderCount() {
-        const rows = document.querySelectorAll('#subfinder-tbody tr');
-        const visibleRows = document.querySelectorAll('#subfinder-tbody tr:not(.subfinder-hidden)');
-        const totalCount = rows.length;
-        document.getElementById('subfinder-total-count').textContent = totalCount;
-        document.getElementById('subfinder-total-count-2').textContent = totalCount;
-        document.getElementById('subfinder-visible-count').textContent = visibleRows.length;
+        return icons.get(source_name.lower(), '🔸')
+
+    def _generate_group_html(self, group_name, subdomains, group_id):
+        """
+        Generate HTML for a single subdomain group with pagination.
+        """
+        subdomains_per_page = 50
+        total_subdomains = len(subdomains)
+        total_pages = (total_subdomains + subdomains_per_page - 1) // subdomains_per_page
         
-        // Hide "Show All" button if all rows are visible
-        const showMoreDiv = document.getElementById('subfinder-show-more');
-        if (visibleRows.length === rows.length) {
-            showMoreDiv.style.display = 'none';
-        } else {
-            showMoreDiv.style.display = 'block';
-        }
-    }
-    
-    window.sortSubfinderTable = function(column) {
-        const tbody = document.getElementById('subfinder-tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+        # Generate icon based on source type
+        icon = self._get_source_icon(group_name)
         
-        // Toggle sort direction if same column, otherwise default to ascending
-        if (subfinderSortOrder[0] === column) {
-            subfinderSortOrder[1] = 1 - subfinderSortOrder[1];
-        } else {
-            subfinderSortOrder = [column, 0];
-        }
+        html = f'''
+        <div class="subdomain-group" data-group="{group_id}">
+            <div class="subdomain-group-header" onclick="toggleSubdomainGroup('{group_id}')">
+                <span class="subdomain-group-icon">{icon}</span>
+                <span class="subdomain-group-title">{group_name}</span>
+                <span class="subdomain-group-count">{total_subdomains} Subdomains</span>
+                <span class="subdomain-group-toggle">▼</span>
+            </div>
+            <div class="subdomain-group-content" id="{group_id}-content" style="display: none;">
+                <div class="subdomain-list" id="{group_id}-list">
+        '''
         
-        // Update sort icons
-        document.querySelectorAll('[id^="sort-icon-"]').forEach(el => el.textContent = '');
-        document.getElementById('sort-icon-' + column).textContent = subfinderSortOrder[1] === 0 ? '▼' : '▲';
-        
-        // Sort rows
-        rows.sort((a, b) => {
-            const aText = a.cells[column].textContent.trim();
-            const bText = b.cells[column].textContent.trim();
-            const comparison = aText.localeCompare(bText);
-            return subfinderSortOrder[1] === 0 ? comparison : -comparison;
-        });
-        
-        // Re-append sorted rows
-        rows.forEach(row => tbody.appendChild(row));
-    };
-    
-    window.showAllSubfinderRows = function() {
-        document.querySelectorAll('.subfinder-row').forEach(row => {
-            row.classList.remove('subfinder-hidden');
-        });
-        updateSubfinderCount();
-    };
-    
-    // Search functionality
-    document.getElementById('subfinder-search').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#subfinder-tbody tr');
-        
-        rows.forEach(row => {
-            const host = row.cells[0].textContent.toLowerCase();
-            const source = row.cells[1].textContent.toLowerCase();
+        # Add all subdomains with page data attributes
+        for page_num in range(total_pages):
+            start_idx = page_num * subdomains_per_page
+            end_idx = min(start_idx + subdomains_per_page, total_subdomains)
             
-            if (host.includes(searchTerm) || source.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+            for subdomain in subdomains[start_idx:end_idx]:
+                host = subdomain['host']
+                # Make subdomain searchable
+                display_style = 'display: none;' if page_num > 0 else ''
+                html += f'''
+                    <div class="subdomain-item" data-page="{page_num + 1}" data-subdomain="{host.lower()}" style="{display_style}">
+                        <code class="subdomain-host">{host}</code>
+                    </div>
+                '''
         
-        updateSubfinderCount();
-    });
-    
-    // Initialize count on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', updateSubfinderCount);
-    } else {
-        updateSubfinderCount();
-    }
-})();
-</script>
+        html += '''
+                </div>
+        '''
+        
+        # Add pagination controls if needed
+        if total_pages > 1:
+            html += f'''
+                <div class="subdomain-pagination" id="{group_id}-pagination">
+                    <button onclick="changeSubdomainPage('{group_id}', -1)" class="subdomain-page-btn">« Previous</button>
+                    <span class="subdomain-page-info">
+                        Page <span id="{group_id}-current-page">1</span> of {total_pages}
+                    </span>
+                    <button onclick="changeSubdomainPage('{group_id}', 1)" class="subdomain-page-btn">Next »</button>
+                </div>
+            '''
+        
+        html += '''
+            </div>
+        </div>
+        '''
+        
+        return html
 
-<style>
-.subfinder-hidden {
-    display: none;
-}
-#subfinder-table th:hover {
-    background: #d6eafc;
-}
-#subfinder-table tbody tr:hover {
-    background: #f8fbfd;
-}
-</style>
-"""
+    def _generate_subdomain_display_html(self, subdomains):
+        """
+        Generate custom HTML for displaying subdomains with grouping, search, and pagination.
+        Subdomains are grouped by source for better organization.
+        """
+        if not subdomains:
+            return "<p>No subdomains found.</p>"
+        
+        # Group subdomains by source
+        subdomain_groups = self._group_subdomains_by_source(subdomains)
+        
+        # Generate unique ID for this instance
+        widget_id = f"subfinder-widget-{id(self)}"
+        
+        html = f'''
+        <div class="subdomain-display-widget" id="{widget_id}">
+            <div class="subdomain-search-container">
+                <input type="text" 
+                       class="subdomain-search-input" 
+                       placeholder="🔍 Search subdomains..."
+                       onkeyup="filterSubfinderSubdomains('{widget_id}')">
+                <span class="subdomain-count-badge">Total: {len(subdomains)} Subdomains</span>
+            </div>
+            
+            <div class="subdomain-groups-container">
+        '''
+        
+        # Generate HTML for each group
+        for group_name, group_subdomains in sorted(subdomain_groups.items(), key=lambda x: (-len(x[1]), x[0])):
+            group_id = f"{widget_id}-{group_name.replace('.', '-').replace(' ', '-')}"
+            html += self._generate_group_html(group_name, group_subdomains, group_id)
+        
+        html += '''
+            </div>
+        </div>
+        
+        <script>
+        function toggleSubdomainGroup(groupId) {
+            const content = document.getElementById(groupId + '-content');
+            const toggle = document.querySelector(`[data-group="${groupId}"] .subdomain-group-toggle`);
+            
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+                toggle.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.display = 'none';
+                toggle.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        function changeSubdomainPage(groupId, direction) {
+            const list = document.getElementById(groupId + '-list');
+            const items = list.querySelectorAll('.subdomain-item');
+            const currentPageSpan = document.getElementById(groupId + '-current-page');
+            let currentPage = parseInt(currentPageSpan.textContent);
+            
+            // Calculate total pages
+            let totalPages = 1;
+            items.forEach(item => {
+                const page = parseInt(item.getAttribute('data-page'));
+                if (page > totalPages) totalPages = page;
+            });
+            
+            // Calculate new page
+            const newPage = Math.max(1, Math.min(currentPage + direction, totalPages));
+            
+            if (newPage === currentPage) return;
+            
+            // Update display
+            items.forEach(item => {
+                const itemPage = parseInt(item.getAttribute('data-page'));
+                item.style.display = itemPage === newPage ? '' : 'none';
+            });
+            
+            currentPageSpan.textContent = newPage;
+        }
+        
+        function filterSubfinderSubdomains(widgetId) {
+            const widget = document.getElementById(widgetId);
+            const searchInput = widget.querySelector('.subdomain-search-input');
+            const searchTerm = searchInput.value.toLowerCase();
+            const groups = widget.querySelectorAll('.subdomain-group');
+            
+            groups.forEach(group => {
+                const items = group.querySelectorAll('.subdomain-item');
+                let visibleCount = 0;
+                
+                items.forEach(item => {
+                    const subdomain = item.getAttribute('data-subdomain');
+                    if (subdomain.includes(searchTerm)) {
+                        item.style.display = '';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // Hide group if no visible items
+                if (visibleCount === 0) {
+                    group.style.display = 'none';
+                } else {
+                    group.style.display = '';
+                }
+            });
+        }
+        </script>
+        
+        <style>
+        .subdomain-display-widget {
+            margin: 1em 0;
+        }
+        
+        .subdomain-search-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1em;
+            padding: 1em;
+            background: #f8fbfd;
+            border-radius: 4px;
+        }
+        
+        .subdomain-search-input {
+            flex: 1;
+            max-width: 500px;
+            padding: 0.75em;
+            border: 1px solid #cfe6fb;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        
+        .subdomain-count-badge {
+            background: #075985;
+            color: white;
+            padding: 0.5em 1em;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 1em;
+        }
+        
+        .subdomain-groups-container {
+            border: 1px solid #e6eef6;
+            border-radius: 4px;
+        }
+        
+        .subdomain-group {
+            border-bottom: 1px solid #e6eef6;
+        }
+        
+        .subdomain-group:last-child {
+            border-bottom: none;
+        }
+        
+        .subdomain-group-header {
+            display: flex;
+            align-items: center;
+            padding: 1em;
+            background: #f8fbfd;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .subdomain-group-header:hover {
+            background: #e6f0fa;
+        }
+        
+        .subdomain-group-icon {
+            font-size: 1.2em;
+            margin-right: 0.5em;
+        }
+        
+        .subdomain-group-title {
+            flex: 1;
+            font-weight: bold;
+            color: #075985;
+        }
+        
+        .subdomain-group-count {
+            background: #e6f0fa;
+            color: #075985;
+            padding: 0.25em 0.75em;
+            border-radius: 12px;
+            font-size: 0.9em;
+            margin-right: 0.5em;
+        }
+        
+        .subdomain-group-toggle {
+            color: #075985;
+            transition: transform 0.2s;
+        }
+        
+        .subdomain-group-content {
+            padding: 1em;
+            background: white;
+        }
+        
+        .subdomain-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5em;
+        }
+        
+        .subdomain-item {
+            padding: 0.75em;
+            background: #f8fbfd;
+            border-radius: 4px;
+            border-left: 3px solid #075985;
+        }
+        
+        .subdomain-item:hover {
+            background: #e6f0fa;
+        }
+        
+        .subdomain-host {
+            font-family: 'Courier New', monospace;
+            color: #075985;
+            font-weight: bold;
+        }
+        
+        .subdomain-pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1em;
+            margin-top: 1em;
+            padding: 1em;
+            background: #f8fbfd;
+            border-radius: 4px;
+        }
+        
+        .subdomain-page-btn {
+            padding: 0.5em 1em;
+            background: #075985;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .subdomain-page-btn:hover {
+            background: #064668;
+        }
+        
+        .subdomain-page-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .subdomain-page-info {
+            color: #075985;
+            font-weight: bold;
+        }
+        </style>
+        '''
+        
+        return html
+
+    def _generate_pdf_subdomain_list(self, subdomains, max_subdomains=75):
+        """
+        Generate a PDF-friendly truncated subdomain list.
+        Shows the first max_subdomains subdomains in a simple list format with a truncation notice.
+        
+        Args:
+            subdomains: List of subdomain dictionaries with 'host' and 'source' keys
+            max_subdomains: Maximum number of subdomains to display (default: 75)
+            
+        Returns:
+            HTML string with truncated subdomain list
+        """
+        if not subdomains:
+            return "<p>No subdomains found.</p>"
+        
+        total_count = len(subdomains)
+        display_subdomains = subdomains[:max_subdomains]
+        truncated_count = total_count - len(display_subdomains)
+        
+        html = '<div class="pdf-subdomain-list">'
+        html += f'<div class="pdf-subdomain-header"><strong>Discovered Subdomains</strong> (showing {len(display_subdomains)} of {total_count})</div>'
+        html += '<ul class="pdf-subdomain-items">'
+        
+        for subdomain in display_subdomains:
+            host = subdomain['host']
+            source = subdomain['source']
+            # Escape HTML characters
+            safe_host = host.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            safe_source = source.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            html += f'<li class="pdf-subdomain-item"><code>{safe_host}</code> <span style="color: #666; font-size: 0.9em;">({safe_source})</span></li>'
+        
+        html += '</ul>'
+        
+        if truncated_count > 0:
+            html += f'<div class="pdf-subdomain-truncation">📋 <strong>Note:</strong> {truncated_count} additional subdomain(s) not shown in PDF. View the full interactive HTML report for complete subdomain list with search and filtering capabilities.</div>'
+        
+        html += '</div>'
         
         return html
