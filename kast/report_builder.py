@@ -254,14 +254,14 @@ def image_to_base64(image_path):
         return None
 
 
-def format_json_for_pdf(data, max_depth=5, current_depth=0):
+def format_json_for_pdf(data, max_depth=3, current_depth=0):
     """
     Convert JSON data to formatted HTML for PDF display.
     Limits depth to avoid overly large outputs.
     
     Args:
         data: JSON-serializable data
-        max_depth (int): Maximum nesting depth to display
+        max_depth (int): Maximum nesting depth to display (default: 3)
         current_depth (int): Current depth (internal use)
         
     Returns:
