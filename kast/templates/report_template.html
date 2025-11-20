@@ -166,6 +166,115 @@
             btn.textContent = 'Show raw JSON';
         }
     }
+    
+    // URL Display Widget Functions
+    function toggleUrlGroup(groupId) {
+        var content = document.getElementById(groupId + '-content');
+        var header = document.querySelector('[data-group="' + groupId + '"] .url-group-toggle');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            header.textContent = '▲';
+        } else {
+            content.style.display = 'none';
+            header.textContent = '▼';
+        }
+    }
+    
+    function changeUrlPage(groupId, direction) {
+        var list = document.getElementById(groupId + '-list');
+        var currentPageSpan = document.getElementById(groupId + '-current-page');
+        var currentPage = parseInt(currentPageSpan.textContent);
+        var items = list.querySelectorAll('.url-item');
+        
+        // Calculate total pages
+        var totalPages = 0;
+        items.forEach(function(item) {
+            var page = parseInt(item.getAttribute('data-page'));
+            if (page > totalPages) totalPages = page;
+        });
+        
+        // Calculate new page
+        var newPage = currentPage + direction;
+        if (newPage < 1) newPage = 1;
+        if (newPage > totalPages) newPage = totalPages;
+        
+        // Update display
+        items.forEach(function(item) {
+            var itemPage = parseInt(item.getAttribute('data-page'));
+            if (itemPage === newPage) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        currentPageSpan.textContent = newPage;
+    }
+    
+    function filterKatanaUrls(widgetId) {
+        var widget = document.getElementById(widgetId);
+        var input = widget.querySelector('.url-search-input');
+        var filter = input.value.toLowerCase();
+        var groups = widget.querySelectorAll('.url-group');
+        var totalVisible = 0;
+        
+        groups.forEach(function(group) {
+            var items = group.querySelectorAll('.url-item');
+            var visibleInGroup = 0;
+            
+            items.forEach(function(item) {
+                var url = item.getAttribute('data-url');
+                if (url.indexOf(filter) > -1) {
+                    item.style.display = 'block';
+                    visibleInGroup++;
+                    totalVisible++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Hide group if no matches
+            if (visibleInGroup === 0) {
+                group.style.display = 'none';
+            } else {
+                group.style.display = 'block';
+            }
+            
+            // Reset pagination when filtering
+            if (filter) {
+                var pagination = group.querySelector('.url-pagination');
+                if (pagination) {
+                    pagination.style.display = 'none';
+                }
+            } else {
+                var pagination = group.querySelector('.url-pagination');
+                if (pagination) {
+                    pagination.style.display = 'flex';
+                }
+                // Reset to page 1 when clearing filter
+                var groupId = group.getAttribute('data-group');
+                var currentPageSpan = document.getElementById(groupId + '-current-page');
+                if (currentPageSpan) {
+                    currentPageSpan.textContent = '1';
+                    // Show only page 1 items
+                    items.forEach(function(item) {
+                        var itemPage = parseInt(item.getAttribute('data-page'));
+                        item.style.display = (itemPage === 1) ? 'block' : 'none';
+                    });
+                }
+            }
+        });
+        
+        // Update count badge
+        var badge = widget.querySelector('.url-count-badge');
+        if (filter) {
+            badge.textContent = 'Showing: ' + totalVisible + ' URLs';
+        } else {
+            var allItems = widget.querySelectorAll('.url-item');
+            badge.textContent = 'Total: ' + allItems.length + ' URLs';
+        }
+    }
     </script>
     <!-- Tree-view CSS moved to kast_style.css -->
     <script>

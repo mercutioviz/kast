@@ -343,6 +343,192 @@ code {
   transform: translateY(0);
 }
 
+/* URL Display Widget Styles */
+.url-display-widget {
+  margin: 1.5em 0;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e6eef6;
+  overflow: hidden;
+}
+
+.url-search-container {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  padding: 1em;
+  background: linear-gradient(90deg, #f8fbfd, #ffffff);
+  border-bottom: 2px solid #e6eef6;
+}
+
+.url-search-input {
+  flex: 1;
+  padding: 0.7em 1em;
+  border: 2px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 0.95em;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+.url-search-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.url-count-badge {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.url-groups-container {
+  padding: 0.5em;
+}
+
+.url-group {
+  margin: 0.5em 0;
+  border: 1px solid #e6eef6;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: box-shadow 0.3s;
+}
+
+.url-group:hover {
+  box-shadow: 0 2px 8px rgba(8, 51, 68, 0.08);
+}
+
+.url-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.8em 1em;
+  background: linear-gradient(90deg, #f1f7fb, #ffffff);
+  cursor: pointer;
+  transition: background 0.3s;
+  border-bottom: 1px solid #e6eef6;
+}
+
+.url-group-header:hover {
+  background: linear-gradient(90deg, #e6f0fa, #f8fbfd);
+}
+
+.url-group-icon {
+  font-size: 1.3em;
+}
+
+.url-group-title {
+  flex: 1;
+  font-weight: 600;
+  color: #075985;
+  font-size: 0.95em;
+}
+
+.url-group-count {
+  background: #e6f0fa;
+  color: #075985;
+  padding: 0.3em 0.7em;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.url-group-toggle {
+  color: #075985;
+  font-size: 0.9em;
+  transition: transform 0.3s;
+}
+
+.url-group-content {
+  background: #ffffff;
+}
+
+.url-list {
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 0.5em;
+}
+
+.url-item {
+  padding: 0.5em 0.8em;
+  margin: 0.2em 0;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.url-item:hover {
+  background: #f8fbfd;
+}
+
+.url-path {
+  color: #0369a1;
+  font-size: 0.9em;
+  word-break: break-all;
+  font-family: 'Courier New', Consolas, monospace;
+}
+
+.url-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1em;
+  padding: 1em;
+  background: linear-gradient(90deg, #f8fbfd, #ffffff);
+  border-top: 1px solid #e6eef6;
+}
+
+.url-page-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.url-page-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.url-page-btn:active {
+  transform: translateY(0);
+}
+
+.url-page-info {
+  color: #083344;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+/* Scrollbar styling for URL list */
+.url-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.url-list::-webkit-scrollbar-track {
+  background: #f1f7fb;
+  border-radius: 4px;
+}
+
+.url-list::-webkit-scrollbar-thumb {
+  background: #bfdbfe;
+  border-radius: 4px;
+}
+
+.url-list::-webkit-scrollbar-thumb:hover {
+  background: #93c5fd;
+}
+
 /* PDF-specific print styles */
 @media print {
   /* Page setup */

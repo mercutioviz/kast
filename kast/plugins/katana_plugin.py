@@ -151,6 +151,9 @@ class KatanaPlugin(KastPlugin):
         summary = self._generate_summary(parsed_urls)
         executive_summary = self._generate_executive_summary(parsed_urls)
         
+        # Generate custom HTML for URL display
+        custom_html = self._generate_url_display_html(parsed_urls)
+        
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -169,7 +172,8 @@ class KatanaPlugin(KastPlugin):
             "details": details,
             "issues": issues,
             "executive_summary": executive_summary,
-            "report": report_notes
+            "report": report_notes,
+            "custom_html": custom_html
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -241,3 +245,159 @@ class KatanaPlugin(KastPlugin):
             return "Detected 1 URL."
         else:
             return f"Detected {count} URLs."
+
+    def _generate_url_display_html(self, parsed_urls):
+        """
+        Generate custom HTML for displaying URLs with grouping, search, and pagination.
+        URLs are grouped by file extension for better organization.
+        """
+        if not parsed_urls:
+            return "<p>No URLs found.</p>"
+        
+        # Group URLs by file extension
+        url_groups = self._group_urls_by_extension(parsed_urls)
+        
+        # Generate unique ID for this instance (in case multiple plugins use this)
+        widget_id = f"katana-url-widget-{id(self)}"
+        
+        html = f'''
+        <div class="url-display-widget" id="{widget_id}">
+            <div class="url-search-container">
+                <input type="text" 
+                       class="url-search-input" 
+                       placeholder="🔍 Search URLs (e.g., /api, .js, admin)..."
+                       onkeyup="filterKatanaUrls('{widget_id}')">
+                <span class="url-count-badge">Total: {len(parsed_urls)} URLs</span>
+            </div>
+            
+            <div class="url-groups-container">
+        '''
+        
+        # Generate HTML for each group
+        for group_name, urls in sorted(url_groups.items(), key=lambda x: (-len(x[1]), x[0])):
+            group_id = f"{widget_id}-{group_name.replace('.', '-').replace(' ', '-')}"
+            html += self._generate_group_html(group_name, urls, group_id)
+        
+        html += '''
+            </div>
+        </div>
+        '''
+        
+        return html
+
+    def _group_urls_by_extension(self, urls):
+        """
+        Group URLs by their file extension.
+        Returns a dictionary where keys are extension names and values are lists of URLs.
+        """
+        groups = {}
+        
+        for url in urls:
+            # Determine the extension/category
+            if '.' in url.split('?')[0].split('/')[-1]:
+                # Has an extension
+                ext = '.' + url.split('?')[0].split('.')[-1].lower()
+                # Limit extension length to avoid weird cases
+                if len(ext) > 10:
+                    ext = "Other"
+            else:
+                # No extension - likely a directory or endpoint
+                ext = "Endpoints"
+            
+            if ext not in groups:
+                groups[ext] = []
+            groups[ext].append(url)
+        
+        return groups
+
+    def _generate_group_html(self, group_name, urls, group_id):
+        """
+        Generate HTML for a single URL group with pagination.
+        """
+        urls_per_page = 50
+        total_urls = len(urls)
+        total_pages = (total_urls + urls_per_page - 1) // urls_per_page
+        
+        # Generate icon based on group type
+        icon = self._get_group_icon(group_name)
+        
+        html = f'''
+        <div class="url-group" data-group="{group_id}">
+            <div class="url-group-header" onclick="toggleUrlGroup('{group_id}')">
+                <span class="url-group-icon">{icon}</span>
+                <span class="url-group-title">{group_name}</span>
+                <span class="url-group-count">{total_urls} URLs</span>
+                <span class="url-group-toggle">▼</span>
+            </div>
+            <div class="url-group-content" id="{group_id}-content" style="display: none;">
+                <div class="url-list" id="{group_id}-list">
+        '''
+        
+        # Add all URLs with page data attributes
+        for page_num in range(total_pages):
+            start_idx = page_num * urls_per_page
+            end_idx = min(start_idx + urls_per_page, total_urls)
+            
+            for url in urls[start_idx:end_idx]:
+                # Make URL searchable and clickable
+                display_style = 'display: none;' if page_num > 0 else ''
+                html += f'''
+                    <div class="url-item" data-page="{page_num + 1}" data-url="{url.lower()}" style="{display_style}">
+                        <code class="url-path">{url}</code>
+                    </div>
+                '''
+        
+        html += '''
+                </div>
+        '''
+        
+        # Add pagination controls if needed
+        if total_pages > 1:
+            html += f'''
+                <div class="url-pagination" id="{group_id}-pagination">
+                    <button onclick="changeUrlPage('{group_id}', -1)" class="url-page-btn">« Previous</button>
+                    <span class="url-page-info">
+                        Page <span id="{group_id}-current-page">1</span> of {total_pages}
+                    </span>
+                    <button onclick="changeUrlPage('{group_id}', 1)" class="url-page-btn">Next »</button>
+                </div>
+            '''
+        
+        html += '''
+            </div>
+        </div>
+        '''
+        
+        return html
+
+    def _get_group_icon(self, group_name):
+        """
+        Return an appropriate icon emoji for the group type.
+        """
+        icons = {
+            '.js': '📜',
+            '.css': '🎨',
+            '.html': '📄',
+            '.htm': '📄',
+            '.json': '📋',
+            '.xml': '📋',
+            '.php': '🐘',
+            '.jsp': '☕',
+            '.asp': '🌐',
+            '.aspx': '🌐',
+            '.png': '🖼️',
+            '.jpg': '🖼️',
+            '.jpeg': '🖼️',
+            '.gif': '🖼️',
+            '.svg': '🖼️',
+            '.ico': '🖼️',
+            '.pdf': '📕',
+            '.txt': '📝',
+            '.woff': '🔤',
+            '.woff2': '🔤',
+            '.ttf': '🔤',
+            '.eot': '🔤',
+            'Endpoints': '🔗',
+            'Other': '📦'
+        }
+        return icons.get(group_name, '📄')
