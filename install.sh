@@ -46,6 +46,10 @@ apt install npm -y
 # Install MDN Observatory CLI tool
 npm install --global @mdn/mdn-http-observatory
 
+# Install libpango for PDF generation
+sudo apt install libpango-1.0-0
+sudo apt install libpangoft2-1.0-0
+
 # Create launcher script
 echo "Creating launcher script at /usr/local/bin/kast..."
 cat > /usr/local/bin/kast <<EOF
