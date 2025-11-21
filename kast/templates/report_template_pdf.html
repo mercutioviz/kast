@@ -7,7 +7,7 @@
 </head>
 <body>
     <!-- Cover Page -->
-    <div class="cover-page">
+    <div class="cover-page" id="home">
         {% if logo_base64 %}
         <img src="{{ logo_base64 }}" alt="KAST Logo" class="cover-logo">
         {% endif %}
@@ -18,34 +18,45 @@
         <div class="cover-date">{{ scan_metadata.scan_date }}</div>
         
         <div class="severity-summary">
-            <div class="severity-box high">
-                <div class="severity-count">{{ scan_metadata.severity_counts.High }}</div>
-                <div class="severity-label">High</div>
-            </div>
-            <div class="severity-box medium">
-                <div class="severity-count">{{ scan_metadata.severity_counts.Medium }}</div>
-                <div class="severity-label">Medium</div>
-            </div>
-            <div class="severity-box low">
-                <div class="severity-count">{{ scan_metadata.severity_counts.Low }}</div>
-                <div class="severity-label">Low</div>
-            </div>
-            <div class="severity-box info">
-                <div class="severity-count">{{ scan_metadata.severity_counts.Info }}</div>
-                <div class="severity-label">Info</div>
-            </div>
+            <a href="#issues-high" class="severity-box-link">
+                <div class="severity-box high">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.High }}</div>
+                    <div class="severity-label">High</div>
+                </div>
+            </a>
+            <a href="#issues-medium" class="severity-box-link">
+                <div class="severity-box medium">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Medium }}</div>
+                    <div class="severity-label">Medium</div>
+                </div>
+            </a>
+            <a href="#issues-low" class="severity-box-link">
+                <div class="severity-box low">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Low }}</div>
+                    <div class="severity-label">Low</div>
+                </div>
+            </a>
+            <a href="#issues-info" class="severity-box-link">
+                <div class="severity-box info">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Info }}</div>
+                    <div class="severity-label">Info</div>
+                </div>
+            </a>
         </div>
     </div>
 
     <!-- Executive Summary -->
-    <div class="section">
+    <div class="section" id="exec-summary">
         <h1 class="section-title">Executive Summary</h1>
         
         {% if plugin_executive_summaries %}
         <h2 class="subsection-title">Scan Findings</h2>
         {% for summary in plugin_executive_summaries %}
         <div class="summary-block">
-            <div class="summary-plugin">{{ summary.plugin_name }}</div>
+            <div class="summary-plugin">
+                {{ summary.plugin_name }}
+                <a href="#tool-{{ summary.plugin_name|lower|replace(' ', '-')|replace('.', '-') }}" class="inline-nav-link">View Details →</a>
+            </div>
             {{ summary.summary|safe }}
         </div>
         {% endfor %}
@@ -55,12 +66,15 @@
         <div class="summary-block">
             {{ executive_summary|safe }}
         </div>
+        <div class="summary-nav">
+            <a href="#issues-found" class="nav-link">View All Issues by Severity →</a>
+        </div>
     </div>
 
     <div class="page-break"></div>
 
     <!-- Issues by Severity -->
-    <div class="section">
+    <div class="section" id="issues-found">
         <h1 class="section-title">Issues Found</h1>
         
         {% if not issues %}
@@ -73,7 +87,7 @@
         {% set info_issues = issues|selectattr("severity", "equalto", "Info")|list %}
         
         {% if high_issues %}
-        <div class="severity-section">
+        <div class="severity-section" id="issues-high">
             <h2 class="severity-heading high">High Severity Issues</h2>
             {% for issue in high_issues %}
             <div class="issue high">
@@ -83,6 +97,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
+                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -92,11 +107,14 @@
                 </div>
             </div>
             {% endfor %}
+            <div class="section-nav">
+                <a href="#home" class="back-link">↑ Home</a>
+            </div>
         </div>
         {% endif %}
         
         {% if medium_issues %}
-        <div class="severity-section">
+        <div class="severity-section" id="issues-medium">
             <h2 class="severity-heading medium">Medium Severity Issues</h2>
             {% for issue in medium_issues %}
             <div class="issue medium">
@@ -106,6 +124,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
+                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -115,11 +134,14 @@
                 </div>
             </div>
             {% endfor %}
+            <div class="section-nav">
+                <a href="#home" class="back-link">↑ Home</a>
+            </div>
         </div>
         {% endif %}
         
         {% if low_issues %}
-        <div class="severity-section">
+        <div class="severity-section" id="issues-low">
             <h2 class="severity-heading low">Low Severity Issues</h2>
             {% for issue in low_issues %}
             <div class="issue low">
@@ -129,6 +151,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
+                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -138,11 +161,14 @@
                 </div>
             </div>
             {% endfor %}
+            <div class="section-nav">
+                <a href="#home" class="back-link">↑ Home</a>
+            </div>
         </div>
         {% endif %}
         
         {% if info_issues %}
-        <div class="severity-section">
+        <div class="severity-section" id="issues-info">
             <h2 class="severity-heading info">Informational</h2>
             {% for issue in info_issues %}
             <div class="issue info">
@@ -152,6 +178,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
+                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -161,6 +188,9 @@
                 </div>
             </div>
             {% endfor %}
+            <div class="section-nav">
+                <a href="#home" class="back-link">↑ Home</a>
+            </div>
         </div>
         {% endif %}
         
@@ -170,7 +200,7 @@
     <div class="page-break"></div>
 
     <!-- Tool Index Page -->
-    <div class="section">
+    <div class="section" id="tool-index">
         <h1 class="section-title">Detailed Results by Tool</h1>
         
         <div class="tool-index">
@@ -197,6 +227,16 @@
     <div class="section">
         {% for tool_name, tool in detailed_results.items() %}
         <div class="tool" id="tool-{{ tool_name|lower|replace(' ', '-')|replace('.', '-') }}">
+            <div class="tool-nav-header">
+                <a href="#tool-index" class="tool-nav-link">← Back to Tool Index</a>
+                <a href="#home" class="tool-nav-link">↑ Home</a>
+                {% if not loop.first %}
+                <a href="#tool-{{ loop.previtem[0]|lower|replace(' ', '-')|replace('.', '-') }}" class="tool-nav-link">← Previous</a>
+                {% endif %}
+                {% if not loop.last %}
+                <a href="#tool-{{ loop.nextitem[0]|lower|replace(' ', '-')|replace('.', '-') }}" class="tool-nav-link">Next →</a>
+                {% endif %}
+            </div>
             <h2 class="tool-name">{{ tool.display_name if tool.display_name else tool_name }}</h2>
             
             <div class="tool-info">

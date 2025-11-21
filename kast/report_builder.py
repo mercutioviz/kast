@@ -229,6 +229,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
                 "id": issue_id,
                 "display_name": display_name,
                 "reported_by": reported_by,
+                "reported_by_tool": tool_name,  # Original tool name for anchor generation
                 "description": issue_dict.get("description", ""),
                 "remediation": remediation,
                 "severity": severity,
@@ -503,6 +504,7 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
                 "id": issue_id,
                 "display_name": display_name,
                 "reported_by": reported_by,
+                "reported_by_tool": tool_name,  # Original tool name for anchor generation
                 "description": issue_dict.get("description", ""),
                 "remediation": remediation,
                 "severity": severity,
