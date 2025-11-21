@@ -137,8 +137,10 @@
                     <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">{{ result.results_message }}</div>
                     {% elif pdf_mode and result.results_html %}
                     <div class="json-display">{{ result.results_html|safe }}</div>
-                    {% else %}
+                    {% elif result.results %}
                     <div class="tree-json" data-json='{{ result.results | tojson }}'></div>
+                    {% else %}
+                    <div style="padding: 0.5em 0; color: #6b7280; font-style: italic;">No results data available</div>
                     {% endif %}
                 </div>
                 {% if result.custom_html %}

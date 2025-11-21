@@ -133,6 +133,13 @@
     "severity": "High",
     "category": "Content Security"
   },
+  "high-external-script-count": {
+    "display_name": "High External Script Count",
+    "description": "Website loads an excessive number of external JavaScript files (>10), increasing attack surface, dependency risk, and potential for supply chain attacks.",
+    "remediation": "Review and minimize external script dependencies. Bundle scripts when possible, implement SRI for all external scripts, use CSP to restrict script sources, and regularly audit third-party dependencies. A WAF can monitor and enforce policies on external script loading.",
+    "severity": "Medium",
+    "category": "Content Security"
+  },
   "x-content-type-options-not-implemented": {
     "display_name": "X-Content-Type-Options Not Implemented",
     "description": "The X-Content-Type-Options header is missing, which can allow browsers to perform MIME type sniffing and potentially execute malicious files.",

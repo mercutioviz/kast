@@ -161,7 +161,8 @@ class TestsslPlugin(KastPlugin):
                 "details": f"Unable to complete SSL/TLS scan:\n\n{scan_problem_msg}",
                 "issues": [],
                 "executive_summary": f"SSL/TLS scan could not be completed. {scan_problem_msg}",
-                "report": report_notes
+                "report": report_notes,
+                "results_message": "Scan could not be completed. See details above for more information."
             }
             
             processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -236,8 +237,8 @@ class TestsslPlugin(KastPlugin):
             
             executive_summary = f"SSL/TLS scan identified {' and '.join(summary_parts)}. Review recommended."
 
-        # Generate summary using helper method
-        summary = self._generate_summary(findings)
+        # Generate summary based on actual vulnerability and cipher issue counts
+        summary = self._generate_summary(findings, vuln_count=len(vuln_issues), cipher_count=len(cipher_issues))
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -245,6 +246,12 @@ class TestsslPlugin(KastPlugin):
         # Format command for report notes
         report_notes = self._format_command_for_report()
 
+        # Set appropriate results message based on findings
+        if not issues:
+            results_message = "Scan completed successfully. No vulnerabilities or cipher issues detected."
+        else:
+            results_message = f"Scan completed. Found {len(issues)} issue(s). See details above."
+        
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
@@ -256,7 +263,8 @@ class TestsslPlugin(KastPlugin):
             "details": details,
             "issues": issues,
             "executive_summary": executive_summary,
-            "report": report_notes
+            "report": report_notes,
+            "results_message": results_message
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -265,18 +273,33 @@ class TestsslPlugin(KastPlugin):
 
         return processed_path
 
-    def _generate_summary(self, findings):
+    def _generate_summary(self, findings, vuln_count=None, cipher_count=None):
         """
         Generate a human-readable summary from findings.
+        If vuln_count and cipher_count are provided, generates a summary based on actual findings.
+        Otherwise falls back to basic summary.
         """
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
-        self.debug(f"_generate_summary findings content: {pformat(findings)}")
+        self.debug(f"_generate_summary vuln_count: {vuln_count}, cipher_count: {cipher_count}")
         
         if not findings:
             self.debug("No findings, returning default message")
             return f"No findings were produced by {self.name}."
         
-        # Basic summary - will be enhanced during post-processing implementation
+        # If vulnerability and cipher counts are provided, use them for accurate summary
+        if vuln_count is not None and cipher_count is not None:
+            if vuln_count == 0 and cipher_count == 0:
+                return "No vulnerabilities or cipher issues detected."
+            
+            summary_parts = []
+            if vuln_count > 0:
+                summary_parts.append(f"{vuln_count} vulnerability issue(s)")
+            if cipher_count > 0:
+                summary_parts.append(f"{cipher_count} TLS 1.2+ cipher issue(s)")
+            
+            return f"Found {' and '.join(summary_parts)}."
+        
+        # Fallback to basic summary for backward compatibility
         if isinstance(findings, dict):
             count = len(findings)
             return f"{self.name} produced {count} finding(s)."

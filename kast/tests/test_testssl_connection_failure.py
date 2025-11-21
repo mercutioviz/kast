@@ -108,11 +108,75 @@ class TestTestsslConnectionFailure(unittest.TestCase):
 
         # Verify normal processing occurred
         self.assertEqual(processed['plugin-name'], 'testssl')
+        self.assertEqual(processed['summary'], 'No vulnerabilities or cipher issues detected.')
         self.assertIn('No SSL/TLS vulnerabilities', processed['details'])
         self.assertIn('secure', processed['executive_summary'])
 
         print(f"\n✓ Normal scan processing still works")
+        print(f"  Summary: {processed['summary']}")
         print(f"  Executive Summary: {processed['executive_summary']}")
+
+    def test_summary_with_vulnerabilities(self):
+        """Test that summary correctly reports vulnerability and cipher issue counts"""
+        # Sample testssl output with vulnerabilities and cipher issues
+        raw_output = {
+            'Invocation': 'testssl -U -E -oJ /tmp/testssl.json example.com',
+            'scanResult': [
+                {
+                    'id': 'service',
+                    'finding': 'HTTPS',
+                    'vulnerabilities': [
+                        {
+                            'id': 'heartbleed',
+                            'finding': 'VULNERABLE',
+                            'severity': 'HIGH'
+                        },
+                        {
+                            'id': 'ccs',
+                            'finding': 'VULNERABLE',
+                            'severity': 'MEDIUM'
+                        },
+                        {
+                            'id': 'secure_renego',
+                            'finding': 'not vulnerable',
+                            'severity': 'OK'
+                        }
+                    ],
+                    'cipherTests': [
+                        {
+                            'id': 'tls1_2_weak',
+                            'finding': 'offered',
+                            'severity': 'MEDIUM'
+                        },
+                        {
+                            'id': 'tls1_2_strong',
+                            'finding': 'offered',
+                            'severity': 'OK'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        # Process the output
+        result_path = self.plugin.post_process(raw_output, self.temp_dir)
+
+        # Verify the processed file was created
+        self.assertTrue(os.path.exists(result_path))
+
+        # Load and verify the processed results
+        with open(result_path, 'r') as f:
+            processed = json.load(f)
+
+        # Verify correct counts in summary
+        self.assertEqual(processed['plugin-name'], 'testssl')
+        self.assertEqual(processed['summary'], 'Found 2 vulnerability issue(s) and 1 TLS 1.2+ cipher issue(s).')
+        self.assertEqual(len(processed['issues']), 3)  # 2 vulnerabilities + 1 cipher issue
+
+        print(f"\n✓ Summary correctly reports vulnerability and cipher counts")
+        print(f"  Summary: {processed['summary']}")
+        print(f"  Issues found: {len(processed['issues'])}")
+        print(f"  Details preview: {processed['details'][:100]}...")
 
     def tearDown(self):
         """Clean up test files"""

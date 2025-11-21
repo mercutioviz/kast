@@ -55,26 +55,8 @@ class ScannerOrchestrator:
             max_workers = getattr(self.cli_args, 'max_workers', 5)
             self.log.info(f"Running plugins in parallel mode with max {max_workers} workers.")
             
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_to_plugin = {
-                    executor.submit(self._run_plugin, plugin_cls): plugin_cls
-                    for plugin_cls in selected_plugins
-                }
-                for future in as_completed(future_to_plugin):
-                    plugin_cls = future_to_plugin[future]
-                    plugin_name = getattr(plugin_cls, '__name__', 'Unknown')
-                    try:
-                        result = future.result()
-                        results.append(result)
-                    except Exception as e:
-                        self.log.error(f"Future for plugin {plugin_name} raised an exception: {e}")
-                        # Create a minimal plugin instance to get result_dict format
-                        try:
-                            plugin_instance = plugin_cls(self.cli_args)
-                            error_result = plugin_instance.get_result_dict("fail", f"Future exception: {str(e)}")
-                            results.append(error_result)
-                        except Exception as inner_e:
-                            self.log.error(f"Could not create error result for {plugin_name}: {inner_e}")
+            # Run plugins with dependency resolution
+            results = self._run_plugins_with_dependencies(selected_plugins, max_workers)
         else:
             self.log.info("Running plugins sequentially.")
             for plugin_cls in selected_plugins:
@@ -145,6 +127,84 @@ class ScannerOrchestrator:
                 self.plugin_timings.append(timing_info)
             self.log.exception(f"Plugin {plugin_name} failed with exception: {e}")
             return plugin.get_result_dict("fail", str(e))
+    
+    def _run_plugins_with_dependencies(self, selected_plugins, max_workers):
+        """
+        Run plugins in parallel while respecting dependencies.
+        
+        :param selected_plugins: List of plugin classes to run
+        :param max_workers: Maximum number of parallel workers
+        :return: List of plugin results
+        """
+        results = []
+        completed_plugins = {}  # plugin_name -> result
+        pending_plugins = {}    # plugin_cls -> plugin_instance
+        futures = {}            # future -> (plugin_cls, plugin_instance)
+        
+        # Create instances and map by name for dependency checking
+        for plugin_cls in selected_plugins:
+            try:
+                plugin_instance = plugin_cls(self.cli_args)
+                pending_plugins[plugin_cls] = plugin_instance
+            except Exception as e:
+                self.log.error(f"Error instantiating plugin {plugin_cls.__name__}: {e}")
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Keep submitting plugins as dependencies are satisfied
+            while pending_plugins or futures:
+                # Submit plugins whose dependencies are satisfied
+                newly_submitted = False
+                for plugin_cls in list(pending_plugins.keys()):
+                    plugin = pending_plugins[plugin_cls]
+                    
+                    # Check if dependencies are satisfied
+                    deps_satisfied, reason = plugin.check_dependencies(completed_plugins)
+                    
+                    if deps_satisfied:
+                        self.log.info(f"Submitting plugin {plugin.name} to executor")
+                        future = executor.submit(self._run_plugin, plugin_cls)
+                        futures[future] = (plugin_cls, plugin)
+                        del pending_plugins[plugin_cls]
+                        newly_submitted = True
+                    else:
+                        self.log.debug(f"Plugin {plugin.name} waiting on dependencies: {reason}")
+                
+                # If no plugins were submitted and we still have pending plugins,
+                # check if we're in a deadlock situation
+                if not newly_submitted and pending_plugins and not futures:
+                    self.log.error("Dependency deadlock detected! Some plugins cannot run:")
+                    for plugin_cls, plugin in pending_plugins.items():
+                        _, reason = plugin.check_dependencies(completed_plugins)
+                        self.log.error(f"  - {plugin.name}: {reason}")
+                        # Create error result for deadlocked plugins
+                        error_result = plugin.get_result_dict("fail", f"Dependency deadlock: {reason}")
+                        results.append(error_result)
+                        completed_plugins[plugin.name] = error_result
+                    break
+                
+                # Wait for at least one plugin to complete
+                if futures:
+                    done, _ = as_completed(futures), None
+                    for future in list(futures.keys()):
+                        if future.done():
+                            plugin_cls, plugin = futures[future]
+                            plugin_name = plugin.name
+                            
+                            try:
+                                result = future.result()
+                                results.append(result)
+                                completed_plugins[plugin_name] = result
+                                self.log.info(f"Plugin {plugin_name} completed with disposition: {result.get('disposition')}")
+                            except Exception as e:
+                                self.log.error(f"Plugin {plugin_name} raised an exception: {e}")
+                                error_result = plugin.get_result_dict("fail", f"Future exception: {str(e)}")
+                                results.append(error_result)
+                                completed_plugins[plugin_name] = error_result
+                            
+                            del futures[future]
+                            break  # Break to check for newly submittable plugins
+        
+        return results
     
     def get_plugin_timings(self):
         """

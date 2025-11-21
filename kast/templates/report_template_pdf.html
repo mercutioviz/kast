@@ -234,7 +234,12 @@
             </div>
             {% endif %}
             
-            {% if tool.results_html %}
+            {% if tool.results_message %}
+            <div class="tool-summary">
+                <strong>Results:</strong>
+                <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">{{ tool.results_message }}</div>
+            </div>
+            {% elif tool.results_html %}
             <div class="tool-summary">
                 <strong>Results:</strong>
                 <div class="json-container">{{ tool.results_html|safe }}</div>
