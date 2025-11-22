@@ -21,7 +21,7 @@ from kast.orchestrator import ScannerOrchestrator
 console = Console()
 
 # Version number
-KAST_VERSION = "2.6.0"
+KAST_VERSION = "2.6.1"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -339,10 +339,15 @@ def main():
                 "target": args.target,
                 "mode": args.mode,
                 "parallel": args.parallel,
+                "max_workers": args.max_workers,
                 "verbose": args.verbose,
                 "output_dir": str(output_dir),
                 "run_only": args.run_only,
-                "log_dir": args.log_dir
+                "log_dir": args.log_dir,
+                "format": args.format,
+                "logo": args.logo,
+                "dry_run": args.dry_run,
+                "report_only": args.report_only
             },
             "plugins": orchestrator.get_plugin_timings()
         }
