@@ -136,13 +136,15 @@ env = Environment(
 template = env.get_template('report_template.html')
 template_pdf = env.get_template('report_template_pdf.html')
 
-def generate_html_report(plugin_results, output_path='kast_report.html', target=None):
+def generate_html_report(plugin_results, output_path='kast_report.html', target=None, logo_path=None):
     """
     Generates an HTML report from plugin results using Jinja2.
     
     Args:
         plugin_results (list): List of plugin result dictionaries.
         output_path (str): Path to save the generated HTML report.
+        target (str): Target URL/domain being scanned.
+        logo_path (str): Optional path to custom logo file (PNG or JPG).
     """
     all_issues = []
     detailed_results = {}
@@ -272,6 +274,20 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
     except Exception:
         # Don't fail the whole report generation for CSS copy issues
         pass
+    
+    # Handle custom logo for HTML report
+    logo_filename = None
+    if logo_path and os.path.isfile(logo_path):
+        try:
+            import shutil
+            # Copy custom logo to output directory
+            logo_filename = os.path.basename(logo_path)
+            logo_dst = os.path.join(output_dir, logo_filename)
+            shutil.copyfile(logo_path, logo_dst)
+            logger.info(f"Custom logo copied to {logo_dst}")
+        except Exception as e:
+            logger.warning(f"Failed to copy custom logo: {e}. Using default logo.")
+            logo_filename = None
 
     # Render the HTML report
     html_content = template.render(
@@ -280,7 +296,8 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         issues=all_issues,
         detailed_results=detailed_results,
         target=target,
-        scan_metadata=scan_metadata
+        scan_metadata=scan_metadata,
+        custom_logo=logo_filename
     )
 
     # Save to file
@@ -398,7 +415,7 @@ def format_json_for_pdf(data, max_depth=3, current_depth=0):
         return f'<pre class="json-display">{json.dumps(data, indent=2)}</pre>'
 
 
-def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=None):
+def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=None, logo_path=None):
     """
     Generates a PDF report from plugin results using WeasyPrint.
     
@@ -406,6 +423,7 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
         plugin_results (list): List of plugin result dictionaries.
         output_path (str): Path to save the generated PDF report.
         target (str): Target URL/domain being scanned.
+        logo_path (str): Optional path to custom logo file (PNG or JPG).
     """
     try:
         from weasyprint import HTML, CSS
@@ -535,9 +553,20 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
     }
 
     # Convert images to base64 for embedding
-    assets_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets')
-    logo_path = os.path.join(assets_dir, 'kast-logo.png')
-    logo_base64 = image_to_base64(logo_path)
+    # Use custom logo if provided, otherwise use default
+    if logo_path and os.path.isfile(logo_path):
+        logo_base64 = image_to_base64(logo_path)
+        if not logo_base64:
+            # If custom logo fails to encode, fall back to default
+            logger.warning(f"Failed to encode custom logo: {logo_path}. Using default logo.")
+            assets_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets')
+            default_logo = os.path.join(assets_dir, 'kast-logo.png')
+            logo_base64 = image_to_base64(default_logo)
+    else:
+        # Use default logo
+        assets_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets')
+        default_logo = os.path.join(assets_dir, 'kast-logo.png')
+        logo_base64 = image_to_base64(default_logo)
 
     # Render HTML content using PDF-specific template
     html_content = template_pdf.render(

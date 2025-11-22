@@ -18,6 +18,8 @@
             <div class="logo-section">
                 {% if pdf_mode and logo_base64 %}
                 <img src="{{ logo_base64 }}" alt="KAST Logo" class="kast-logo">
+                {% elif custom_logo %}
+                <img src="{{ custom_logo }}" alt="KAST Logo" class="kast-logo">
                 {% else %}
                 <img src="../assets/kast-logo.png" alt="KAST Logo" class="kast-logo">
                 {% endif %}
@@ -374,6 +376,8 @@
             <div class="footer-left">
                 {% if pdf_mode and logo_base64 %}
                 <img src="{{ logo_base64 }}" alt="KAST" class="footer-logo">
+                {% elif custom_logo %}
+                <img src="{{ custom_logo }}" alt="KAST" class="footer-logo">
                 {% else %}
                 <img src="../assets/kast-logo.png" alt="KAST" class="footer-logo">
                 {% endif %}

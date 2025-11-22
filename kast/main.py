@@ -97,6 +97,11 @@ def parse_args():
         default="/var/log/kast/",
         help="Log directory (default: /var/log/kast/)"
     )
+    parser.add_argument(
+        "--logo",
+        type=str,
+        help="Custom logo file (PNG or JPG) to use in reports (optional)"
+    )
     return parser.parse_args()
 
 def setup_logging(log_dir, verbose):
@@ -201,6 +206,21 @@ def main():
     log = logging.getLogger("kast")
 
     log.info("KAST started with arguments: %s", args)
+    
+    # Validate custom logo if provided
+    custom_logo_path = None
+    if args.logo:
+        logo_path = Path(args.logo).expanduser()
+        if not logo_path.exists():
+            log.warning(f"Custom logo file not found: {args.logo}. Using default logo.")
+            console.print(f"[yellow]Warning:[/yellow] Logo file '{args.logo}' not found. Using default logo.")
+        elif logo_path.suffix.lower() not in ['.png', '.jpg', '.jpeg']:
+            log.warning(f"Custom logo file must be PNG or JPG: {args.logo}. Using default logo.")
+            console.print(f"[yellow]Warning:[/yellow] Logo file must be PNG or JPG. Using default logo.")
+        else:
+            custom_logo_path = str(logo_path.resolve())
+            log.info(f"Using custom logo: {custom_logo_path}")
+            console.print(f"[cyan]Using custom logo:[/cyan] {custom_logo_path}")
 
     # Show dry run info if requested
     if args.dry_run:
@@ -346,14 +366,14 @@ def main():
             # Generate HTML report
             if args.format in ['html', 'both']:
                 html_path = output_dir / 'kast_report.html'
-                generate_html_report(plugin_results, str(html_path), args.target)
+                generate_html_report(plugin_results, str(html_path), args.target, custom_logo_path)
                 console.print(f"[green]HTML report generated:[/green] {html_path}")
                 log.info(f"HTML report generated at {html_path}")
             
             # Generate PDF report
             if args.format in ['pdf', 'both']:
                 pdf_path = output_dir / 'kast_report.pdf'
-                generate_pdf_report(plugin_results, str(pdf_path), args.target)
+                generate_pdf_report(plugin_results, str(pdf_path), args.target, custom_logo_path)
                 console.print(f"[green]PDF report generated:[/green] {pdf_path}")
                 log.info(f"PDF report generated at {pdf_path}")
                 
