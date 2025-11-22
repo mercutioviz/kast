@@ -21,7 +21,7 @@ from kast.orchestrator import ScannerOrchestrator
 console = Console()
 
 # Version number
-KAST_VERSION = "2.5.0"
+KAST_VERSION = "2.6.0"
 
 def parse_args():
     parser = argparse.ArgumentParser(
