@@ -55,11 +55,12 @@ body {
     color: white;
     text-align: center;
     page-break-after: always;
+    padding-top: 0.5in;
 }
 
 .cover-logo {
     width: 150px;
-    margin: 0 auto 2em auto;
+    margin: 0 auto 1.5em auto;
     display: block;
 }
 
@@ -70,29 +71,54 @@ body {
 }
 
 .cover-target {
-    font-size: 16pt;
-    margin: 2em 0;
+    font-size: 20pt;
+    margin: 0.75em 0;
     font-weight: 600;
 }
 
 .cover-date {
     font-size: 12pt;
     opacity: 0.9;
+    margin-bottom: 1.5em;
+}
+
+.cover-nav-buttons {
+    margin: 1.25em auto;
+    display: flex;
+    gap: 2em;
+    justify-content: center;
+}
+
+.cover-nav-button {
+    background: #0c5878;
+    border: none;
+    border-radius: 6px;
+    padding: 1em 2.5em;
+    color: white;
+    text-decoration: none;
+    font-size: 13pt;
+    font-weight: 600;
+    transition: all 0.2s;
+    min-width: 180px;
+}
+
+.cover-nav-button:hover {
+    background: #0a4a63;
 }
 
 .severity-summary {
-    margin: 3em auto 0 auto;
+    margin: 1.75em auto 0 auto;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.5em;
-    width: 600px;
+    gap: 1.25em;
+    width: 560px;
 }
 
 .severity-box {
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
-    padding: 1em;
+    border-radius: 6px;
+    padding: 0.85em;
 }
 
 .severity-box.high { border-color: #ff6b6b; }
@@ -101,13 +127,13 @@ body {
 .severity-box.info { border-color: #74c0fc; }
 
 .severity-count {
-    font-size: 28pt;
+    font-size: 24pt;
     font-weight: 700;
     margin-bottom: 0.2em;
 }
 
 .severity-label {
-    font-size: 10pt;
+    font-size: 9pt;
     opacity: 0.9;
 }
 
