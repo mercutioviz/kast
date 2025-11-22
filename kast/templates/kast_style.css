@@ -1,4 +1,10 @@
 /* KAST report blue theme stylesheet */
+
+/* Smooth scrolling for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #f4f8fb;
@@ -104,13 +110,50 @@ body > h2, body > h4, body > .issue, body > .tool-section, body > .plugin-execut
   color: #ffffff;
 }
 
-/* Severity Badges */
+/* Issues Header Container - Sticky Navigation */
+.issues-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2em;
+  margin: 2em 0;
+  padding: 1.5em 2em;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 0;
+  transition: box-shadow 0.3s ease;
+  flex-wrap: wrap;
+}
+
+.issues-header-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #0c4a6e 0%, #075985 50%, #0c4a6e 100%);
+}
+
+.issues-header-container h2 {
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  flex-shrink: 0;
+}
+
+/* Severity Badges - Now inline with header */
 .severity-badges {
   display: flex;
-  justify-content: center;
-  gap: 1.5em;
-  margin: 2em;
+  justify-content: flex-end;
+  gap: 1em;
+  margin: 0;
+  padding: 0;
   flex-wrap: wrap;
+  flex: 1;
 }
 
 .severity-badge {
@@ -635,6 +678,13 @@ code {
   .report-header {
     background: #0c4a6e;
     page-break-after: avoid;
+  }
+  
+  /* Disable sticky positioning for PDF */
+  .severity-badges {
+    position: static !important;
+    margin: 1.5em 2em !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   }
   
   /* Control page breaks - avoid breaking within these elements */

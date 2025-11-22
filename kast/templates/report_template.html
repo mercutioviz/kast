@@ -48,38 +48,6 @@
         </div>
     </div>
 
-    <!-- Severity Summary Badges -->
-    <div class="severity-badges">
-        <a href="#high-issues" class="severity-badge severity-badge-high" style="text-decoration: none; color: inherit; cursor: pointer;">
-            <span class="badge-icon">🔴</span>
-            <div class="badge-content">
-                <span class="badge-count">{{ scan_metadata.severity_counts.High }}</span>
-                <span class="badge-label">High</span>
-            </div>
-        </a>
-        <a href="#medium-issues" class="severity-badge severity-badge-medium" style="text-decoration: none; color: inherit; cursor: pointer;">
-            <span class="badge-icon">🟠</span>
-            <div class="badge-content">
-                <span class="badge-count">{{ scan_metadata.severity_counts.Medium }}</span>
-                <span class="badge-label">Medium</span>
-            </div>
-        </a>
-        <a href="#low-issues" class="severity-badge severity-badge-low" style="text-decoration: none; color: inherit; cursor: pointer;">
-            <span class="badge-icon">🟡</span>
-            <div class="badge-content">
-                <span class="badge-count">{{ scan_metadata.severity_counts.Low }}</span>
-                <span class="badge-label">Low</span>
-            </div>
-        </a>
-        <a href="#info-issues" class="severity-badge severity-badge-info" style="text-decoration: none; color: inherit; cursor: pointer;">
-            <span class="badge-icon">🔵</span>
-            <div class="badge-content">
-                <span class="badge-count">{{ scan_metadata.severity_counts.Info }}</span>
-                <span class="badge-label">Info</span>
-            </div>
-        </a>
-    </div>
-
     <h2><span class="section-icon">🛡️</span> Executive Summary</h2>
     {% if plugin_executive_summaries %}
     <h4>Scan Findings</h4>
@@ -94,7 +62,41 @@
     <h4>Potential Issues</h4>
     {{ executive_summary|safe }}
 
-    <h2><span class="section-icon">⚠️</span> Issues Found</h2>
+    <!-- Issues Found Section with Integrated Severity Navigation -->
+    <div class="issues-header-container">
+        <h2><span class="section-icon">⚠️</span> Issues Found</h2>
+        <div id="severity-navigation" class="severity-badges">
+            <a href="#high-issues" class="severity-badge severity-badge-high" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🔴</span>
+                <div class="badge-content">
+                    <span class="badge-count">{{ scan_metadata.severity_counts.High }}</span>
+                    <span class="badge-label">High</span>
+                </div>
+            </a>
+            <a href="#medium-issues" class="severity-badge severity-badge-medium" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🟠</span>
+                <div class="badge-content">
+                    <span class="badge-count">{{ scan_metadata.severity_counts.Medium }}</span>
+                    <span class="badge-label">Medium</span>
+                </div>
+            </a>
+            <a href="#low-issues" class="severity-badge severity-badge-low" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🟡</span>
+                <div class="badge-content">
+                    <span class="badge-count">{{ scan_metadata.severity_counts.Low }}</span>
+                    <span class="badge-label">Low</span>
+                </div>
+            </a>
+            <a href="#info-issues" class="severity-badge severity-badge-info" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🔵</span>
+                <div class="badge-content">
+                    <span class="badge-count">{{ scan_metadata.severity_counts.Info }}</span>
+                    <span class="badge-label">Info</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
     {% set severity_levels = ['High', 'Medium', 'Low', 'Info'] %}
     {% for severity in severity_levels %}
         {% set severity_issues = issues | selectattr('severity', 'equalto', severity) | list %}
