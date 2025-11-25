@@ -130,6 +130,11 @@ class TestsslPlugin(KastPlugin):
 
         self.debug(f"{self.name} raw findings:\n{pformat(findings)}")
 
+        # Ensure findings is a dictionary
+        if not isinstance(findings, dict):
+            self.debug(f"Unexpected findings type: {type(findings)}. Converting to dict.")
+            findings = {"raw_data": findings}
+
         # Extract scan results
         scan_results = findings.get("scanResult", [])
         if not scan_results:
