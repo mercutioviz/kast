@@ -93,4 +93,8 @@ EOF
 
 chmod +x /usr/local/bin/kast
 
+# Create default target log directory
+mkdir -p /var/log/kast
+chown $ORIG_USER:$ORIG_USER /var/log/kast
+
 echo "KAST installed! Run 'kast --help' to get started."
