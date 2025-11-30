@@ -2,6 +2,9 @@
 
 set -e
 
+ORIG_USER=${SUDO_USER:-$USER}
+ORIG_HOME=$(getent passwd "$ORIG_USER" | cut -d: -f6)
+
 cat assets/mascot.ans
 
 # Require root
@@ -18,13 +21,18 @@ INSTALL_DIR=${INSTALL_DIR:-/opt/kast}
 apt install -y ca-certificates curl gnupg rsync
 apt install -y firefox-esr git golang gpg htop nginx openjdk-21-jre python3 python3-venv sslscan testssl.sh wafw00f whatweb
 mkdir -p /etc/apt/keyrings
-curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --yes --dearmor -o /etc/apt/keyrings/nodesource.gpg
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 apt update
 apt install -y nodejs
 
-CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest
-ln -s $HOME/go/bin/katana /usr/local/bin/katana
+# Install projectdiscover items
+mkdir -p "$ORIG_HOME/go/bin"
+GOBIN="$ORIG_HOME/go/bin" CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest
+ln -f -s $ORIG_HOME/go/bin/katana /usr/local/bin/katana
+GOBIN="$ORIG_HOME/go/bin" go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+ln -f -s $ORIG_HOME/go/bin/subfinder /usr/local/bin/subfinder
+
 
 ## install the necessary gecko driver for firefox automation
 GECKO_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
@@ -36,7 +44,7 @@ rm geckodriver-*-linux64.tar.gz
 geckodriver --version
 
 ## Install terraform
-wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 apt update && apt install terraform
 
