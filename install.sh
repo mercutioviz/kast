@@ -14,6 +14,14 @@ echo "KAST Installer"
 read -p "Enter install directory [/opt/kast]: " INSTALL_DIR
 INSTALL_DIR=${INSTALL_DIR:-/opt/kast}
 
+# Install Node.js (includes npm)
+apt install -y ca-certificates curl gnupg rsync
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+apt update
+apt install -y nodejs
+
 echo "Installing to $INSTALL_DIR"
 
 # Create install directory if it doesn't exist
@@ -40,15 +48,11 @@ echo "Installing Python dependencies..."
 "$INSTALL_DIR/venv/bin/pip" install --upgrade pip
 "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
-# Install npm
-apt install npm -y
-
 # Install MDN Observatory CLI tool
-npm install --global @mdn/mdn-http-observatory
+npm install --global @mdn/mdn-http-observatory --unsafe-perm
 
 # Install libpango for PDF generation
-sudo apt install libpango-1.0-0
-sudo apt install libpangoft2-1.0-0
+apt install -y libpango-1.0-0 libpangoft2-1.0-0
 
 # Create launcher script
 echo "Creating launcher script at /usr/local/bin/kast..."
