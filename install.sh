@@ -16,11 +16,30 @@ INSTALL_DIR=${INSTALL_DIR:-/opt/kast}
 
 # Install Node.js (includes npm)
 apt install -y ca-certificates curl gnupg rsync
+apt install -y firefox-esr git golang gpg htop nginx npm openjdk-21-jre python3 python3-venv sslscan testssl.sh wafw00f whatweb
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 apt update
 apt install -y nodejs
+
+CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest
+ln -s $HOME/go/bin/katana /usr/local/bin/katana
+
+## install the necessary gecko driver for firefox automation
+GECKO_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
+echo $GECKO_VERSION
+wget -q "https://github.com/mozilla/geckodriver/releases/download/$GECKO_VERSION/geckodriver-$GECKO_VERSION-linux64.tar.gz"
+tar -xzf geckodriver-*-linux64.tar.gz
+mv geckodriver /usr/local/bin/
+rm geckodriver-*-linux64.tar.gz
+geckodriver --version
+
+## Install terraform
+wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<>
+apt update && apt install terraform
+
 
 echo "Installing to $INSTALL_DIR"
 
