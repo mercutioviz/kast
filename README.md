@@ -324,7 +324,8 @@ Customize report appearance by editing `kast/templates/kast_style.css`.
 - Try reinstalling the tool
 
 **Permission errors:**
-- Ensure log directory is writable: `sudo chmod 777 /var/log/kast/`
+- Ensure log directory is writable: `sudo chmod 666 /var/log/kast/`
+- OR change owner: `sudo chown $USER:$USER /var/log/kast/`
 - Use `--log-dir` to specify an alternative location
 
 **Empty reports:**
@@ -400,7 +401,7 @@ KAST integrates and orchestrates excellent open-source security tools:
 ## 📞 Support
 
 For issues, questions, or feature requests:
-- GitHub Issues: [Create an issue](https://github.com/yourusername/kast/issues)
+- GitHub Issues: [Create an issue](https://github.com/mercutioviz/kast/issues)
 - Documentation: Check the `docs/` directory
 - Plugin Development: See `kast/plugins/README.md`
 
