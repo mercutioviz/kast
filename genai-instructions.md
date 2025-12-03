@@ -2,8 +2,8 @@
 
 This document provides comprehensive guidance for GenAI assistants working with the KAST (Kali Automated Scan Tool) project. It contains essential information about project architecture, coding conventions, development patterns, and best practices.
 
-**Version:** 2.3.0  
-**Last Updated:** November 2025  
+**Version:** 2.6.2  
+**Last Updated:** December 2025  
 **Project Repository:** https://github.com/mercutioviz/kast
 
 ---
@@ -28,7 +28,7 @@ This document provides comprehensive guidance for GenAI assistants working with 
 
 ### What is KAST?
 
-KAST is a modular, extensible Python framework for automating web application security scanning tools. It orchestrates multiple security tools (WhatWeb, TestSSL, Wafw00f, Subfinder, Katana, Observatory), aggregates findings, and generates comprehensive HTML and PDF reports with executive summaries.
+KAST is a modular, extensible Python framework for automating web application security scanning tools. It orchestrates multiple security tools (Script Detection, WhatWeb, TestSSL, Wafw00f, Subfinder, Katana, Observatory), aggregates findings, and generates comprehensive HTML and PDF reports with executive summaries.
 
 ### Core Purpose
 
@@ -117,6 +117,48 @@ KAST is a modular, extensible Python framework for automating web application se
 5. **Builder Pattern**
    - `ReportBuilder` constructs complex reports step-by-step
    - Separates report data aggregation from rendering
+
+### PDF Report Generation Architecture
+
+KAST uses a **dual-template approach** for generating both HTML and PDF reports from the same data:
+
+**Architecture Overview:**
+```
+Plugin Results → ReportBuilder → {HTML Template → Interactive HTML Report
+                                 {PDF Template  → Static PDF Report (WeasyPrint)
+```
+
+**Key Components:**
+
+1. **Separate Templates:**
+   - `report_template.html` - Interactive HTML with JavaScript, collapsible sections, JSON tree viewers
+   - `report_template_pdf.html` - Static, print-optimized layout with expanded content
+
+2. **Separate Stylesheets:**
+   - `kast_style.css` - Web-optimized styling (flexbox, hover effects, interactive elements)
+   - `kast_style_pdf.css` - Print-optimized styling (page breaks, static layout, no JavaScript dependencies)
+
+3. **Format-Specific Processing:**
+   - **HTML Reports:** Use `custom_html` field from plugins for interactive widgets
+   - **PDF Reports:** Use `custom_html_pdf` field for simplified, print-friendly content
+   - **Image Handling:** PDF embeds images as base64 data URIs (no external file dependencies)
+   - **JSON Rendering:** PDF converts JSON to formatted HTML (5-level depth limit)
+
+4. **WeasyPrint Integration:**
+   - Converts PDF template to PDF using CSS Paged Media specifications
+   - Supports page breaks, margins, headers/footers
+   - Renders static HTML/CSS (no JavaScript execution)
+
+**PDF-Specific Optimizations:**
+- All interactive elements are expanded and rendered statically
+- JSON structures are pre-rendered as formatted HTML
+- Collapsible sections are fully expanded
+- Images embedded as base64 to eliminate external dependencies
+- Page break control to prevent splitting of issues or tool sections
+- Simplified layouts for better pagination
+
+**Implementation Note:**
+Plugins that generate complex visualizations should provide both `custom_html` (interactive) and `custom_html_pdf` (simplified) fields in their processed output. The report builder automatically selects the appropriate field based on output format.
 
 ---
 
@@ -379,14 +421,70 @@ def __init__(self, cli_args):
     ]
 ```
 
+### Available Plugins
+
+KAST includes the following built-in plugins:
+
+| Plugin | Display Name | Type | Priority | Dependencies | Description |
+|--------|--------------|------|----------|--------------|-------------|
+| **script_detection** | External Script Detection | Passive | 10 | mozilla_observatory | Analyzes external JavaScript files and checks for Subresource Integrity (SRI) protection |
+| **wafw00f** | Wafw00f | Passive | 15 | None | Detects Web Application Firewalls (WAF) |
+| **whatweb** | WhatWeb | Passive | 15 | None | Identifies web technologies and frameworks |
+| **testssl** | TestSSL.sh | Passive | 30 | None | Comprehensive SSL/TLS security testing |
+| **subfinder** | Subfinder | Passive | 40 | None | Subdomain enumeration and discovery |
+| **katana** | Katana | Active | 50 | None | Web crawling and endpoint discovery |
+| **mozilla_observatory** | Mozilla Observatory | Passive | 5 | None | Security assessment using Mozilla Observatory API |
+
+**Key Plugin Features:**
+
+1. **Script Detection Plugin** (NEW in v2.6.2)
+   - Fetches target HTML and analyzes `<script>` tags
+   - Identifies cross-origin scripts without SRI protection
+   - Detects insecure (HTTP) external scripts
+   - Correlates findings with Mozilla Observatory results
+   - Generates custom HTML widget for report display
+   - Maps to issue registry: `sri-not-implemented-but-external-scripts-loaded-securely`, `sri-not-implemented-and-external-scripts-not-loaded-securely`
+
+2. **WhatWeb Plugin**
+   - Detects domain redirects and suggests additional scans
+   - Identifies web technologies, frameworks, and platforms
+   - Generates formatted command display for reports
+
+3. **TestSSL Plugin**
+   - Tests SSL/TLS configuration and cipher suites
+   - Identifies vulnerabilities and weak configurations
+   - Generates executive summaries of critical findings
+
+4. **Subfinder Plugin**
+   - Groups subdomains by discovery source
+   - Generates custom HTML with collapsible sections
+   - Supports PDF mode with truncated listings
+
+5. **Katana Plugin**
+   - Groups discovered URLs by file extension
+   - Generates interactive HTML with collapsible sections
+   - Supports PDF mode with truncated listings
+
+6. **Observatory Plugin**
+   - Queries Mozilla Observatory API
+   - Maps findings to KAST issue registry
+   - Provides security grade (A+ to F)
+
 ### Priority System
 
 Lower priority numbers run first:
 
-- **10-20:** Critical infrastructure detection (WAF, redirects)
-- **20-40:** Technology identification (WhatWeb, TestSSL)
+- **5-10:** Early infrastructure detection (Observatory, Script Detection)
+- **10-20:** Critical detection (WAF, redirect detection)
+- **15-30:** Technology identification (WhatWeb, TestSSL)
 - **40-60:** Discovery tools (Subfinder, Katana)
 - **60+:** Deep analysis tools
+
+**Priority Guidelines:**
+- Security infrastructure detection should run early (5-15)
+- Technology fingerprinting next (15-30)
+- Subdomain/endpoint discovery after tech ID (40-60)
+- Deep analysis plugins last (60+)
 
 ### Template Plugin
 
@@ -593,6 +691,180 @@ self.lock = Lock()
 
 with self.lock:
     shared_dict[key] = value
+```
+
+### 9. Custom HTML Widget Generation
+
+Generate custom HTML for rich report display:
+
+```python
+def _generate_custom_html(self, findings):
+    """
+    Generate custom HTML widget for interactive report display.
+    Used for complex visualizations like grouped data, collapsible sections.
+    """
+    html_parts = []
+    html_parts.append('<div class="custom-widget">')
+    html_parts.append(f'<h4>📊 Analysis Results</h4>')
+    html_parts.append(f'<p><strong>Total Items:</strong> {findings.get("total", 0)}</p>')
+    
+    # Group data and create collapsible sections
+    for group_name, items in findings.get("grouped_data", {}).items():
+        html_parts.append(f'<div class="collapsible-group">')
+        html_parts.append(f'<h5>{group_name} ({len(items)} items)</h5>')
+        html_parts.append('<ul>')
+        for item in items[:10]:  # Limit display
+            html_parts.append(f'<li>{item}</li>')
+        if len(items) > 10:
+            html_parts.append(f'<li><em>... and {len(items) - 10} more</em></li>')
+        html_parts.append('</ul>')
+        html_parts.append('</div>')
+    
+    html_parts.append('</div>')
+    return '\n'.join(html_parts)
+```
+
+### 10. PDF Mode Handling
+
+Some plugins accept a `pdf_mode` parameter in `post_process()` for PDF-specific rendering:
+
+```python
+def post_process(self, raw_output, output_dir, pdf_mode=False):
+    """
+    Post-process output with optional PDF mode.
+    
+    :param raw_output: Raw output dict
+    :param output_dir: Output directory
+    :param pdf_mode: If True, generate PDF-optimized output
+    :return: Path to processed JSON file
+    """
+    findings = raw_output.get("results", {})
+    
+    # Standard processing
+    summary = self._generate_summary(findings)
+    executive_summary = self._generate_executive_summary(findings)
+    
+    processed = {
+        "plugin-name": self.name,
+        "plugin-description": self.description,
+        "plugin-display-name": self.display_name,
+        "plugin-website-url": self.website_url,
+        "timestamp": raw_output.get("timestamp"),
+        "findings": findings,
+        "summary": summary,
+        "executive_summary": executive_summary,
+        "issues": []
+    }
+    
+    # Generate format-specific HTML
+    if pdf_mode:
+        # PDF: Simple list with limited items
+        processed["custom_html_pdf"] = self._generate_pdf_list(findings, max_items=75)
+    else:
+        # HTML: Interactive widget with collapsible sections
+        processed["custom_html"] = self._generate_custom_html(findings)
+    
+    # Save processed output
+    processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
+    with open(processed_path, "w") as f:
+        json.dump(processed, f, indent=2)
+    
+    return processed_path
+```
+
+### 11. Observatory Correlation Pattern
+
+Correlate plugin findings with Mozilla Observatory results:
+
+```python
+def _correlate_with_observatory(self, output_dir):
+    """
+    Read Observatory findings to correlate with current plugin.
+    Useful for plugins analyzing security headers, CSP, SRI, etc.
+    """
+    # Try processed file first, fall back to raw
+    processed_file = os.path.join(output_dir, "mozilla_observatory_processed.json")
+    raw_file = os.path.join(output_dir, "mozilla_observatory.json")
+    
+    observatory_file = processed_file if os.path.exists(processed_file) else raw_file
+    
+    if not os.path.exists(observatory_file):
+        self.debug("Observatory results not found")
+        return None
+    
+    try:
+        with open(observatory_file, 'r') as f:
+            observatory_data = json.load(f)
+        
+        # Handle both raw and processed formats
+        if 'findings' in observatory_data:
+            # Processed format
+            scan_data = observatory_data.get('findings', {}).get('results', {}).get('scan', {})
+            issues = observatory_data.get('issues', [])
+        else:
+            # Raw format
+            scan_data = observatory_data.get('scan', {})
+            tests = observatory_data.get('tests', {})
+            issues = [test for test, data in tests.items() if not data.get('pass')]
+        
+        return {
+            'observatory_available': True,
+            'related_issues': [i for i in issues if 'relevant_keyword' in str(i).lower()],
+            'observatory_grade': scan_data.get('grade'),
+            'source': 'processed' if 'findings' in observatory_data else 'raw'
+        }
+    except Exception as e:
+        self.debug(f"Could not read Observatory results: {e}")
+        return None
+
+# Use in post_process:
+def post_process(self, raw_output, output_dir):
+    findings = raw_output.get("results", {})
+    
+    # Correlate with Observatory
+    observatory_correlation = self._correlate_with_observatory(output_dir)
+    
+    executive_summary = []
+    if observatory_correlation and observatory_correlation.get('observatory_available'):
+        grade = observatory_correlation.get('observatory_grade', 'Unknown')
+        related = observatory_correlation.get('related_issues', [])
+        if related:
+            executive_summary.append(
+                f"Mozilla Observatory (Grade: {grade}) identified {len(related)} related issues"
+            )
+    
+    # Include correlation in processed output
+    processed = {
+        # ... other fields ...
+        "observatory_correlation": observatory_correlation
+    }
+    return processed_path
+```
+
+### 12. Command Formatting for Reports
+
+Display the actual command executed in reports:
+
+```python
+def _format_command_for_report(self):
+    """
+    Format the command used for display in reports.
+    Useful for documentation and reproducibility.
+    """
+    # Example for a tool with multiple arguments
+    cmd_parts = [
+        "toolname",
+        "--option1",
+        "--option2 value",
+        "<target>"
+    ]
+    return " ".join(cmd_parts)
+
+# Include in processed output:
+processed = {
+    # ... other fields ...
+    "command": self._format_command_for_report()
+}
 ```
 
 ---
@@ -1164,20 +1436,82 @@ python -m kast.main --list-plugins
 - [ ] `post_process(self, raw_output, output_dir)` - Normalize output
 - [ ] `_generate_summary(self, findings)` - Create human-readable summary (optional override)
 
-### Processed JSON Required Fields
+### Processed JSON Required & Optional Fields
 
+**Required Fields:**
 ```python
 {
-    "plugin-name": str,
-    "plugin-description": str,
-    "plugin-display-name": str,
-    "plugin-website-url": str,
-    "timestamp": str,  # ISO format
-    "findings": dict,
-    "summary": str,
-    "details": str,
-    "issues": list,  # Can be empty
-    "executive_summary": list  # Can be empty
+    "plugin-name": str,              # Plugin identifier (lowercase_with_underscores)
+    "plugin-description": str,       # Brief description of what the plugin does
+    "plugin-display-name": str,      # Human-readable plugin name
+    "plugin-website-url": str,       # URL to tool's homepage/documentation
+    "timestamp": str,                # ISO 8601 format with milliseconds
+    "findings": dict,                # Raw or structured findings data
+    "summary": str,                  # Human-readable summary of findings
+    "details": str,                  # Detailed findings (multi-line text)
+    "issues": list,                  # List of issue IDs or issue dicts
+    "executive_summary": list        # High-level findings (list of strings)
+}
+```
+
+**Optional Fields:**
+```python
+{
+    # Custom HTML rendering (format-specific)
+    "custom_html": str,              # Interactive HTML widget for web reports
+    "custom_html_pdf": str,          # Simplified HTML for PDF reports
+    
+    # Command information
+    "command": str,                  # Command executed (for documentation)
+    
+    # Plugin correlation data
+    "observatory_correlation": dict, # Correlation with Observatory results
+    
+    # Additional metadata
+    "redirect_detected": bool,       # If domain redirect was detected
+    "redirected_to": str,            # Target of redirect
+    "total_count": int,              # Total items found (generic counter)
+    
+    # Grouped data (for plugins that categorize findings)
+    "grouped_findings": dict,        # Findings organized by category
+}
+```
+
+**Complete Example:**
+```python
+{
+    # Required fields
+    "plugin-name": "script_detection",
+    "plugin-description": "Analyzes external JavaScript files for SRI protection",
+    "plugin-display-name": "External Script Detection",
+    "plugin-website-url": "https://github.com/mercutioviz/kast",
+    "timestamp": "2025-12-03T14:30:22.456",
+    "findings": {
+        "total_scripts": 5,
+        "external_scripts": 3,
+        "missing_sri": 2
+    },
+    "summary": "Found 3 external scripts, 2 without SRI protection",
+    "details": "Analyzed 5 total scripts\n3 external scripts detected\n2 missing SRI protection",
+    "issues": [
+        "sri-not-implemented-but-external-scripts-loaded-securely"
+    ],
+    "executive_summary": [
+        "2 external scripts loaded over HTTPS without Subresource Integrity (SRI) protection",
+        "Mozilla Observatory (Grade: B+) also flagged missing SRI implementation"
+    ],
+    
+    # Optional fields
+    "custom_html": "<div class='sri-widget'>...</div>",
+    "custom_html_pdf": "<div class='sri-simple'>...</div>",
+    "command": "curl -s https://example.com | grep '<script'",
+    "observatory_correlation": {
+        "observatory_available": True,
+        "observatory_grade": "B+",
+        "related_issues": ["sri-not-implemented"],
+        "source": "processed"
+    },
+    "total_count": 5
 }
 ```
 
