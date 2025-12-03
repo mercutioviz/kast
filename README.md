@@ -11,13 +11,14 @@
 ### Core Capabilities
 - **Modular Plugin Architecture**: Easily extend KAST with custom plugins for any security tool
 - **Parallel Execution**: Run multiple security tools simultaneously for faster scans
-- **Intelligent Report Generation**: Automatic HTML report generation with executive summaries
+- **Intelligent Report Generation**: Automatic HTML and PDF report generation with executive summaries
 - **Flexible Execution Modes**: Support for both active and passive scanning modes
 - **Report-Only Mode**: Generate reports from previously collected scan data
 - **Dry Run Mode**: Preview scan execution without actually running tools
 - **Selective Plugin Execution**: Run specific plugins using `--run-only`
 - **Priority-Based Scheduling**: Plugins execute in order of priority for optimal workflow
 - **Rich CLI Interface**: Beautiful terminal output with progress indicators using Rich library
+- **Custom Logo Support**: Add your organization's logo to reports (PNG/JPG)
 
 ### Advanced Features
 - **Issue Registry**: Centralized database of security issues with remediation guidance
@@ -52,6 +53,10 @@
    - `pyyaml` - Configuration file parsing
    - `argparse` - Command-line argument parsing
    - `jinja2` - HTML template rendering
+   - `weasyprint` - PDF report generation
+   - `pillow` - Image processing for reports
+   - `requests>=2.25.0` - HTTP requests for plugins
+   - `beautifulsoup4>=4.9.0` - HTML parsing for plugins
 
 3. **Install security tools:**
    
@@ -126,6 +131,21 @@ python -m kast.main --report-only ~/kast_results/example.com-20250119-143022/
 python -m kast.main --target example.com --dry-run
 ```
 
+**Generate PDF report:**
+```bash
+python -m kast.main --target example.com --format pdf
+```
+
+**Generate both HTML and PDF reports:**
+```bash
+python -m kast.main --target example.com --format both
+```
+
+**Use custom logo in reports:**
+```bash
+python -m kast.main --target example.com --logo ~/my-company-logo.png
+```
+
 ### Command-Line Options
 
 | Option | Description |
@@ -137,6 +157,8 @@ python -m kast.main --target example.com --dry-run
 | `--run-only <plugins>` | Comma-separated list of plugins to run |
 | `-o, --output-dir <path>` | Custom output directory |
 | `--report-only <path>` | Generate report from existing scan data |
+| `--format <format>` | Output format: `html`, `pdf`, or `both` (default: html) |
+| `--logo <path>` | Custom logo file (PNG/JPG) for reports |
 | `--dry-run` | Preview execution without running tools |
 | `-v, --verbose` | Enable verbose logging |
 | `-l, --log-dir <path>` | Log directory (default: /var/log/kast/) |
@@ -149,6 +171,7 @@ KAST includes the following built-in plugins:
 
 | Plugin | Description | Type | Priority |
 |--------|-------------|------|----------|
+| **Script Detection** | Analyzes external JavaScript files and SRI protection | Passive | 10 |
 | **WhatWeb** | Identifies web technologies and frameworks | Passive | 15 (High) |
 | **Wafw00f** | Detects Web Application Firewalls (WAF) | Passive | 20 |
 | **TestSSL** | Comprehensive SSL/TLS security testing | Passive | 30 |
@@ -201,6 +224,16 @@ Each plugin requires its corresponding security tool to be installed:
 - **Homepage:** https://observatory.mozilla.org/
 - **Requirements:** Internet connection
 
+### Script Detection
+- **Installation:** No external tool required (uses Python libraries)
+- **Description:** Analyzes external JavaScript files and checks for Subresource Integrity (SRI) protection
+- **Requirements:** Python packages: `requests`, `beautifulsoup4` (installed via requirements.txt)
+- **Features:**
+  - Detects cross-origin script loading
+  - Identifies missing SRI protection
+  - Correlates findings with Mozilla Observatory results
+  - Highlights insecure (HTTP) external scripts
+
 ## 📊 Output Structure
 
 KAST generates organized output in the following structure:
@@ -208,6 +241,7 @@ KAST generates organized output in the following structure:
 ```
 ~/kast_results/example.com-20250119-143022/
 ├── kast_report.html           # Main HTML report
+├── kast_report.pdf            # PDF report (if --format pdf or both)
 ├── kast_info.json            # Execution metadata and timing
 ├── whatweb.json              # Raw WhatWeb output
 ├── whatweb_processed.json    # Processed findings
@@ -224,13 +258,15 @@ Contains execution metadata including:
 - CLI arguments used
 - Per-plugin timing information
 
-### HTML Report
-The generated HTML report includes:
+### Reports (HTML and PDF)
+The generated reports include:
 - Executive summary with key findings
 - Per-plugin detailed findings
 - Security issues with remediation guidance
 - Technology stack identification
 - Visual styling for easy readability
+- Custom logo support (if provided)
+- Professional formatting optimized for each format
 
 ## 🌐 KAST Web Interface
 
@@ -370,7 +406,7 @@ For issues, questions, or feature requests:
 
 ---
 
-**Version:** 2.3.0  
-**Last Updated:** November 2025
+**Version:** 2.6.2
+**Last Updated:** December 2025
 
 Made with ❤️ for the security community
