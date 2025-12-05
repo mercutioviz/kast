@@ -1,0 +1,69 @@
+# OWASP ZAP Cloud Plugin Configuration
+# Configure cloud provider credentials and scan parameters
+
+# Cloud provider selection: aws, azure, or gcp
+cloud_provider: "aws"
+
+# AWS Configuration
+# Note: AWS credentials are automatically resolved using AWS CLI configuration
+# from ~/.aws/credentials or environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+# Run 'aws configure' to set up credentials
+aws:
+  region: "us-west-2"
+  # Instance configuration
+  instance_type: "t3.xlarge"
+  ami_id: ""  # Leave empty to use default Ubuntu 22.04 LTS
+  # Spot instance pricing
+  spot_max_price: "0.10"  # Max USD per hour
+
+# Azure Configuration
+azure:
+  # Credentials - can use environment variables
+  subscription_id: "${AZURE_SUBSCRIPTION_ID}"
+  tenant_id: "${AZURE_TENANT_ID}"
+  client_id: "${AZURE_CLIENT_ID}"
+  client_secret: "${AZURE_CLIENT_SECRET}"
+  # Resource configuration
+  region: "eastus"
+  vm_size: "Standard_B2s"
+  # Spot instance configuration
+  spot_enabled: true
+  spot_max_price: -1  # -1 means pay up to regular price
+
+# GCP Configuration
+gcp:
+  project_id: "${GCP_PROJECT_ID}"
+  # Credentials file path
+  credentials_file: "${GOOGLE_APPLICATION_CREDENTIALS}"
+  # Instance configuration
+  region: "us-central1"
+  zone: "us-central1-a"
+  machine_type: "n1-standard-2"
+  # Preemptible (spot) instance
+  preemptible: true
+
+# ZAP Scan Configuration
+zap_config:
+  # Docker image to use
+  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+  # Path to ZAP automation framework plan
+  automation_plan: "kast/config/zap_automation_plan.yaml"
+  # ZAP API configuration
+  api_key: "kast01"  # Default API key for ZAP authentication
+  api_port: 8080
+  # Scan timeouts
+  timeout_minutes: 60  # Maximum scan duration
+  poll_interval_seconds: 30  # Status check interval
+  # SSH configuration
+  ssh_timeout_seconds: 300  # Timeout for SSH operations
+  ssh_retry_attempts: 5
+  # Results
+  output_format: "json"  # json, xml, html
+  report_name: "zap_report.json"
+
+# Infrastructure Tags/Labels
+tags:
+  Project: "KAST"
+  ManagedBy: "KAST-ZAP-Plugin"
+  Environment: "security-scan"
+  AutoShutdown: "true"

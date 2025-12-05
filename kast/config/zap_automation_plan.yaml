@@ -1,0 +1,74 @@
+# OWASP ZAP Automation Framework Plan
+# This file defines the scan configuration for ZAP
+
+env:
+  contexts:
+    - name: "target-context"
+      urls:
+        - "${TARGET_URL}"
+      includePaths:
+        - ".*"
+      excludePaths:
+        - ".*logout.*"
+        - ".*signout.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  # Spider scan to discover application structure
+  - type: "spiderClient"
+    parameters:
+      maxDuration: 10
+      maxDepth: 5
+      maxChildren: 0
+      acceptCookies: true
+      handleODataParametersVisited: false
+      parseComments: true
+      parseGit: true
+      parseRobotsTxt: true
+      parseSitemapXml: true
+      parseSVNEntries: true
+      postForm: true
+      processForm: true
+      requestWaitTime: 200
+      sendRefererHeader: true
+      threadCount: 2
+
+  # Passive scan - analyze responses
+  - type: "passiveScan-config"
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+      enableTags: false
+
+  # Wait for passive scan to complete
+  - type: "passiveScan-wait"
+    parameters:
+      maxDuration: 10
+
+  # Active scan - test for vulnerabilities
+  - type: "activeScan"
+    parameters:
+      context: "target-context"
+      policy: "Default Policy"
+      maxRuleDurationInMins: 5
+      maxScanDurationInMins: 30
+      addQueryParam: false
+      defaultPolicy: ""
+      delayInMs: 0
+      handleAntiCSRFTokens: true
+      injectPluginIdInHeader: false
+      scanHeadersAllRequests: true
+      threadPerHost: 2
+
+  # Generate report
+  - type: "report"
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+      reportTitle: "KAST ZAP Security Scan"
+      reportDescription: "Automated security scan performed by KAST"
+      displayReport: false
