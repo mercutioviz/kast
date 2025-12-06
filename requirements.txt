@@ -5,3 +5,5 @@ jinja2
 requests
 beautifulsoup4
 weasyprint
+cryptography
+pillow
