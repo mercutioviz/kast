@@ -552,5 +552,12 @@
       "remediation": "Disable this cipher suite immediately and use modern ciphers with at least 128-bit security. A WAF can make it easier to modify front-end TLS settings.",
       "severity": "Medium",
       "category": "Encryption"
+  },
+  "exposed_admin_panel": {
+      "display_name": "Exposed Admin Panel",
+      "description": "An administrative login panel is publicly accessible, potentially allowing unauthorized access attempts and increasing the attack surface.",
+      "remediation": "Restrict access to admin panels using IP whitelisting, VPN requirements, or move to non-standard URLs. Implement multi-factor authentication and monitor for brute-force attempts. A WAF can help by rate-limiting login attempts, blocking common attack patterns, providing geographical access restrictions to administrative interfaces, and implementing virtual patching against known admin panel vulnerabilities.",
+      "severity": "High",
+      "category": "Access Control"
   }
 }
