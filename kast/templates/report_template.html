@@ -290,6 +290,74 @@
             badge.textContent = 'Total: ' + allItems.length + ' URLs';
         }
     }
+    
+    // FTAP Panel Functions
+    function toggleFtapPanel(panelId) {
+        var content = document.getElementById(panelId + '-content');
+        var panel = document.querySelector('[data-panel-id="' + panelId + '"]');
+        var toggle = panel.querySelector('.ftap-panel-toggle');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            toggle.textContent = '▼';
+        } else {
+            content.style.display = 'none';
+            toggle.textContent = '▶';
+        }
+    }
+    
+    function toggleFtapRawJson(widgetId) {
+        var jsonDiv = document.getElementById(widgetId + '-raw-json');
+        var button = document.querySelector('[onclick*="toggleFtapRawJson(\'' + widgetId + '\')"]');
+        
+        if (jsonDiv.style.display === 'none') {
+            jsonDiv.style.display = 'block';
+            button.textContent = '📋 Hide Raw JSON';
+        } else {
+            jsonDiv.style.display = 'none';
+            button.textContent = '📋 Show Raw JSON';
+        }
+    }
+    
+    function filterFtapPanels(widgetId) {
+        var widget = document.getElementById(widgetId);
+        var input = widget.querySelector('.url-search-input');
+        var filter = input.value.toLowerCase();
+        var groups = widget.querySelectorAll('.url-group');
+        var totalVisible = 0;
+        
+        groups.forEach(function(group) {
+            var panels = group.querySelectorAll('.ftap-panel');
+            var visibleInGroup = 0;
+            
+            panels.forEach(function(panel) {
+                var searchText = panel.getAttribute('data-search');
+                if (searchText && searchText.indexOf(filter) > -1) {
+                    panel.style.display = 'block';
+                    visibleInGroup++;
+                    totalVisible++;
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+            
+            // Hide group if no matches
+            if (visibleInGroup === 0) {
+                group.style.display = 'none';
+            } else {
+                group.style.display = 'block';
+            }
+        });
+        
+        // Update count badge
+        var badge = widget.querySelector('.url-count-badge');
+        if (filter) {
+            badge.textContent = 'Showing: ' + totalVisible + ' Panel(s)';
+        } else {
+            var allPanels = widget.querySelectorAll('.ftap-panel');
+            badge.textContent = 'Total: ' + allPanels.length + ' Panel(s)';
+        }
+    }
     </script>
     <!-- Tree-view CSS moved to kast_style.css -->
     <script>

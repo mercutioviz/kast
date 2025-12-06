@@ -659,6 +659,195 @@ code {
   font-size: 0.95em;
 }
 
+/* FTAP Panel Styles */
+.ftap-controls {
+  padding: 1em;
+  background: linear-gradient(90deg, #f8fbfd, #ffffff);
+  border-bottom: 1px solid #e6eef6;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ftap-json-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+  border: none;
+  padding: 0.6em 1.2em;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ftap-json-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.ftap-raw-json {
+  padding: 1em;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e6eef6;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ftap-raw-json pre {
+  margin: 0;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 0.85em;
+  color: #1e293b;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.ftap-panels-list {
+  padding: 0.5em;
+}
+
+.ftap-panel {
+  margin: 0.5em 0;
+  border: 1px solid #e6eef6;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: box-shadow 0.3s;
+}
+
+.ftap-panel:hover {
+  box-shadow: 0 2px 8px rgba(8, 51, 68, 0.08);
+}
+
+.ftap-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 0.8em 1em;
+  background: linear-gradient(90deg, #f1f7fb, #ffffff);
+  cursor: pointer;
+  transition: background 0.3s;
+  border-bottom: 1px solid #e6eef6;
+}
+
+.ftap-panel-header:hover {
+  background: linear-gradient(90deg, #e6f0fa, #f8fbfd);
+}
+
+.ftap-panel-number {
+  background: #075985;
+  color: white;
+  padding: 0.3em 0.6em;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 600;
+  min-width: 2em;
+  text-align: center;
+}
+
+.ftap-panel-title {
+  flex: 1;
+  font-weight: 600;
+  color: #083344;
+  font-size: 0.95em;
+}
+
+.ftap-confidence {
+  padding: 0.3em 0.7em;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.ftap-panel-toggle {
+  color: #075985;
+  font-size: 0.9em;
+  transition: transform 0.3s;
+}
+
+.ftap-panel-content {
+  background: #ffffff;
+  border-top: 1px solid #e6eef6;
+}
+
+.ftap-panel-details {
+  padding: 1em;
+}
+
+.ftap-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1em;
+  padding: 0.5em 0;
+  border-bottom: 1px solid #f1f7fb;
+}
+
+.ftap-detail-row:last-child {
+  border-bottom: none;
+}
+
+.ftap-detail-label {
+  font-weight: 600;
+  color: #075985;
+  min-width: 120px;
+  font-size: 0.9em;
+}
+
+.ftap-detail-value {
+  color: #083344;
+  font-size: 0.9em;
+}
+
+.ftap-url-link {
+  color: #0284c7;
+  text-decoration: none;
+  word-break: break-all;
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 0.9em;
+  transition: color 0.3s;
+}
+
+.ftap-url-link:hover {
+  color: #0369a1;
+  text-decoration: underline;
+}
+
+.ftap-tech-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+}
+
+.ftap-tech-badge {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #0369a1;
+  padding: 0.3em 0.7em;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+  border: 1px solid #93c5fd;
+}
+
+/* Scrollbar styling for ftap raw JSON */
+.ftap-raw-json::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ftap-raw-json::-webkit-scrollbar-track {
+  background: #f1f7fb;
+  border-radius: 4px;
+}
+
+.ftap-raw-json::-webkit-scrollbar-thumb {
+  background: #bfdbfe;
+  border-radius: 4px;
+}
+
+.ftap-raw-json::-webkit-scrollbar-thumb:hover {
+  background: #93c5fd;
+}
+
 /* PDF-specific print styles */
 @media print {
   /* Page setup */
