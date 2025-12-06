@@ -81,6 +81,10 @@ class FtapPlugin(KastPlugin):
                 # In report-only mode, you might load existing results
                 # or return a placeholder
             else:
+                # Create empty ftap.json file first, so that kast-web knows we are running
+                in_progress_file = os.path.join(output_dir, "ftap.json")
+                open(in_progress_file, 'a').close()
+
                 # Execute the command
                 proc = subprocess.run(cmd, capture_output=True, text=True)
                 if proc.returncode != 0:
