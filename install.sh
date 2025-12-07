@@ -44,10 +44,9 @@ rm geckodriver-*-linux64.tar.gz
 geckodriver --version
 
 ## Install terraform
-wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+wget -O - https://apt.releases.hashicorp.com/gpg | gpg --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
 apt update && apt install terraform
-
 
 echo "Installing to $INSTALL_DIR"
 
@@ -89,6 +88,20 @@ KAST_DIR="$INSTALL_DIR"
 source "\$KAST_DIR/venv/bin/activate"
 cd "\$KAST_DIR"
 python -m kast.main "\$@"
+EOF
+
+# Install custom ftap
+cd $ORIG_HOME
+git clone https://github.com/mercutioviz/ftap
+cd ftap
+"$INSTALL_DIR/venv/bin/pip" install -r "requirements.txt"
+echo "Creating launcher script at /usr/local/bin/ftap..."
+cat > /usr/local/bin/kast <<EOF
+#!/bin/bash
+FTAP_DIR="$INSTALL_DIR"
+source "\$FTAP_DIR/venv/bin/activate"
+cd "\$FTAP_DIR"
+python -m finder.py "\$@"
 EOF
 
 chmod +x /usr/local/bin/kast
