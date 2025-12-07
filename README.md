@@ -49,14 +49,37 @@
    ```
 
    Required packages:
-   - `rich==10.16.2` - Terminal formatting and output
+   
+   **Core Web/HTTP Libraries:**
+   - `aiohttp>=3.9.1` - Async HTTP client library
+   - `requests>=2.31.0` - HTTP requests for plugins
+   - `urllib3>=2.1.0` - HTTP library
+   - `certifi>=2023.11.17` - Certificate bundle
+   - `aioquic>=0.9.21` - QUIC/HTTP3 protocol support
+   
+   **HTML/Web Parsing:**
+   - `beautifulsoup4>=4.12.2` - HTML parsing for plugins
+   
+   **CLI and Output:**
+   - `rich>=13.7.0` - Terminal formatting and output
+   - `psutil>=5.9.6` - System monitoring
+   
+   **Configuration and Templates:**
    - `pyyaml` - Configuration file parsing
    - `argparse` - Command-line argument parsing
    - `jinja2` - HTML template rendering
+   
+   **Report Generation:**
    - `weasyprint` - PDF report generation
    - `pillow` - Image processing for reports
-   - `requests>=2.25.0` - HTTP requests for plugins
-   - `beautifulsoup4>=4.9.0` - HTML parsing for plugins
+   
+   **Analysis and Processing:**
+   - `scikit-learn>=1.3.0` - Machine learning library
+   - `diskcache>=5.6.1` - Disk caching
+   - `langdetect>=1.0.9` - Language detection
+   
+   **SSH and Remote Access:**
+   - `paramiko>=3.0.0` - SSH protocol implementation for Python
 
 3. **Install security tools:**
    
@@ -176,6 +199,7 @@ KAST includes the following built-in plugins:
 | **Wafw00f** | Detects Web Application Firewalls (WAF) | Passive | 20 |
 | **TestSSL** | Comprehensive SSL/TLS security testing | Passive | 30 |
 | **Subfinder** | Subdomain enumeration and discovery | Passive | 40 |
+| **FTAP** | Find The Admin Panel - Discovers exposed admin login pages | Active | 50 |
 | **Katana** | Web crawling and endpoint discovery | Active | 50 |
 | **Observatory** | Mozilla Observatory security assessment | Passive | 60 |
 
@@ -208,6 +232,28 @@ Each plugin requires its corresponding security tool to be installed:
 - **Description:** Fast passive subdomain enumeration
 - **Homepage:** https://github.com/projectdiscovery/subfinder
 - **Requirements:** Go 1.21+
+
+### FTAP (Find The Admin Panel)
+- **Installation:**
+  ```bash
+  pip install ftap
+  ```
+  Or from source:
+  ```bash
+  git clone https://github.com/DV64/Find-The-Admin-Panel.git
+  cd Find-The-Admin-Panel
+  pip install -r requirements.txt
+  python setup.py install
+  ```
+- **Description:** Scans target websites for exposed admin login pages using stealth detection mode
+- **Homepage:** https://github.com/DV64/Find-The-Admin-Panel
+- **Requirements:** Python 3.7+
+- **Features:**
+  - Stealth detection mode for admin panel discovery
+  - Confidence scoring for detected panels
+  - Login form detection
+  - Technology identification
+  - JSON output format for integration
 
 ### Katana
 - **Installation:**
@@ -408,6 +454,6 @@ For issues, questions, or feature requests:
 ---
 
 **Version:** 2.6.2
-**Last Updated:** December 2025
+**Last Updated:** December 2024
 
 Made with ❤️ for the security community
