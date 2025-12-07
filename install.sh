@@ -107,6 +107,7 @@ python -m finder.py "\$@"
 EOF
 
 chmod +x /usr/local/bin/kast
+chmod +x /usr/local/bin/ftap
 
 # Create default target log directory
 mkdir -p /var/log/kast
