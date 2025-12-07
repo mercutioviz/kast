@@ -97,7 +97,6 @@ EOF
 cd $ORIG_HOME
 git clone https://github.com/mercutioviz/ftap
 cd ftap
-"$INSTALL_DIR/venv/bin/pip" install -r "requirements.txt"
 echo "Creating launcher script at /usr/local/bin/ftap..."
 cat > /usr/local/bin/ftap <<EOF
 #!/bin/bash
