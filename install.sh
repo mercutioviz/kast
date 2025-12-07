@@ -14,6 +14,10 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 echo "Welcome to the KAST Installer"
+echo "KAST works best on a fresh Debian or Kali instance."
+echo "The installer will attempt to install or update several tools."
+echo "Proceed with caution."
+echo
 read -p "Enter install directory [/opt/kast]: " INSTALL_DIR
 INSTALL_DIR=${INSTALL_DIR:-/opt/kast}
 
