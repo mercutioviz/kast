@@ -1,10 +1,27 @@
-rich==10.16.2
+# Core web/HTTP libraries
+aiohttp>=3.9.1
+requests>=2.31.0
+urllib3>=2.1.0
+certifi>=2023.11.17
+aioquic>=0.9.21
+
+# HTML/Web parsing
+beautifulsoup4>=4.12.2
+
+# CLI and output
+rich>=13.7.0
+psutil>=5.9.6
+
+# Configuration and templates
 pyyaml
 argparse
 jinja2
-requests
-beautifulsoup4
+
+# Report generation
 weasyprint
-cryptography
 pillow
-paramiko
+
+# Analysis and processing
+scikit-learn>=1.3.0
+diskcache>=5.6.1
+langdetect>=1.0.9
