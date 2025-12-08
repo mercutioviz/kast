@@ -1,0 +1,88 @@
+# OWASP ZAP Plugin Configuration
+# Supports local, remote, and cloud execution modes
+
+# Execution mode: auto, local, remote, cloud
+# - auto: Automatically detect best available mode
+# - local: Use local Docker ZAP container
+# - remote: Connect to existing ZAP instance
+# - cloud: Provision ephemeral cloud infrastructure
+execution_mode: auto
+
+# Auto-discovery priority (when execution_mode is "auto")
+auto_discovery:
+  # Check in this order:
+  # 1. Check for KAST_ZAP_URL environment variable (remote)
+  # 2. Check for running local ZAP container (local)
+  # 3. Fall back to cloud provisioning (cloud)
+  prefer_local: true  # Prefer local over cloud if available
+  check_env_vars: true  # Check for KAST_ZAP_URL, KAST_ZAP_API_KEY
+
+# Local ZAP Configuration (Docker)
+local:
+  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+  auto_start: true  # Automatically start ZAP if not running
+  api_port: 8080
+  api_key: "kast-local"
+  container_name: "kast-zap-local"
+  cleanup_on_completion: false  # Keep container running for reuse
+  use_automation_framework: true  # Use automation framework vs direct API
+
+# Remote ZAP Configuration (Existing Instance)
+remote:
+  # API URL - can use environment variable
+  api_url: "${KAST_ZAP_URL}"  # e.g., "http://zap.example.com:8080"
+  api_key: "${KAST_ZAP_API_KEY}"  # Optional, use "" if no key required
+  timeout_seconds: 30
+  verify_ssl: true  # Set to false for self-signed certificates
+  use_automation_framework: false  # Remote instances use direct API calls
+
+# Cloud Provider Configuration (Ephemeral Infrastructure)
+cloud:
+  # Cloud provider: aws, azure, gcp
+  cloud_provider: aws
+  
+  # AWS Configuration
+  aws:
+    region: us-east-1
+    instance_type: t3.medium
+    ami_id: ""  # Leave empty to use latest Ubuntu 22.04
+    spot_max_price: "0.05"  # Max hourly price for spot instance
+  
+  # Azure Configuration
+  azure:
+    subscription_id: "${AZURE_SUBSCRIPTION_ID}"
+    tenant_id: "${AZURE_TENANT_ID}"
+    client_id: "${AZURE_CLIENT_ID}"
+    client_secret: "${AZURE_CLIENT_SECRET}"
+    region: eastus
+    vm_size: Standard_B2s
+    spot_enabled: true
+    spot_max_price: -1  # -1 means pay up to on-demand price
+  
+  # GCP Configuration
+  gcp:
+    project_id: "${GCP_PROJECT_ID}"
+    credentials_file: "${GCP_CREDENTIALS_FILE}"
+    region: us-central1
+    zone: us-central1-a
+    machine_type: n1-standard-2
+    preemptible: true
+
+# ZAP Scanning Configuration (Common to all modes)
+zap_config:
+  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+  api_port: 8080
+  api_key: "kast01"
+  automation_plan: "kast/config/zap_automation_plan.yaml"
+  report_name: "zap_report.json"
+  timeout_minutes: 60
+  poll_interval_seconds: 30
+  ssh_timeout_seconds: 300
+  ssh_retry_attempts: 5
+
+# Resource Tags/Labels (for cloud mode)
+tags:
+  Project: KAST
+  ManagedBy: Terraform
+  Purpose: SecurityScanning
+  Environment: ephemeral
