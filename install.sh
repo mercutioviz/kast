@@ -7,7 +7,7 @@
 # CONSTANTS AND CONFIGURATION
 ###############################################################################
 
-SCRIPT_VERSION="2.0.0"
+SCRIPT_VERSION="2.6.3"
 INSTALL_STATE_FILE=".kast_install_state"
 VERSION_FILE=".kast_version"
 LOCK_FILE="/tmp/kast_install.lock"
@@ -517,7 +517,7 @@ verify_installation() {
     fi
     
     # Check if key system tools are available
-    local tools=(firefox geckodriver terraform testssl.sh whatweb)
+    local tools=(firefox geckodriver terraform testssl whatweb)
     for tool in "${tools[@]}"; do
         if ! command -v "$tool" &>/dev/null; then
             log_warning "$tool not found in PATH"
