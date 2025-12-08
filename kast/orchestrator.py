@@ -31,24 +31,51 @@ class ScannerOrchestrator:
         """
         results = []
         self.log.info("Starting scan for target: %s", self.cli_args.target)
+        self.log.info(f"Scan mode: {self.cli_args.mode}")
+        
         if self.cli_args.dry_run:
             self.log.info("Dry run mode enabled. No plugins will be executed.")
+            
+            # Apply same filtering logic as normal execution
             for plugin_cls in self.plugins:
-                plugin = plugin_cls(self.cli_args)
-                self.log.info(f"[DRY RUN] Would run plugin: {plugin.name}")
+                try:
+                    plugin_instance = plugin_cls(self.cli_args)
+                    plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
+                    
+                    if plugin_scan_type == self.cli_args.mode:
+                        self.log.info(f"[DRY RUN] Would run plugin: {plugin_instance.name} (scan_type: {plugin_scan_type})")
+                    else:
+                        self.log.debug(f"[DRY RUN] Would skip plugin: {plugin_instance.name} (scan_type: {plugin_scan_type}, mode: {self.cli_args.mode})")
+                except Exception as e:
+                    self.log.error(f"Error checking plugin {plugin_cls.__name__}: {e}")
             return []
 
         # Filter plugins by scan type (active/passive)
         # Cache plugin metadata to avoid creating unnecessary temporary instances
         selected_plugins = []
+        filtered_out_plugins = []
+        
+        self.log.info(f"Filtering {len(self.plugins)} total plugins for mode: {self.cli_args.mode}")
+        
         for plugin_cls in self.plugins:
             try:
                 # Create instance once to check scan_type
                 plugin_instance = plugin_cls(self.cli_args)
-                if getattr(plugin_instance, "scan_type", "passive") == self.cli_args.mode:
+                plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
+                
+                if plugin_scan_type == self.cli_args.mode:
                     selected_plugins.append(plugin_cls)
+                    self.log.info(f"✓ Selected plugin: {plugin_instance.name} (scan_type: {plugin_scan_type})")
+                else:
+                    filtered_out_plugins.append((plugin_instance.name, plugin_scan_type))
+                    self.log.info(f"✗ Filtered out plugin: {plugin_instance.name} (scan_type: {plugin_scan_type}, required: {self.cli_args.mode})")
             except Exception as e:
                 self.log.error(f"Error instantiating plugin {plugin_cls.__name__} for filtering: {e}")
+        
+        # Log summary of filtering
+        self.log.info(f"Plugin filtering complete: {len(selected_plugins)} selected, {len(filtered_out_plugins)} filtered out")
+        if filtered_out_plugins:
+            self.log.info(f"Filtered out plugins: {', '.join([f'{name} ({scan_type})' for name, scan_type in filtered_out_plugins])}")
 
         if self.cli_args.parallel:
             # Get max_workers from CLI args, default to 5 for conservative security scanning
