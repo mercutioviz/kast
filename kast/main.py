@@ -21,7 +21,7 @@ from kast.orchestrator import ScannerOrchestrator
 console = Console()
 
 # Version number
-KAST_VERSION = "2.6.3"
+KAST_VERSION = "2.6.4"
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -70,9 +70,9 @@ def parse_args():
     )
     parser.add_argument(
         "-m", "--mode",
-        choices=["active", "passive"],
+        choices=["active", "passive", "both"],
         default="passive",
-        help="Scan mode: active or passive (default: passive)"
+        help="Scan mode: active, passive, or both (default: passive)"
     )
     parser.add_argument(
         "-t", "--target",

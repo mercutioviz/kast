@@ -42,7 +42,13 @@ class ScannerOrchestrator:
                     plugin_instance = plugin_cls(self.cli_args)
                     plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
                     
-                    if plugin_scan_type == self.cli_args.mode:
+                    # Check if plugin should run based on mode
+                    should_run = (
+                        self.cli_args.mode == "both" or 
+                        plugin_scan_type == self.cli_args.mode
+                    )
+                    
+                    if should_run:
                         self.log.info(f"[DRY RUN] Would run plugin: {plugin_instance.name} (scan_type: {plugin_scan_type})")
                     else:
                         self.log.debug(f"[DRY RUN] Would skip plugin: {plugin_instance.name} (scan_type: {plugin_scan_type}, mode: {self.cli_args.mode})")
@@ -50,7 +56,7 @@ class ScannerOrchestrator:
                     self.log.error(f"Error checking plugin {plugin_cls.__name__}: {e}")
             return []
 
-        # Filter plugins by scan type (active/passive)
+        # Filter plugins by scan type (active/passive/both)
         # Cache plugin metadata to avoid creating unnecessary temporary instances
         selected_plugins = []
         filtered_out_plugins = []
@@ -63,7 +69,13 @@ class ScannerOrchestrator:
                 plugin_instance = plugin_cls(self.cli_args)
                 plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
                 
-                if plugin_scan_type == self.cli_args.mode:
+                # Check if plugin should run based on mode
+                should_run = (
+                    self.cli_args.mode == "both" or 
+                    plugin_scan_type == self.cli_args.mode
+                )
+                
+                if should_run:
                     selected_plugins.append(plugin_cls)
                     self.log.info(f"✓ Selected plugin: {plugin_instance.name} (scan_type: {plugin_scan_type})")
                 else:
