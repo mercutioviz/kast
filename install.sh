@@ -162,6 +162,132 @@ checkpoint_completed() {
 # VALIDATION FUNCTIONS
 ###############################################################################
 
+detect_os() {
+    # Check if /etc/os-release exists (standard for modern Linux distributions)
+    if [[ ! -f /etc/os-release ]]; then
+        echo "UNKNOWN"
+        return 1
+    fi
+    
+    # Source the os-release file to get distribution info
+    source /etc/os-release
+    
+    # Return distribution ID (lowercase)
+    echo "${ID:-UNKNOWN}"
+    return 0
+}
+
+get_os_version() {
+    # Check if /etc/os-release exists
+    if [[ ! -f /etc/os-release ]]; then
+        echo "0"
+        return 1
+    fi
+    
+    source /etc/os-release
+    
+    # For Kali Rolling, extract year from VERSION_ID if present
+    # For others, return VERSION_ID directly
+    if [[ "${ID}" == "kali" ]]; then
+        # Kali Rolling may have VERSION_ID like "2024.3" or just be "kali-rolling"
+        if [[ -n "$VERSION_ID" ]]; then
+            # Extract year (first part before dot)
+            echo "${VERSION_ID}" | cut -d'.' -f1
+        else
+            # Kali Rolling without VERSION_ID - assume current/supported
+            echo "2024"
+        fi
+    else
+        # Debian/Ubuntu - return major version
+        echo "${VERSION_ID:-0}" | cut -d'.' -f1
+    fi
+    
+    return 0
+}
+
+validate_os_support() {
+    local os_id=$(detect_os)
+    local os_version=$(get_os_version)
+    
+    log_info "Detected OS: $os_id (version: $os_version)"
+    
+    # Check if apt is available (Debian-based system requirement)
+    if ! command -v apt &>/dev/null; then
+        log_error "APT package manager not found. This installer requires a Debian-based system."
+        return 1
+    fi
+    
+    # Validate distribution and version
+    case "$os_id" in
+        kali)
+            if [[ $os_version -ge 2024 ]]; then
+                log_success "Kali Linux $os_version is supported"
+                return 0
+            else
+                log_error "Kali Linux version $os_version is not supported"
+                log_error "Minimum required: Kali 2024.x or later"
+                return 1
+            fi
+            ;;
+        debian)
+            if [[ $os_version -ge 12 ]]; then
+                log_success "Debian $os_version is supported"
+                return 0
+            else
+                log_error "Debian version $os_version is not supported"
+                log_error "Minimum required: Debian 12 or later"
+                return 1
+            fi
+            ;;
+        ubuntu)
+            if [[ $os_version -ge 24 ]]; then
+                log_success "Ubuntu $os_version is supported"
+                return 0
+            else
+                log_error "Ubuntu version $os_version is not supported"
+                log_error "Minimum required: Ubuntu 24 or later"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "Unsupported operating system: $os_id"
+            display_unsupported_os "$os_id" "$os_version"
+            return 1
+            ;;
+    esac
+}
+
+display_unsupported_os() {
+    local os_id=$1
+    local os_version=$2
+    
+    echo ""
+    echo -e "${RED}╔════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║                  UNSUPPORTED OPERATING SYSTEM                  ║${NC}"
+    echo -e "${RED}╚════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}Detected OS:${NC} $os_id (version: $os_version)"
+    echo ""
+    echo "KAST requires one of the following Debian-based distributions:"
+    echo ""
+    echo "  • Kali Linux 2024.x or later"
+    echo "  • Debian 12 (Bookworm) or later"
+    echo "  • Ubuntu 24.04 (Noble Numbat) or later"
+    echo ""
+    echo "Your system does not meet these requirements."
+    echo ""
+    echo -e "${YELLOW}Possible reasons:${NC}"
+    echo "  1. You are running an older version of a supported distribution"
+    echo "  2. You are running a non-Debian-based distribution"
+    echo "  3. System information could not be detected properly"
+    echo ""
+    echo -e "${YELLOW}Recommendations:${NC}"
+    echo "  • Update your system to a supported version"
+    echo "  • Install KAST on a supported distribution"
+    echo "  • For manual installation, refer to the documentation"
+    echo ""
+}
+
 validate_root() {
     if [[ $EUID -ne 0 ]]; then
         log_error "This installer must be run as root (use sudo)"
@@ -727,6 +853,25 @@ main() {
     
     # Validate root
     validate_root
+    
+    # Create log directory early for OS validation logging
+    mkdir -p "$LOG_DIR"
+    
+    # Validate OS compatibility before proceeding
+    echo ""
+    echo "======================================================================"
+    echo "  System Compatibility Check"
+    echo "======================================================================"
+    echo ""
+    
+    if ! validate_os_support; then
+        log_error "OS validation failed. Installation cannot proceed."
+        echo ""
+        echo "Installation aborted due to unsupported operating system."
+        exit 1
+    fi
+    
+    echo ""
     
     # Capture original user and home directory
     ORIG_USER=${SUDO_USER:-$USER}
