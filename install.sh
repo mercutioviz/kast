@@ -96,14 +96,16 @@ EOF
 # Install custom ftap
 cd $ORIG_HOME
 git clone https://github.com/mercutioviz/ftap
+chown -R $ORIG_USER:$ORIG_USER ftap
 cd ftap
 echo "Creating launcher script at /usr/local/bin/ftap..."
 cat > /usr/local/bin/ftap <<EOF
 #!/bin/bash
 FTAP_DIR="$ORIG_HOME/ftap"
+KAST_DIR="$INSTALL_DIR"
 source "\$KAST_DIR/venv/bin/activate"
 cd "\$FTAP_DIR"
-python -m finder.py "\$@"
+python finder.py "\$@"
 EOF
 
 chmod +x /usr/local/bin/kast
