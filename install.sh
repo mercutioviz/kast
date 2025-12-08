@@ -543,12 +543,12 @@ prompt_user_choice() {
     shift
     local options=("$@")
     
-    echo ""
-    echo "$prompt"
+    echo "" >&2
+    echo "$prompt" >&2
     for i in "${!options[@]}"; do
-        echo "  $((i+1)). ${options[$i]}"
+        echo "  $((i+1)). ${options[$i]}" >&2
     done
-    echo ""
+    echo "" >&2
     
     while true; do
         read -p "Enter your choice [1-${#options[@]}]: " choice
@@ -556,7 +556,7 @@ prompt_user_choice() {
             echo $((choice - 1))
             return 0
         else
-            echo "Invalid choice. Please enter a number between 1 and ${#options[@]}."
+            echo "Invalid choice. Please enter a number between 1 and ${#options[@]}." >&2
         fi
     done
 }
