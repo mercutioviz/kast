@@ -348,7 +348,7 @@ class RemoteZapProvider(ZapInstanceProvider):
 
 
 class CloudZapProvider(ZapInstanceProvider):
-    """Provider for cloud-provisioned ZAP instances (existing implementation)"""
+    """Provider for cloud-provisioned ZAP instances using Terraform"""
     
     def __init__(self, config, debug_callback=None):
         super().__init__(config, debug_callback)
@@ -357,24 +357,360 @@ class CloudZapProvider(ZapInstanceProvider):
         self.infrastructure_outputs = None
         self.ssh_key_path = None
         self.ssh_public_key = None
+        self.cloud_provider = None
+        self.temp_dir = None
     
     def get_mode_name(self):
         return "cloud"
     
+    def _generate_ssh_keypair(self):
+        """
+        Generate ephemeral SSH keypair for cloud instance access
+        
+        :return: Tuple of (private_key_path, public_key_content)
+        """
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.backends import default_backend
+        
+        self.debug("Generating SSH keypair...")
+        
+        # Generate private key
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+        
+        # Serialize private key
+        private_pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+        
+        # Get public key
+        public_key = private_key.public_key()
+        public_openssh = public_key.public_bytes(
+            encoding=serialization.Encoding.OpenSSH,
+            format=serialization.PublicFormat.OpenSSH
+        )
+        
+        # Write private key to temp file
+        import tempfile
+        self.temp_dir = tempfile.mkdtemp(prefix='kast_zap_')
+        private_key_path = os.path.join(self.temp_dir, 'zap_key')
+        
+        with open(private_key_path, 'wb') as f:
+            f.write(private_pem)
+        
+        # Set correct permissions (SSH requires 600)
+        os.chmod(private_key_path, 0o600)
+        
+        self.debug(f"SSH keypair generated: {private_key_path}")
+        return private_key_path, public_openssh.decode('utf-8')
+    
+    def _prepare_terraform_variables(self, target_url):
+        """
+        Prepare Terraform variables from configuration
+        
+        :param target_url: Target URL to scan
+        :return: Dictionary of Terraform variables
+        """
+        cloud_config = self.config.get('cloud', {})
+        zap_config = self.config.get('zap_config', {})
+        
+        # Common variables
+        variables = {
+            'ssh_public_key': self.ssh_public_key,
+            'target_url': target_url,
+        }
+        
+        # Cloud provider specific variables
+        if self.cloud_provider == 'aws':
+            aws_config = cloud_config.get('aws', {})
+            variables.update({
+                'region': aws_config.get('region', 'us-east-1'),
+                'instance_type': aws_config.get('instance_type', 't3.medium'),
+                'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
+            })
+            # Add AWS credentials if provided in config
+            if aws_config.get('access_key_id'):
+                variables['aws_access_key_id'] = aws_config['access_key_id']
+            if aws_config.get('secret_access_key'):
+                variables['aws_secret_access_key'] = aws_config['secret_access_key']
+        
+        elif self.cloud_provider == 'azure':
+            azure_config = cloud_config.get('azure', {})
+            variables.update({
+                'location': azure_config.get('location', 'eastus'),
+                'vm_size': azure_config.get('vm_size', 'Standard_B2s'),
+                'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
+            })
+        
+        elif self.cloud_provider == 'gcp':
+            gcp_config = cloud_config.get('gcp', {})
+            variables.update({
+                'project_id': gcp_config.get('project_id'),
+                'region': gcp_config.get('region', 'us-central1'),
+                'zone': gcp_config.get('zone', 'us-central1-a'),
+                'machine_type': gcp_config.get('machine_type', 'e2-medium'),
+                'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
+            })
+        
+        # Add tags/labels
+        tags = self.config.get('tags', {})
+        if tags:
+            variables['tags'] = tags
+        
+        return variables
+    
     def provision(self, target_url, output_dir):
-        """Provision cloud infrastructure - implementation will be moved from plugin"""
-        # This will contain the refactored cloud provisioning logic
-        # For now, return not implemented to keep the diff manageable
-        raise NotImplementedError("CloudZapProvider will be implemented in next phase")
+        """Provision cloud infrastructure using Terraform"""
+        self.debug("Provisioning cloud infrastructure...")
+        
+        try:
+            # Import dependencies
+            from kast.scripts.terraform_manager import TerraformManager
+            from kast.scripts.ssh_executor import SSHExecutor
+            
+            cloud_config = self.config.get('cloud', {})
+            self.cloud_provider = cloud_config.get('cloud_provider', 'aws')
+            
+            # Generate SSH keypair
+            self.ssh_key_path, self.ssh_public_key = self._generate_ssh_keypair()
+            
+            # Initialize Terraform Manager
+            terraform_dir = Path(__file__).parent.parent / 'terraform' / self.cloud_provider
+            workspace_dir = Path(output_dir) / 'terraform_workspace'
+            
+            self.terraform_manager = TerraformManager(
+                str(terraform_dir),
+                str(workspace_dir),
+                debug_callback=self.debug
+            )
+            
+            # Prepare Terraform variables
+            tf_vars = self._prepare_terraform_variables(target_url)
+            
+            self.debug(f"Using cloud provider: {self.cloud_provider}")
+            self.debug("Initializing Terraform...")
+            
+            # Terraform workflow: init -> plan -> apply
+            if not self.terraform_manager.init():
+                return False, None, {"error": "Terraform init failed"}
+            
+            if not self.terraform_manager.plan(tf_vars):
+                return False, None, {"error": "Terraform plan failed"}
+            
+            self.debug("Applying Terraform configuration...")
+            if not self.terraform_manager.apply(tf_vars):
+                return False, None, {"error": "Terraform apply failed"}
+            
+            # Get infrastructure outputs
+            self.infrastructure_outputs = self.terraform_manager.get_outputs()
+            
+            if not self.infrastructure_outputs:
+                return False, None, {"error": "Failed to get Terraform outputs"}
+            
+            # Extract connection details
+            instance_ip = self.infrastructure_outputs.get('instance_ip', {}).get('value')
+            zap_api_url = self.infrastructure_outputs.get('zap_api_url', {}).get('value')
+            
+            if not instance_ip:
+                return False, None, {"error": "No instance IP in Terraform outputs"}
+            
+            self.debug(f"Infrastructure provisioned - Instance IP: {instance_ip}")
+            
+            # Wait for SSH to be available
+            ssh_config = cloud_config.get('ssh', {})
+            ssh_user = ssh_config.get('user', 'ubuntu')
+            ssh_timeout = ssh_config.get('connection_timeout', 300)
+            
+            self.debug("Waiting for SSH to be available...")
+            self.ssh_executor = SSHExecutor(
+                hostname=instance_ip,
+                username=ssh_user,
+                key_filename=self.ssh_key_path,
+                debug_callback=self.debug
+            )
+            
+            # Try to connect with retries
+            max_retries = 30
+            retry_interval = 10
+            connected = False
+            
+            for attempt in range(max_retries):
+                try:
+                    if self.ssh_executor.connect():
+                        connected = True
+                        self.debug("SSH connection established")
+                        break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        self.debug(f"SSH connection attempt {attempt + 1} failed, retrying...")
+                        time.sleep(retry_interval)
+                    else:
+                        self.debug(f"SSH connection failed after {max_retries} attempts: {e}")
+            
+            if not connected:
+                return False, None, {"error": "Failed to establish SSH connection"}
+            
+            # Deploy ZAP container
+            zap_config = self.config.get('zap_config', {})
+            docker_image = zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable')
+            api_key = zap_config.get('api_key', 'kast-cloud-key')
+            
+            self.debug("Starting ZAP container on remote instance...")
+            
+            # Create directories
+            self.ssh_executor.execute_command('mkdir -p /home/ubuntu/zap_config')
+            self.ssh_executor.execute_command('mkdir -p /home/ubuntu/zap_reports')
+            
+            # Start ZAP container
+            zap_cmd = f"""docker run -d --name zap-scanner \
+                -p 8080:8080 \
+                -v /home/ubuntu/zap_config:/zap/config \
+                -v /home/ubuntu/zap_reports:/zap/reports \
+                {docker_image} \
+                zap.sh -daemon -port 8080 \
+                -config api.key={api_key} \
+                -config api.addrs.addr.name=.* \
+                -config api.addrs.addr.regex=true"""
+            
+            result = self.ssh_executor.execute_command(zap_cmd)
+            if result['exit_code'] != 0:
+                self.debug(f"Failed to start ZAP container: {result['stderr']}")
+                return False, None, {"error": "Failed to start ZAP container"}
+            
+            self.debug("ZAP container started, waiting for API to be ready...")
+            
+            # Create ZAP API client
+            if not zap_api_url:
+                zap_api_url = f"http://{instance_ip}:8080"
+            
+            self.zap_client = ZAPAPIClient(zap_api_url, api_key, debug_callback=self.debug)
+            
+            # Wait for ZAP to be ready
+            if not self.zap_client.wait_for_ready(timeout=180, poll_interval=10):
+                return False, None, {"error": "ZAP API not ready"}
+            
+            self.instance_info = {
+                'mode': 'cloud',
+                'cloud_provider': self.cloud_provider,
+                'instance_ip': instance_ip,
+                'zap_api_url': zap_api_url,
+                'infrastructure_outputs': self.infrastructure_outputs
+            }
+            
+            return True, self.zap_client, self.instance_info
+            
+        except Exception as e:
+            self.debug(f"Cloud provisioning failed: {e}")
+            import traceback
+            self.debug(traceback.format_exc())
+            return False, None, {"error": str(e)}
     
     def upload_automation_plan(self, plan_content, target_url):
         """Upload automation plan via SSH"""
-        raise NotImplementedError("CloudZapProvider will be implemented in next phase")
+        if not self.ssh_executor:
+            self.debug("No SSH connection available")
+            return False
+        
+        try:
+            # Substitute target URL
+            plan_content = plan_content.replace('${TARGET_URL}', target_url)
+            
+            # Write plan to temp file
+            temp_plan = os.path.join(self.temp_dir, 'automation_plan.yaml')
+            with open(temp_plan, 'w') as f:
+                f.write(plan_content)
+            
+            # Upload via SFTP
+            remote_path = '/home/ubuntu/zap_config/automation_plan.yaml'
+            self.debug(f"Uploading automation plan to {remote_path}")
+            
+            if self.ssh_executor.upload_file(temp_plan, remote_path):
+                self.debug("Automation plan uploaded successfully")
+                
+                # Trigger automation via ZAP CLI
+                cmd = f"docker exec zap-scanner zap-cli --zap-url http://localhost:8080 open-url {target_url}"
+                self.ssh_executor.execute_command(cmd)
+                
+                return True
+            else:
+                self.debug("Failed to upload automation plan")
+                return False
+                
+        except Exception as e:
+            self.debug(f"Error uploading automation plan: {e}")
+            return False
     
     def download_results(self, output_dir, report_name):
-        """Download results via SSH"""
-        raise NotImplementedError("CloudZapProvider will be implemented in next phase")
+        """Download scan results via SSH/SFTP"""
+        if not self.ssh_executor:
+            self.debug("No SSH connection available")
+            return None
+        
+        try:
+            # Remote report path
+            remote_path = f'/home/ubuntu/zap_reports/{report_name}'
+            
+            # Check if file exists
+            check_cmd = f"test -f {remote_path} && echo 'exists' || echo 'missing'"
+            result = self.ssh_executor.execute_command(check_cmd)
+            
+            if 'exists' not in result['stdout']:
+                self.debug(f"Report not found at {remote_path}, generating via API...")
+                # Generate report via API
+                local_path = os.path.join(output_dir, report_name)
+                self.zap_client.generate_report(local_path, 'json')
+                return local_path
+            
+            # Download via SFTP
+            local_path = os.path.join(output_dir, report_name)
+            self.debug(f"Downloading report from {remote_path} to {local_path}")
+            
+            if self.ssh_executor.download_file(remote_path, local_path):
+                self.debug("Report downloaded successfully")
+                return local_path
+            else:
+                self.debug("Failed to download report")
+                return None
+                
+        except Exception as e:
+            self.debug(f"Error downloading results: {e}")
+            return None
     
     def cleanup(self):
         """Teardown cloud infrastructure"""
-        raise NotImplementedError("CloudZapProvider will be implemented in next phase")
+        self.debug("Cleaning up cloud resources...")
+        
+        try:
+            # Close SSH connection
+            if self.ssh_executor:
+                try:
+                    self.ssh_executor.close()
+                    self.debug("SSH connection closed")
+                except:
+                    pass
+            
+            # Destroy infrastructure
+            if self.terraform_manager:
+                self.debug("Running Terraform destroy...")
+                if self.terraform_manager.destroy():
+                    self.debug("Infrastructure destroyed successfully")
+                else:
+                    self.debug("Warning: Terraform destroy may have failed")
+                
+                # Cleanup workspace
+                self.terraform_manager.cleanup()
+            
+            # Remove temp directory with SSH keys
+            if self.temp_dir and os.path.exists(self.temp_dir):
+                import shutil
+                shutil.rmtree(self.temp_dir, ignore_errors=True)
+                self.debug("Temporary files cleaned up")
+                
+        except Exception as e:
+            self.debug(f"Error during cleanup: {e}")
