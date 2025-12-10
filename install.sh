@@ -416,7 +416,7 @@ install_go_tools() {
     if [[ ! -f "$ORIG_HOME/go/bin/katana" ]] || [[ ! -f "/usr/local/bin/katana" ]]; then
         log_info "Installing katana..."
         sudo -u "$ORIG_USER" bash -c "GOBIN='$ORIG_HOME/go/bin' CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest"
-        ln -f -s "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
+        cp -f "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
     else
         log_info "Katana already installed"
     fi
@@ -425,7 +425,7 @@ install_go_tools() {
     if [[ ! -f "$ORIG_HOME/go/bin/subfinder" ]] || [[ ! -f "/usr/local/bin/subfinder" ]]; then
         log_info "Installing subfinder..."
         sudo -u "$ORIG_USER" bash -c "GOBIN='$ORIG_HOME/go/bin' go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
-        ln -f -s "$ORIG_HOME/go/bin/subfinder" /usr/local/bin/subfinder
+        cp -f "$ORIG_HOME/go/bin/subfinder" /usr/local/bin/subfinder
     else
         log_info "Subfinder already installed"
     fi
