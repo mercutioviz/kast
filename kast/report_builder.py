@@ -174,6 +174,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         if exec_summary:
             plugin_executive_summaries.append({
                 "plugin_name": display_name,
+                "tool_name": tool_name,  # Original tool name for anchor links
                 "summary": format_multiline_text_as_list(exec_summary, tool_name)
             })
 
@@ -462,6 +463,7 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
         if exec_summary:
             plugin_executive_summaries.append({
                 "plugin_name": display_name,
+                "tool_name": tool_name,  # Original tool name for anchor links
                 "summary": format_multiline_text_as_list(exec_summary)
             })
 

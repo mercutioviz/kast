@@ -531,9 +531,8 @@ body {
 .tool-row {
     margin-bottom: 0.5em;
     font-size: 10pt;
-    word-wrap: break-word;
-    word-break: break-word;
     overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .tool-row:last-child {
@@ -542,9 +541,8 @@ body {
 
 .tool-summary {
     margin-bottom: 1em;
-    word-wrap: break-word;
-    word-break: break-word;
     overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .tool-custom {
@@ -565,9 +563,8 @@ body {
     font-size: 8pt;
     line-height: 1.4;
     overflow: hidden;
-    word-wrap: break-word;
-    word-break: break-word;
     overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .json-object,
@@ -578,16 +575,14 @@ body {
 .json-key {
     color: #0a4a63;
     font-weight: 600;
-    word-wrap: break-word;
-    word-break: break-word;
     overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .json-string { 
     color: #087f5b;
-    word-wrap: break-word;
-    word-break: break-word;
     overflow-wrap: break-word;
+    word-break: normal;
     max-width: 100%;
     display: inline-block;
 }
@@ -597,9 +592,8 @@ body {
 .json-truncated { color: #868e96; font-style: italic; }
 
 .json-item {
-    word-wrap: break-word;
-    word-break: break-word;
     overflow-wrap: break-word;
+    word-break: normal;
 }
 
 /* ===== FOOTER ===== */

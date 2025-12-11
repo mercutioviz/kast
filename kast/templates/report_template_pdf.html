@@ -23,30 +23,49 @@
         </div>
         
         <div class="severity-summary">
+            {% if scan_metadata.severity_counts.High > 0 %}
             <a href="#issues-high" class="severity-box-link">
+            {% endif %}
                 <div class="severity-box high">
                     <div class="severity-count">{{ scan_metadata.severity_counts.High }}</div>
                     <div class="severity-label">High</div>
                 </div>
+            {% if scan_metadata.severity_counts.High > 0 %}
             </a>
+            {% endif %}
+            
+            {% if scan_metadata.severity_counts.Medium > 0 %}
             <a href="#issues-medium" class="severity-box-link">
+            {% endif %}
                 <div class="severity-box medium">
                     <div class="severity-count">{{ scan_metadata.severity_counts.Medium }}</div>
                     <div class="severity-label">Medium</div>
                 </div>
+            {% if scan_metadata.severity_counts.Medium > 0 %}
             </a>
+            {% endif %}
+            
+            {% if scan_metadata.severity_counts.Low > 0 %}
             <a href="#issues-low" class="severity-box-link">
+            {% endif %}
                 <div class="severity-box low">
                     <div class="severity-count">{{ scan_metadata.severity_counts.Low }}</div>
                     <div class="severity-label">Low</div>
                 </div>
+            {% if scan_metadata.severity_counts.Low > 0 %}
             </a>
+            {% endif %}
+            
+            {% if scan_metadata.severity_counts.Info > 0 %}
             <a href="#issues-info" class="severity-box-link">
+            {% endif %}
                 <div class="severity-box info">
                     <div class="severity-count">{{ scan_metadata.severity_counts.Info }}</div>
                     <div class="severity-label">Info</div>
                 </div>
+            {% if scan_metadata.severity_counts.Info > 0 %}
             </a>
+            {% endif %}
         </div>
     </div>
 
@@ -60,7 +79,7 @@
         <div class="summary-block">
             <div class="summary-plugin">
                 {{ summary.plugin_name }}
-                <a href="#tool-{{ summary.plugin_name|lower|replace(' ', '-')|replace('.', '-') }}" class="inline-nav-link">View Details →</a>
+                <a href="#tool-{{ summary.tool_name|lower|replace(' ', '-')|replace('.', '-') }}" class="inline-nav-link">View Details →</a>
             </div>
             {{ summary.summary|safe }}
         </div>
