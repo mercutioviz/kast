@@ -179,6 +179,7 @@ class ScannerOrchestrator:
         completed_plugins = {}  # plugin_name -> result
         pending_plugins = {}    # plugin_cls -> plugin_instance
         futures = {}            # future -> (plugin_cls, plugin_instance)
+        plugin_dependency_states = {}  # Track last logged reason per plugin to avoid spam
         
         # Create instances and map by name for dependency checking
         for plugin_cls in selected_plugins:
@@ -206,7 +207,13 @@ class ScannerOrchestrator:
                         del pending_plugins[plugin_cls]
                         newly_submitted = True
                     else:
-                        self.log.debug(f"Plugin {plugin.name} waiting on dependencies: {reason}")
+                        # Only log if the dependency reason has changed
+                        current_reason = reason
+                        last_reason = plugin_dependency_states.get(plugin.name)
+                        
+                        if last_reason != current_reason:
+                            self.log.debug(f"Plugin {plugin.name} waiting on dependencies: {reason}")
+                            plugin_dependency_states[plugin.name] = current_reason
                 
                 # If no plugins were submitted and we still have pending plugins,
                 # check if we're in a deadlock situation
