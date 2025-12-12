@@ -530,9 +530,8 @@ determine_install_strategy() {
         if check_version_requirement "$tool" "$installed_version"; then
             echo "SKIP_ALREADY_INSTALLED"
             return 0
-        else
-            log_warning "$tool is installed but version $installed_version is below minimum $min_version"
         fi
+        # Don't log here - let caller handle it
     fi
     
     # Check apt availability and version
@@ -544,12 +543,10 @@ determine_install_strategy() {
             if check_version_requirement "$tool" "$apt_version"; then
                 echo "USE_APT"
                 return 0
-            else
-                log_warning "APT version of $tool ($apt_version) is below minimum required ($min_version)"
             fi
-        else
-            log_warning "Package $apt_package not available in APT repositories"
+            # Don't log here - let caller handle it
         fi
+        # Don't log here - let caller handle it
     fi
     
     # Fall back to manual installation
@@ -608,10 +605,36 @@ validate_prerequisites() {
     local tools=("golang" "java" "nodejs")
     
     for tool in "${tools[@]}"; do
+        local min_version="${TOOL_MIN_VERSIONS[$tool]}"
+        local installed_version=$(get_installed_version "$tool")
+        local apt_package="${TOOL_APT_PACKAGES[$tool]}"
+        
+        # Determine strategy
         local strategy=$(determine_install_strategy "$tool")
         INSTALL_STRATEGY["$tool"]="$strategy"
         
-        log_info "$tool installation strategy: $strategy"
+        # Log the strategy with context
+        log_info "Analyzing $tool:"
+        log_info "  - Minimum required: $min_version"
+        log_info "  - Currently installed: ${installed_version:-Not installed}"
+        log_info "  - APT available: ${APT_AVAILABLE_VERSIONS[$tool]:-N/A}"
+        log_info "  - Installation strategy: $strategy"
+        
+        # Add warnings based on what we found
+        if [[ -n "$installed_version" ]]; then
+            if ! check_version_requirement "$tool" "$installed_version"; then
+                log_warning "$tool is installed but version $installed_version is below minimum $min_version"
+            fi
+        fi
+        
+        if [[ "$strategy" == "USE_MANUAL" ]]; then
+            local apt_ver="${APT_AVAILABLE_VERSIONS[$tool]}"
+            if [[ -n "$apt_ver" ]]; then
+                log_warning "APT version of $tool ($apt_ver) is below minimum required ($min_version)"
+            else
+                log_warning "Package $apt_package not available in APT repositories"
+            fi
+        fi
     done
     
     # Display summary table
