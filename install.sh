@@ -65,7 +65,7 @@ TOOL_MANUAL_INSTALL["golang"]="golang_tarball"
 # Java Runtime Environment - Required by OWASP ZAP
 TOOL_MIN_VERSIONS["java"]="11.0.0"
 TOOL_APT_PACKAGES["java"]="openjdk-21-jre"
-TOOL_CHECK_COMMANDS["java"]="java -version 2>&1 | head -n1 | awk '{print \$3}' | tr -d '\"'"
+TOOL_CHECK_COMMANDS["java"]="java -version 2>&1 | grep -oP 'version \"?\K[0-9]+\.[0-9]+\.[0-9]+' | head -n1"
 TOOL_REQUIRED_BY["java"]="OWASP ZAP"
 TOOL_MANUAL_INSTALL["java"]="openjdk_tarball"
 
@@ -476,7 +476,12 @@ get_apt_version() {
     fi
     
     # Query apt-cache for the candidate version
-    local version=$(apt-cache policy "$package" 2>/dev/null | grep "Candidate:" | awk '{print $2}')
+    local version=$(apt-cache policy "$package" 2>/dev/null | grep -A1 "Candidate:" | grep -v "Candidate:" | awk '{print $1}' | head -n1)
+    
+    # Alternative: try getting from apt-cache show if policy fails
+    if [[ -z "$version" ]] || [[ "$version" == "(none)" ]]; then
+        version=$(apt-cache show "$package" 2>/dev/null | grep "^Version:" | head -n1 | awk '{print $2}')
+    fi
     
     if [[ -z "$version" ]] || [[ "$version" == "(none)" ]]; then
         echo ""
@@ -664,23 +669,27 @@ display_validation_summary() {
                 ;;
             USE_MANUAL)
                 local manual_type="${TOOL_MANUAL_INSTALL[$tool]}"
-                case "$manual_type" in
-                    golang_tarball)
-                        method="Manual (tarball)"
-                        ;;
-                    openjdk_tarball)
-                        method="Manual (tarball)"
-                        ;;
-                    nodesource_repo)
-                        method="NodeSource repo"
-                        ;;
-                    *)
-                        method="Manual installation"
-                        ;;
-                esac
+                if [[ -n "$manual_type" ]]; then
+                    case "$manual_type" in
+                        golang_tarball)
+                            method="Manual (tarball)"
+                            ;;
+                        openjdk_tarball)
+                            method="Manual (tarball)"
+                            ;;
+                        nodesource_repo)
+                            method="NodeSource repo"
+                            ;;
+                        *)
+                            method="Manual installation"
+                            ;;
+                    esac
+                else
+                    method="Manual installation"
+                fi
                 ;;
             *)
-                method="Unknown"
+                method="Unknown (check logs)"
                 ;;
         esac
         
@@ -727,11 +736,107 @@ install_system_packages() {
     fi
     
     log_info "Installing system packages..."
-    apt install -y ca-certificates curl gnupg rsync
-    apt install -y firefox-esr git golang gpg htop nginx openjdk-21-jre python3 python3-venv sslscan testssl.sh wafw00f whatweb
+    
+    # Install base tools first
+    apt install -y ca-certificates curl gnupg rsync jq
+    
+    # Determine OS-specific Java package
+    local os_id=$(detect_os)
+    local os_version=$(get_os_version)
+    local java_package="openjdk-17-jre"  # Default to 17 for Debian 12
+    
+    if [[ "$os_id" == "kali" ]] || [[ "$os_id" == "ubuntu" && $os_version -ge 24 ]]; then
+        java_package="openjdk-21-jre"
+    fi
+    
+    log_info "Installing Java package: $java_package"
+    
+    # Install main packages with OS-appropriate Java version
+    apt install -y firefox-esr git golang gpg htop nginx "$java_package" python3 python3-venv sslscan testssl.sh wafw00f whatweb || {
+        log_warning "Some packages may have failed to install. Checking critical ones..."
+        
+        # Verify python3-venv specifically since it's critical
+        if ! dpkg -l | grep -q "python3.*-venv"; then
+            log_info "Installing python3-venv package specifically..."
+            apt install -y python3.11-venv || apt install -y python3-venv || log_error "Failed to install python3-venv"
+        fi
+    }
     
     save_checkpoint "$CHECKPOINT_PACKAGES"
     log_success "System packages installed"
+}
+
+install_golang_manual() {
+    local min_version="${TOOL_MIN_VERSIONS[golang]}"
+    local arch=$(detect_architecture)
+    
+    log_info "Installing Go manually (tarball method)..."
+    log_info "Minimum required version: $min_version"
+    log_info "System architecture: $arch"
+    
+    # Determine Go version to install (use latest stable that meets minimum)
+    # For simplicity, we'll install 1.21.13 which meets the 1.21.0 requirement
+    local go_version="1.21.13"
+    local go_tarball="go${go_version}.linux-${arch}.tar.gz"
+    local download_url="https://go.dev/dl/${go_tarball}"
+    
+    log_info "Downloading Go ${go_version}..."
+    
+    # Download to /tmp
+    cd /tmp
+    if ! wget -q "$download_url"; then
+        log_error "Failed to download Go from $download_url"
+        return 1
+    fi
+    
+    log_info "Removing old Go installation if present..."
+    rm -rf /usr/local/go
+    
+    log_info "Extracting Go tarball..."
+    if ! tar -C /usr/local -xzf "$go_tarball"; then
+        log_error "Failed to extract Go tarball"
+        rm -f "$go_tarball"
+        return 1
+    fi
+    
+    # Clean up tarball
+    rm -f "$go_tarball"
+    
+    # Update system-wide Go path
+    log_info "Updating PATH for Go..."
+    
+    # Add to /etc/profile.d for system-wide access
+    cat > /etc/profile.d/go.sh <<'EOF'
+export PATH=$PATH:/usr/local/go/bin
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+EOF
+    
+    chmod +x /etc/profile.d/go.sh
+    
+    # Also update current session
+    export PATH=$PATH:/usr/local/go/bin
+    export GOPATH=$HOME/go
+    export PATH=$PATH:$GOPATH/bin
+    
+    # Verify installation
+    local installed_version=$(/usr/local/go/bin/go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+    
+    if [[ -z "$installed_version" ]]; then
+        log_error "Go installation verification failed"
+        return 1
+    fi
+    
+    log_success "Go ${installed_version} installed successfully"
+    
+    # Verify it meets minimum requirements
+    if version_compare "$installed_version" "$min_version"; then
+        log_success "Installed Go version meets minimum requirement ($min_version)"
+        return 0
+    else
+        log_error "Installed Go version ($installed_version) still below minimum ($min_version)"
+        return 1
+    fi
 }
 
 install_nodejs() {
@@ -792,15 +897,40 @@ install_geckodriver() {
     fi
     
     log_info "Installing Geckodriver..."
-    GECKO_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
+    
+    # Use jq for proper JSON parsing
+    if command -v jq &>/dev/null; then
+        GECKO_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | jq -r '.tag_name')
+    else
+        # Fallback if jq not available (though we install it now)
+        GECKO_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | python3 -c "import sys, json; print(json.load(sys.stdin)['tag_name'])")
+    fi
+    
+    if [[ -z "$GECKO_VERSION" ]] || [[ "$GECKO_VERSION" == "null" ]]; then
+        log_error "Failed to determine Geckodriver version"
+        return 1
+    fi
+    
     log_info "Geckodriver version: $GECKO_VERSION"
     
     wget -q "https://github.com/mozilla/geckodriver/releases/download/$GECKO_VERSION/geckodriver-$GECKO_VERSION-linux64.tar.gz"
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to download Geckodriver"
+        return 1
+    fi
+    
     tar -xzf "geckodriver-$GECKO_VERSION-linux64.tar.gz"
     mv geckodriver /usr/local/bin/
+    chmod +x /usr/local/bin/geckodriver
     rm "geckodriver-$GECKO_VERSION-linux64.tar.gz"
     
-    geckodriver --version
+    # Verify installation
+    if geckodriver --version &>/dev/null; then
+        log_success "Geckodriver installed successfully"
+    else
+        log_warning "Geckodriver may not have installed correctly"
+    fi
     
     save_checkpoint "$CHECKPOINT_GECKO"
     log_success "Geckodriver installed"
@@ -1294,6 +1424,13 @@ main() {
     
     # Execute installation steps
     install_system_packages
+    
+    # Check if Go needs manual installation before installing Go tools
+    if [[ "${INSTALL_STRATEGY[golang]}" == "USE_MANUAL" ]]; then
+        log_info "Go requires manual installation (APT version insufficient)"
+        install_golang_manual
+    fi
+    
     install_nodejs
     install_go_tools
     install_geckodriver
