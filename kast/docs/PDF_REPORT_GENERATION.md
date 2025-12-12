@@ -149,9 +149,37 @@ These warnings are **normal and safe to ignore**. They don't affect PDF generati
 
 ### Font/Emoji Issues
 
-If emojis don't render correctly in the PDF:
-- Install system fonts that include emoji support
-- Consider using the HTML report for best emoji rendering
+KAST automatically installs comprehensive font support during installation to ensure proper rendering of:
+- International characters (é, ñ, 中, 日, etc.)
+- Emojis (😀 🔒 ⚠️ ✓, etc.)
+- Technical symbols (→ ≠ ±, etc.)
+- Box-drawing characters (│ ├ └, etc.)
+
+**Installed Fonts:**
+- **Noto Sans** - Core Latin and common scripts
+- **Noto Color Emoji** - Full emoji support
+- **DejaVu Sans** - Extended Unicode coverage
+- **Liberation Sans** - Professional document fonts
+- **Noto CJK** (optional) - Asian language support
+
+**If characters still render as rectangles (□):**
+1. Verify fonts are installed: `dpkg -l | grep fonts-noto`
+2. Rebuild font cache: `sudo fc-cache -f -v`
+3. Check which fonts are available: `fc-list | grep -i noto`
+4. Manually install missing fonts:
+   ```bash
+   sudo apt install fonts-noto-core fonts-noto-color-emoji fonts-dejavu
+   ```
+
+**Font Stack Configuration:**
+The PDF uses a comprehensive font fallback chain:
+- Primary: Noto Sans (best Unicode coverage)
+- Fallback: DejaVu Sans (additional symbols)
+- Tertiary: Liberation Sans (professional appearance)
+- Final: Helvetica, Arial (system defaults)
+
+For code/monospace text:
+- Noto Sans Mono, DejaVu Sans Mono, Liberation Mono, Courier New
 
 ### Large File Sizes
 

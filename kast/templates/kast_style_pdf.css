@@ -37,11 +37,14 @@
 }
 
 body {
-    font-family: 'Helvetica', 'Arial', sans-serif;
-    font-size: 10pt;
-    line-height: 1.6;
+    font-family: 'Noto Sans', 'DejaVu Sans', 'Liberation Sans', 'Helvetica', 'Arial', sans-serif;
+    font-size: 11pt;
+    line-height: 1.7;
     color: #333;
     background: white;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* ===== COVER PAGE ===== */
@@ -559,9 +562,9 @@ body {
     border-radius: 4px;
     padding: 1em;
     margin: 1em 0;
-    font-family: 'Courier New', monospace;
-    font-size: 8pt;
-    line-height: 1.4;
+    font-family: 'Noto Sans Mono', 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
+    font-size: 9pt;
+    line-height: 1.5;
     overflow: hidden;
     overflow-wrap: break-word;
     word-break: normal;
@@ -691,7 +694,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pdf-url-item code {
-    font-family: 'Courier New', monospace;
+    font-family: 'Noto Sans Mono', 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
     color: #0a4a63;
     word-break: break-all;
 }

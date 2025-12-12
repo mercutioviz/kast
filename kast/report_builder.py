@@ -591,12 +591,24 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
     css_path = os.path.join(TEMPLATE_DIR, 'kast_style_pdf.css')
     css = CSS(filename=css_path, font_config=font_config)
     
-    # Generate PDF
+    # Generate PDF with explicit UTF-8 encoding
     try:
-        html_obj = HTML(string=html_content, base_url=base_url)
+        # Ensure HTML content is properly encoded as UTF-8
+        html_obj = HTML(string=html_content, encoding='utf-8', base_url=base_url)
+        
+        # Write PDF with font configuration for proper character rendering
         html_obj.write_pdf(output_path, stylesheets=[css], font_config=font_config)
+        
         print(f"PDF report saved to {output_path}")
+        logger.info(f"PDF report generated successfully with {len(all_issues)} issues")
     except Exception as e:
         print(f"Error generating PDF: {e}")
         logger.error(f"PDF generation failed: {e}", exc_info=True)
+        
+        # Provide helpful troubleshooting info
+        logger.error("If you see font-related errors, ensure these packages are installed:")
+        logger.error("  - fonts-noto-core (Noto Sans fonts)")
+        logger.error("  - fonts-noto-color-emoji (Emoji support)")
+        logger.error("  - fonts-dejavu (DejaVu fonts)")
+        logger.error("Run: sudo apt install fonts-noto-core fonts-noto-color-emoji fonts-dejavu")
         raise
