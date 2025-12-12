@@ -56,7 +56,7 @@ declare -gA TOOL_REQUIRED_BY
 declare -gA TOOL_MANUAL_INSTALL
 
 # Go/Golang - Required by ProjectDiscovery tools
-TOOL_MIN_VERSIONS["golang"]="1.21.0"
+TOOL_MIN_VERSIONS["golang"]="1.24.0"
 TOOL_APT_PACKAGES["golang"]="golang"
 TOOL_CHECK_COMMANDS["golang"]="go version 2>/dev/null | awk '{print \$3}' | sed 's/go//'"
 TOOL_REQUIRED_BY["golang"]="katana, subfinder"
@@ -797,8 +797,8 @@ install_golang_manual() {
     log_info "System architecture: $arch"
     
     # Determine Go version to install
-    # ProjectDiscovery tools now require Go 1.23+ (they specify 1.24 in go.mod but 1.23 works)
-    local go_version="1.23.4"
+    # ProjectDiscovery tools require Go 1.24+ (their go.mod specifies version 1.24)
+    local go_version="1.24.1"
     local go_tarball="go${go_version}.linux-${arch}.tar.gz"
     local download_url="https://go.dev/dl/${go_tarball}"
     
@@ -811,8 +811,21 @@ install_golang_manual() {
         return 1
     fi
     
-    log_info "Removing old Go installation if present..."
+    log_info "Removing old Go installations..."
+    
+    # Remove any existing /usr/local/go installation
     rm -rf /usr/local/go
+    
+    # Remove all APT golang packages more thoroughly
+    log_info "Removing all APT golang packages to prevent PATH conflicts..."
+    apt remove -y golang golang-go golang-src golang-doc 2>/dev/null || true
+    apt remove -y golang-1.19 golang-1.19-go golang-1.19-src golang-1.19-doc 2>/dev/null || true
+    
+    # Remove old Go binaries from /usr/bin if they exist
+    rm -f /usr/bin/go /usr/bin/gofmt 2>/dev/null || true
+    
+    # Clean up any remaining go installations in standard locations
+    rm -rf /usr/lib/go* 2>/dev/null || true
     
     log_info "Extracting Go tarball..."
     if ! tar -C /usr/local -xzf "$go_tarball"; then
@@ -824,14 +837,10 @@ install_golang_manual() {
     # Clean up tarball
     rm -f "$go_tarball"
     
-    # Remove APT golang package to prevent conflicts
-    log_info "Removing APT golang package to prevent PATH conflicts..."
-    apt remove -y golang 2>/dev/null || true
-    
     # Update system-wide Go path
     log_info "Updating PATH for Go..."
     
-    # Add to /etc/profile.d for system-wide access
+    # Add to /etc/profile.d for system-wide access (prepend to PATH)
     cat > /etc/profile.d/go.sh <<'EOF'
 export PATH=/usr/local/go/bin:$PATH
 export GOPATH=$HOME/go
@@ -839,6 +848,39 @@ export PATH=$PATH:$GOPATH/bin
 EOF
     
     chmod +x /etc/profile.d/go.sh
+    
+    # Also add to user's shell RC file for immediate availability
+    local user_home="$ORIG_HOME"
+    local shell_rc=""
+    
+    # Determine which shell RC file to use
+    if [[ -f "$user_home/.zshrc" ]]; then
+        shell_rc="$user_home/.zshrc"
+    elif [[ -f "$user_home/.bashrc" ]]; then
+        shell_rc="$user_home/.bashrc"
+    else
+        # Create .bashrc if neither exists
+        shell_rc="$user_home/.bashrc"
+        touch "$shell_rc"
+        chown "$ORIG_USER:$ORIG_USER" "$shell_rc"
+    fi
+    
+    log_info "Adding Go PATH to $shell_rc..."
+    
+    # Check if Go PATH is already in the RC file
+    if ! grep -q "/usr/local/go/bin" "$shell_rc" 2>/dev/null; then
+        cat >> "$shell_rc" <<'EOF'
+
+# Go programming language
+export PATH=/usr/local/go/bin:$PATH
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+EOF
+        chown "$ORIG_USER:$ORIG_USER" "$shell_rc"
+        log_success "Added Go PATH to $shell_rc"
+    else
+        log_info "Go PATH already present in $shell_rc"
+    fi
     
     # CRITICAL: Force PATH update in current installer session
     # This ensures the new Go takes precedence over any existing installation
@@ -850,7 +892,7 @@ EOF
     log_info "  PATH=$PATH"
     log_info "  GOPATH=$GOPATH"
     
-    # Verify installation using full path first, then which
+    # Verify installation using full path first
     local installed_version=$(/usr/local/go/bin/go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
     
     if [[ -z "$installed_version" ]]; then
@@ -860,10 +902,10 @@ EOF
     
     log_success "Go ${installed_version} installed successfully to /usr/local/go"
     
-    # Verify which go is being used
+    # Verify which go is being used in current session
     local go_path=$(which go 2>/dev/null)
     local active_version=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
-    log_info "Active Go binary: $go_path (version: $active_version)"
+    log_info "Active Go binary in installer: $go_path (version: $active_version)"
     
     # Verify it meets minimum requirements
     if version_compare "$installed_version" "$min_version"; then
@@ -1504,6 +1546,22 @@ main() {
     echo "KAST has been installed to: $INSTALL_DIR"
     echo "Version: $SCRIPT_VERSION"
     echo ""
+    
+    # Check if Go was manually installed
+    if [[ "${INSTALL_STRATEGY[golang]}" == "USE_MANUAL" ]]; then
+        echo -e "${YELLOW}IMPORTANT: Go was installed/updated during this installation.${NC}"
+        echo -e "${YELLOW}To use the new Go version, you must reload your shell:${NC}"
+        echo ""
+        echo "  Option 1: Start a new terminal session"
+        echo "  Option 2: Run: source ~/.bashrc (or source ~/.zshrc)"
+        echo "  Option 3: Run: exec \$SHELL"
+        echo ""
+        echo "After reloading, verify with:"
+        echo "  go version     # Should show 1.24.1"
+        echo "  which go       # Should show /usr/local/go/bin/go"
+        echo ""
+    fi
+    
     echo "Quick Start:"
     echo "  - Run 'kast --help' to see available options"
     echo "  - Run 'ftap --help' for FTAP usage"

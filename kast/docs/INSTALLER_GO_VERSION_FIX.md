@@ -232,6 +232,64 @@ active_version=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
 log_info "Active Go binary: $go_path (version: $active_version)"
 ```
 
+## Final Fix: Go 1.24.x and Complete PATH Solution
+
+### The Real Requirements
+After additional testing, we discovered ProjectDiscovery tools actually **require Go 1.24.0+**, not 1.23.x. Their go.mod files specify version 1.24, and Go 1.23.x cannot parse that format.
+
+### Complete Solution Implemented
+
+1. **Updated to Go 1.24.1**: Latest stable version that meets requirements
+2. **Thorough cleanup of old Go**: Remove ALL golang packages and binaries
+3. **User shell profile updates**: Add PATH to ~/.bashrc or ~/.zshrc for immediate availability
+4. **Clear post-install instructions**: Tell user exactly how to reload their shell
+
+### Implementation Details
+
+```bash
+# Install Go 1.24.1
+local go_version="1.24.1"
+
+# Thorough cleanup
+rm -rf /usr/local/go
+apt remove -y golang golang-go golang-src golang-doc 2>/dev/null || true
+apt remove -y golang-1.19 golang-1.19-go golang-1.19-src golang-1.19-doc 2>/dev/null || true
+rm -f /usr/bin/go /usr/bin/gofmt 2>/dev/null || true
+rm -rf /usr/lib/go* 2>/dev/null || true
+
+# Update both system-wide and user-specific profiles
+# /etc/profile.d/go.sh for system-wide
+# ~/.bashrc or ~/.zshrc for user's shell
+
+# Add to user's shell RC file
+if ! grep -q "/usr/local/go/bin" "$shell_rc" 2>/dev/null; then
+    cat >> "$shell_rc" <<'EOF'
+
+# Go programming language
+export PATH=/usr/local/go/bin:$PATH
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+EOF
+fi
+```
+
+### Post-Install Instructions
+
+The installer now displays clear instructions when Go is manually installed:
+
+```
+IMPORTANT: Go was installed/updated during this installation.
+To use the new Go version, you must reload your shell:
+
+  Option 1: Start a new terminal session
+  Option 2: Run: source ~/.bashrc (or source ~/.zshrc)
+  Option 3: Run: exec $SHELL
+
+After reloading, verify with:
+  go version     # Should show 1.24.1
+  which go       # Should show /usr/local/go/bin/go
+```
+
 ## Version
 
-Fixed in KAST Installer v2.6.4 (PATH precedence fix included)
+Fixed in KAST Installer v2.6.4 (Complete Go 1.24.1 solution with PATH persistence)
