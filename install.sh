@@ -24,6 +24,7 @@ NC='\033[0m' # No Color
 
 # Installation checkpoints
 CHECKPOINT_INIT="initialization"
+CHECKPOINT_PREREQ_VALIDATION="prerequisite_validation"
 CHECKPOINT_PACKAGES="system_packages"
 CHECKPOINT_NODEJS="nodejs"
 CHECKPOINT_GO_TOOLS="go_tools"
@@ -36,6 +37,48 @@ CHECKPOINT_VENV="python_venv"
 CHECKPOINT_FTAP="ftap"
 CHECKPOINT_LAUNCHERS="launcher_scripts"
 CHECKPOINT_COMPLETE="complete"
+
+###############################################################################
+# TOOL REQUIREMENTS REGISTRY
+###############################################################################
+
+# This registry defines minimum version requirements for tools that may have
+# version dependencies. It enables intelligent installation decisions:
+# - Use apt if available version meets requirements
+# - Fall back to manual installation (tarball, etc.) if apt version insufficient
+# - Skip if already installed with correct version
+
+# Declare associative arrays for tool requirements
+declare -A TOOL_MIN_VERSIONS
+declare -A TOOL_APT_PACKAGES
+declare -A TOOL_CHECK_COMMANDS
+declare -A TOOL_REQUIRED_BY
+declare -A TOOL_MANUAL_INSTALL
+
+# Go/Golang - Required by ProjectDiscovery tools
+TOOL_MIN_VERSIONS["golang"]="1.21.0"
+TOOL_APT_PACKAGES["golang"]="golang"
+TOOL_CHECK_COMMANDS["golang"]="go version 2>/dev/null | awk '{print \$3}' | sed 's/go//'"
+TOOL_REQUIRED_BY["golang"]="katana, subfinder"
+TOOL_MANUAL_INSTALL["golang"]="golang_tarball"
+
+# Java Runtime Environment - Required by OWASP ZAP
+TOOL_MIN_VERSIONS["java"]="11.0.0"
+TOOL_APT_PACKAGES["java"]="openjdk-21-jre"
+TOOL_CHECK_COMMANDS["java"]="java -version 2>&1 | head -n1 | awk '{print \$3}' | tr -d '\"'"
+TOOL_REQUIRED_BY["java"]="OWASP ZAP"
+TOOL_MANUAL_INSTALL["java"]="openjdk_tarball"
+
+# Node.js - Required by MDN Observatory
+TOOL_MIN_VERSIONS["nodejs"]="20.0.0"
+TOOL_APT_PACKAGES["nodejs"]="nodejs"
+TOOL_CHECK_COMMANDS["nodejs"]="node --version 2>/dev/null | sed 's/v//'"
+TOOL_REQUIRED_BY["nodejs"]="MDN Observatory CLI"
+TOOL_MANUAL_INSTALL["nodejs"]="nodesource_repo"
+
+# Installation strategy results (populated during validation)
+declare -A INSTALL_STRATEGY
+declare -A APT_AVAILABLE_VERSIONS
 
 ###############################################################################
 # LOGGING AND OUTPUT FUNCTIONS
@@ -128,6 +171,7 @@ checkpoint_completed() {
     # Define checkpoint order
     local checkpoints=(
         "$CHECKPOINT_INIT"
+        "$CHECKPOINT_PREREQ_VALIDATION"
         "$CHECKPOINT_PACKAGES"
         "$CHECKPOINT_NODEJS"
         "$CHECKPOINT_GO_TOOLS"
@@ -342,6 +386,174 @@ check_installation_state() {
 }
 
 ###############################################################################
+# VERSION DETECTION AND COMPARISON FUNCTIONS
+###############################################################################
+
+# Detect system architecture for tarball downloads
+detect_architecture() {
+    local arch=$(dpkg --print-architecture 2>/dev/null)
+    if [[ -z "$arch" ]]; then
+        arch=$(uname -m)
+        case "$arch" in
+            x86_64) arch="amd64" ;;
+            aarch64) arch="arm64" ;;
+            armv7l) arch="armhf" ;;
+        esac
+    fi
+    echo "$arch"
+}
+
+# Compare semantic versions (returns 0 if v1 >= v2, 1 otherwise)
+version_compare() {
+    local version1=$1
+    local version2=$2
+    
+    # Handle empty versions
+    if [[ -z "$version1" ]] || [[ -z "$version2" ]]; then
+        return 1
+    fi
+    
+    # Normalize versions by removing leading 'v' and trailing junk
+    version1=$(echo "$version1" | sed 's/^v//;s/[^0-9.].*//')
+    version2=$(echo "$version2" | sed 's/^v//;s/[^0-9.].*//')
+    
+    # Split versions into arrays
+    IFS='.' read -ra v1_parts <<< "$version1"
+    IFS='.' read -ra v2_parts <<< "$version2"
+    
+    # Compare each part
+    local max_parts=${#v1_parts[@]}
+    [[ ${#v2_parts[@]} -gt $max_parts ]] && max_parts=${#v2_parts[@]}
+    
+    for ((i=0; i<max_parts; i++)); do
+        local part1=${v1_parts[$i]:-0}
+        local part2=${v2_parts[$i]:-0}
+        
+        # Remove non-numeric suffixes
+        part1=$(echo "$part1" | sed 's/[^0-9].*//')
+        part2=$(echo "$part2" | sed 's/[^0-9].*//')
+        
+        # Default to 0 if empty
+        part1=${part1:-0}
+        part2=${part2:-0}
+        
+        if [[ $part1 -gt $part2 ]]; then
+            return 0
+        elif [[ $part1 -lt $part2 ]]; then
+            return 1
+        fi
+    done
+    
+    # Versions are equal
+    return 0
+}
+
+# Get currently installed version of a tool (if installed)
+get_installed_version() {
+    local tool=$1
+    local check_command="${TOOL_CHECK_COMMANDS[$tool]}"
+    
+    if [[ -z "$check_command" ]]; then
+        echo ""
+        return 1
+    fi
+    
+    # Execute the check command and capture output
+    local version=$(eval "$check_command" 2>/dev/null)
+    echo "$version"
+    return 0
+}
+
+# Query apt for available package version
+get_apt_version() {
+    local package=$1
+    
+    # Update apt cache if it's stale (older than 1 hour)
+    local apt_cache="/var/cache/apt/pkgcache.bin"
+    if [[ ! -f "$apt_cache" ]] || [[ $(find "$apt_cache" -mmin +60 2>/dev/null) ]]; then
+        log_info "Updating apt cache..."
+        apt update -qq 2>/dev/null || true
+    fi
+    
+    # Query apt-cache for the candidate version
+    local version=$(apt-cache policy "$package" 2>/dev/null | grep "Candidate:" | awk '{print $2}')
+    
+    if [[ -z "$version" ]] || [[ "$version" == "(none)" ]]; then
+        echo ""
+        return 1
+    fi
+    
+    # Clean up version string (remove epoch, release info, etc.)
+    # Format is often: [epoch:]version[-release]
+    version=$(echo "$version" | sed 's/^[0-9]*://;s/-[^-]*$//')
+    
+    echo "$version"
+    return 0
+}
+
+# Check if a tool's version requirement is satisfied
+check_version_requirement() {
+    local tool=$1
+    local min_version="${TOOL_MIN_VERSIONS[$tool]}"
+    local current_version=$2
+    
+    if [[ -z "$min_version" ]]; then
+        # No version requirement
+        return 0
+    fi
+    
+    if [[ -z "$current_version" ]]; then
+        # Tool not available
+        return 1
+    fi
+    
+    if version_compare "$current_version" "$min_version"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Determine installation strategy for a tool
+determine_install_strategy() {
+    local tool=$1
+    local apt_package="${TOOL_APT_PACKAGES[$tool]}"
+    local min_version="${TOOL_MIN_VERSIONS[$tool]}"
+    
+    # Check if already installed with sufficient version
+    local installed_version=$(get_installed_version "$tool")
+    if [[ -n "$installed_version" ]]; then
+        if check_version_requirement "$tool" "$installed_version"; then
+            echo "SKIP_ALREADY_INSTALLED"
+            return 0
+        else
+            log_warning "$tool is installed but version $installed_version is below minimum $min_version"
+        fi
+    fi
+    
+    # Check apt availability and version
+    if [[ -n "$apt_package" ]]; then
+        local apt_version=$(get_apt_version "$apt_package")
+        APT_AVAILABLE_VERSIONS["$tool"]="$apt_version"
+        
+        if [[ -n "$apt_version" ]]; then
+            if check_version_requirement "$tool" "$apt_version"; then
+                echo "USE_APT"
+                return 0
+            else
+                log_warning "APT version of $tool ($apt_version) is below minimum required ($min_version)"
+            fi
+        else
+            log_warning "Package $apt_package not available in APT repositories"
+        fi
+    fi
+    
+    # Fall back to manual installation
+    echo "USE_MANUAL"
+    return 0
+}
+
+###############################################################################
 # BACKUP AND RESTORE FUNCTIONS
 ###############################################################################
 
@@ -363,6 +575,145 @@ create_backup() {
         fi
     fi
     return 0
+}
+
+###############################################################################
+# PREREQUISITE VALIDATION
+###############################################################################
+
+# Perform prerequisite validation and determine installation strategies
+validate_prerequisites() {
+    if checkpoint_completed "$CHECKPOINT_PREREQ_VALIDATION"; then
+        log_info "Prerequisites already validated, skipping..."
+        return 0
+    fi
+    
+    echo ""
+    echo "======================================================================"
+    echo "  Pre-Requisite Analysis"
+    echo "======================================================================"
+    echo ""
+    
+    log_info "Analyzing tool version requirements..."
+    
+    # Detect system architecture
+    local sys_arch=$(detect_architecture)
+    log_info "System architecture: $sys_arch"
+    
+    # Analyze each tool in the registry
+    local tools=("golang" "java" "nodejs")
+    
+    for tool in "${tools[@]}"; do
+        local strategy=$(determine_install_strategy "$tool")
+        INSTALL_STRATEGY["$tool"]="$strategy"
+        
+        log_info "$tool installation strategy: $strategy"
+    done
+    
+    # Display summary table
+    display_validation_summary
+    
+    # Ask user to proceed
+    echo ""
+    read -p "Proceed with installation? [Y/n]: " proceed
+    proceed=${proceed:-Y}
+    
+    if [[ ! "$proceed" =~ ^[Yy]$ ]]; then
+        log_info "Installation cancelled by user during prerequisite validation"
+        exit 0
+    fi
+    
+    save_checkpoint "$CHECKPOINT_PREREQ_VALIDATION"
+    log_success "Prerequisite validation complete"
+    
+    return 0
+}
+
+# Display validation summary table
+display_validation_summary() {
+    echo ""
+    echo "┌──────────────┬──────────────┬──────────────┬──────────────┬─────────────────────┐"
+    echo "│ Tool         │ Min Required │ Installed    │ APT Available│ Installation Method │"
+    echo "├──────────────┼──────────────┼──────────────┼──────────────┼─────────────────────┤"
+    
+    local tools=("golang" "java" "nodejs")
+    
+    for tool in "${tools[@]}"; do
+        local min_ver="${TOOL_MIN_VERSIONS[$tool]}"
+        local installed_ver=$(get_installed_version "$tool")
+        local apt_ver="${APT_AVAILABLE_VERSIONS[$tool]}"
+        local strategy="${INSTALL_STRATEGY[$tool]}"
+        
+        # Format versions (truncate if too long)
+        [[ -z "$installed_ver" ]] && installed_ver="Not installed"
+        [[ -z "$apt_ver" ]] && apt_ver="N/A"
+        
+        # Truncate to fit column width
+        min_ver=$(printf "%.11s" "$min_ver")
+        installed_ver=$(printf "%.11s" "$installed_ver")
+        apt_ver=$(printf "%.11s" "$apt_ver")
+        
+        # Determine method description
+        local method=""
+        case "$strategy" in
+            SKIP_ALREADY_INSTALLED)
+                method="Skip (already OK)"
+                ;;
+            USE_APT)
+                method="APT package manager"
+                ;;
+            USE_MANUAL)
+                local manual_type="${TOOL_MANUAL_INSTALL[$tool]}"
+                case "$manual_type" in
+                    golang_tarball)
+                        method="Manual (tarball)"
+                        ;;
+                    openjdk_tarball)
+                        method="Manual (tarball)"
+                        ;;
+                    nodesource_repo)
+                        method="NodeSource repo"
+                        ;;
+                    *)
+                        method="Manual installation"
+                        ;;
+                esac
+                ;;
+            *)
+                method="Unknown"
+                ;;
+        esac
+        
+        # Print row
+        printf "│ %-12s │ %-12s │ %-12s │ %-12s │ %-19s │\n" \
+            "$tool" "$min_ver" "$installed_ver" "$apt_ver" "$method"
+    done
+    
+    echo "└──────────────┴──────────────┴──────────────┴──────────────┴─────────────────────┘"
+    echo ""
+    
+    # Display explanations for manual installations
+    local has_manual=false
+    for tool in "${tools[@]}"; do
+        if [[ "${INSTALL_STRATEGY[$tool]}" == "USE_MANUAL" ]]; then
+            has_manual=true
+            break
+        fi
+    done
+    
+    if [[ "$has_manual" == "true" ]]; then
+        echo -e "${YELLOW}Note:${NC} Manual installations will be performed for tools where APT versions"
+        echo "are insufficient. This ensures all version requirements are met."
+        echo ""
+        
+        for tool in "${tools[@]}"; do
+            if [[ "${INSTALL_STRATEGY[$tool]}" == "USE_MANUAL" ]]; then
+                local required_by="${TOOL_REQUIRED_BY[$tool]}"
+                echo "  • $tool: Required by $required_by"
+            fi
+        done
+        echo ""
+    fi
 }
 
 ###############################################################################
@@ -937,6 +1288,9 @@ main() {
     echo "  Beginning Installation"
     echo "======================================================================"
     echo ""
+    
+    # Validate prerequisites before installation
+    validate_prerequisites
     
     # Execute installation steps
     install_system_packages
