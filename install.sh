@@ -49,11 +49,11 @@ CHECKPOINT_COMPLETE="complete"
 # - Skip if already installed with correct version
 
 # Declare associative arrays for tool requirements
-declare -A TOOL_MIN_VERSIONS
-declare -A TOOL_APT_PACKAGES
-declare -A TOOL_CHECK_COMMANDS
-declare -A TOOL_REQUIRED_BY
-declare -A TOOL_MANUAL_INSTALL
+declare -gA TOOL_MIN_VERSIONS
+declare -gA TOOL_APT_PACKAGES
+declare -gA TOOL_CHECK_COMMANDS
+declare -gA TOOL_REQUIRED_BY
+declare -gA TOOL_MANUAL_INSTALL
 
 # Go/Golang - Required by ProjectDiscovery tools
 TOOL_MIN_VERSIONS["golang"]="1.21.0"
@@ -77,8 +77,8 @@ TOOL_REQUIRED_BY["nodejs"]="MDN Observatory CLI"
 TOOL_MANUAL_INSTALL["nodejs"]="nodesource_repo"
 
 # Installation strategy results (populated during validation)
-declare -A INSTALL_STRATEGY
-declare -A APT_AVAILABLE_VERSIONS
+declare -gA INSTALL_STRATEGY
+declare -gA APT_AVAILABLE_VERSIONS
 
 ###############################################################################
 # LOGGING AND OUTPUT FUNCTIONS
@@ -471,26 +471,25 @@ get_apt_version() {
     # Update apt cache if it's stale (older than 1 hour)
     local apt_cache="/var/cache/apt/pkgcache.bin"
     if [[ ! -f "$apt_cache" ]] || [[ $(find "$apt_cache" -mmin +60 2>/dev/null) ]]; then
-        log_info "Updating apt cache..."
         apt update -qq 2>/dev/null || true
     fi
     
-    # Query apt-cache for the candidate version
-    local version=$(apt-cache policy "$package" 2>/dev/null | grep -A1 "Candidate:" | grep -v "Candidate:" | awk '{print $1}' | head -n1)
+    # Try apt-cache policy first (most reliable)
+    local version=$(apt-cache policy "$package" 2>/dev/null | grep "Candidate:" | awk '{print $2}')
     
-    # Alternative: try getting from apt-cache show if policy fails
+    # If that didn't work or returned (none), try apt-cache show
     if [[ -z "$version" ]] || [[ "$version" == "(none)" ]]; then
         version=$(apt-cache show "$package" 2>/dev/null | grep "^Version:" | head -n1 | awk '{print $2}')
     fi
     
+    # If still empty, package doesn't exist
     if [[ -z "$version" ]] || [[ "$version" == "(none)" ]]; then
-        echo ""
         return 1
     fi
     
-    # Clean up version string (remove epoch, release info, etc.)
-    # Format is often: [epoch:]version[-release]
-    version=$(echo "$version" | sed 's/^[0-9]*://;s/-[^-]*$//')
+    # Clean up version string (remove epoch and Debian release suffix)
+    # Examples: "2:1.19~1" -> "1.19", "17.0.17+10-1~deb12u1" -> "17.0.17"
+    version=$(echo "$version" | sed 's/^[0-9]*://;s/[+~-].*//')
     
     echo "$version"
     return 0
@@ -1425,10 +1424,18 @@ main() {
     # Execute installation steps
     install_system_packages
     
+    # Debug: Check what strategies were determined
+    log_info "DEBUG: Checking installation strategies..."
+    log_info "DEBUG: golang strategy = '${INSTALL_STRATEGY[golang]}'"
+    log_info "DEBUG: java strategy = '${INSTALL_STRATEGY[java]}'"
+    log_info "DEBUG: nodejs strategy = '${INSTALL_STRATEGY[nodejs]}'"
+    
     # Check if Go needs manual installation before installing Go tools
     if [[ "${INSTALL_STRATEGY[golang]}" == "USE_MANUAL" ]]; then
         log_info "Go requires manual installation (APT version insufficient)"
         install_golang_manual
+    else
+        log_info "Go installation strategy is '${INSTALL_STRATEGY[golang]}', skipping manual install"
     fi
     
     install_nodejs
