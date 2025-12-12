@@ -58,14 +58,25 @@ class ScriptDetectionPlugin(KastPlugin):
         """
         self.setup(target, output_dir)
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        output_file = os.path.join(output_dir, f"{self.name}.json")
         
         if report_only:
-            self.debug("[REPORT ONLY] Would fetch and analyze scripts")
-            return self.get_result_dict(
-                disposition="success",
-                results={"message": "Report-only mode"},
-                timestamp=timestamp
-            )
+            self.debug(f"[REPORT ONLY] Would fetch and analyze scripts")
+            # In report-only mode, check if results already exist
+            if os.path.exists(output_file):
+                with open(output_file, "r") as f:
+                    results = json.load(f)
+                return self.get_result_dict(
+                    disposition="success",
+                    results=results,
+                    timestamp=timestamp
+                )
+            else:
+                return self.get_result_dict(
+                    disposition="fail",
+                    results="No existing results found for report-only mode.",
+                    timestamp=timestamp
+                )
 
         try:
             # Fetch the HTML
@@ -75,6 +86,10 @@ class ScriptDetectionPlugin(KastPlugin):
             # Parse and analyze scripts
             self.debug("Parsing HTML and extracting scripts")
             script_analysis = self._analyze_scripts(html_content, target)
+            
+            # Save raw results to file
+            with open(output_file, "w") as f:
+                json.dump(script_analysis, f, indent=2)
             
             return self.get_result_dict(
                 disposition="success",
