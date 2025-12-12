@@ -58,7 +58,8 @@ declare -gA TOOL_MANUAL_INSTALL
 # Go/Golang - Required by ProjectDiscovery tools
 TOOL_MIN_VERSIONS["golang"]="1.24.0"
 TOOL_APT_PACKAGES["golang"]="golang"
-TOOL_CHECK_COMMANDS["golang"]="go version 2>/dev/null | awk '{print \$3}' | sed 's/go//'"
+# Check for go in PATH first, then try absolute path (for sudo context)
+TOOL_CHECK_COMMANDS["golang"]="(command -v go >/dev/null 2>&1 && go version 2>/dev/null | awk '{print \$3}' | sed 's/go//') || (/usr/local/go/bin/go version 2>/dev/null | awk '{print \$3}' | sed 's/go//')"
 TOOL_REQUIRED_BY["golang"]="katana, subfinder"
 TOOL_MANUAL_INSTALL["golang"]="golang_tarball"
 
@@ -781,12 +782,20 @@ install_system_packages() {
     
     log_info "Installing Java package: $java_package"
     
-    # Build package list dynamically
-    local packages="git golang gpg htop nginx $java_package python3 python3-venv sslscan testssl.sh wafw00f whatweb"
+    # Build package list dynamically (exclude golang - will be handled by strategy)
+    local packages="git gpg htop nginx $java_package python3 python3-venv sslscan testssl.sh wafw00f whatweb"
     
     # Add firefox package only if specified
     if [[ -n "$firefox_package" ]]; then
         packages="$firefox_package $packages"
+    fi
+    
+    # Only add golang if strategy says to use APT
+    if [[ "${INSTALL_STRATEGY[golang]}" == "USE_APT" ]]; then
+        packages="golang $packages"
+        log_info "Adding golang from APT (strategy: USE_APT)"
+    else
+        log_info "Skipping golang from APT (strategy: ${INSTALL_STRATEGY[golang]})"
     fi
     
     # Install main packages with OS-appropriate versions
@@ -964,19 +973,25 @@ install_go_tools() {
     mkdir -p "$ORIG_HOME/go/bin"
     chown -R "$ORIG_USER:$ORIG_USER" "$ORIG_HOME/go"
     
-    # CRITICAL: Pass Go PATH explicitly to sudo commands
-    # Non-interactive shells don't source .bashrc, so we must set PATH explicitly
-    local go_path="/usr/local/go/bin"
+    # CRITICAL: Use absolute path to Go binary
+    # Non-interactive shells don't source .bashrc, so we can't rely on PATH
+    local go_binary="/usr/local/go/bin/go"
     local gopath="$ORIG_HOME/go"
+    
+    # Verify Go is available
+    if [[ ! -x "$go_binary" ]]; then
+        log_error "Go binary not found at $go_binary"
+        log_error "Go must be installed before installing Go tools"
+        return 1
+    fi
     
     # Install katana
     if [[ ! -f "$ORIG_HOME/go/bin/katana" ]] || [[ ! -f "/usr/local/bin/katana" ]]; then
         log_info "Installing katana..."
         sudo -u "$ORIG_USER" bash -c "
-            export PATH='$go_path:\$PATH'
             export GOPATH='$gopath'
             export GOBIN='$gopath/bin'
-            CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest
+            CGO_ENABLED=1 '$go_binary' install github.com/projectdiscovery/katana/cmd/katana@latest
         "
         if [[ -f "$ORIG_HOME/go/bin/katana" ]]; then
             cp -f "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
@@ -992,10 +1007,9 @@ install_go_tools() {
     if [[ ! -f "$ORIG_HOME/go/bin/subfinder" ]] || [[ ! -f "/usr/local/bin/subfinder" ]]; then
         log_info "Installing subfinder..."
         sudo -u "$ORIG_USER" bash -c "
-            export PATH='$go_path:\$PATH'
             export GOPATH='$gopath'
             export GOBIN='$gopath/bin'
-            go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+            '$go_binary' install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
         "
         if [[ -f "$ORIG_HOME/go/bin/subfinder" ]]; then
             cp -f "$ORIG_HOME/go/bin/subfinder" /usr/local/bin/subfinder
