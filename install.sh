@@ -762,25 +762,43 @@ install_system_packages() {
     # Install base tools first
     apt install -y ca-certificates curl gnupg rsync jq
     
-    # Determine OS-specific Java package
+    # Determine OS-specific packages
     local os_id=$(detect_os)
     local os_version=$(get_os_version)
     local java_package="openjdk-17-jre"  # Default to 17 for Debian 12
+    local firefox_package="firefox-esr"  # Default for Debian/Kali
     
+    # Set OS-specific package names
     if [[ "$os_id" == "kali" ]] || [[ "$os_id" == "ubuntu" && $os_version -ge 24 ]]; then
         java_package="openjdk-21-jre"
     fi
     
+    if [[ "$os_id" == "ubuntu" ]]; then
+        # Ubuntu uses firefox snap, so we skip the package or it may not exist
+        firefox_package=""
+        log_info "Ubuntu detected - Firefox will be installed via snap (if not already present)"
+    fi
+    
     log_info "Installing Java package: $java_package"
     
-    # Install main packages with OS-appropriate Java version
-    apt install -y firefox-esr git golang gpg htop nginx "$java_package" python3 python3-venv sslscan testssl.sh wafw00f whatweb || {
+    # Build package list dynamically
+    local packages="git golang gpg htop nginx $java_package python3 python3-venv sslscan testssl.sh wafw00f whatweb"
+    
+    # Add firefox package only if specified
+    if [[ -n "$firefox_package" ]]; then
+        packages="$firefox_package $packages"
+    fi
+    
+    # Install main packages with OS-appropriate versions
+    apt install -y $packages || {
         log_warning "Some packages may have failed to install. Checking critical ones..."
         
         # Verify python3-venv specifically since it's critical
         if ! dpkg -l | grep -q "python3.*-venv"; then
             log_info "Installing python3-venv package specifically..."
-            apt install -y python3.11-venv || apt install -y python3-venv || log_error "Failed to install python3-venv"
+            # Try with Python version detection
+            local py_version=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
+            apt install -y python${py_version}-venv 2>/dev/null || apt install -y python3-venv || log_error "Failed to install python3-venv"
         fi
     }
     
@@ -946,11 +964,26 @@ install_go_tools() {
     mkdir -p "$ORIG_HOME/go/bin"
     chown -R "$ORIG_USER:$ORIG_USER" "$ORIG_HOME/go"
     
+    # CRITICAL: Pass Go PATH explicitly to sudo commands
+    # Non-interactive shells don't source .bashrc, so we must set PATH explicitly
+    local go_path="/usr/local/go/bin"
+    local gopath="$ORIG_HOME/go"
+    
     # Install katana
     if [[ ! -f "$ORIG_HOME/go/bin/katana" ]] || [[ ! -f "/usr/local/bin/katana" ]]; then
         log_info "Installing katana..."
-        sudo -u "$ORIG_USER" bash -c "GOBIN='$ORIG_HOME/go/bin' CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest"
-        cp -f "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
+        sudo -u "$ORIG_USER" bash -c "
+            export PATH='$go_path:\$PATH'
+            export GOPATH='$gopath'
+            export GOBIN='$gopath/bin'
+            CGO_ENABLED=1 go install github.com/projectdiscovery/katana/cmd/katana@latest
+        "
+        if [[ -f "$ORIG_HOME/go/bin/katana" ]]; then
+            cp -f "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
+            log_success "Katana installed successfully"
+        else
+            log_error "Katana installation failed"
+        fi
     else
         log_info "Katana already installed"
     fi
@@ -958,8 +991,18 @@ install_go_tools() {
     # Install subfinder
     if [[ ! -f "$ORIG_HOME/go/bin/subfinder" ]] || [[ ! -f "/usr/local/bin/subfinder" ]]; then
         log_info "Installing subfinder..."
-        sudo -u "$ORIG_USER" bash -c "GOBIN='$ORIG_HOME/go/bin' go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
-        cp -f "$ORIG_HOME/go/bin/subfinder" /usr/local/bin/subfinder
+        sudo -u "$ORIG_USER" bash -c "
+            export PATH='$go_path:\$PATH'
+            export GOPATH='$gopath'
+            export GOBIN='$gopath/bin'
+            go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+        "
+        if [[ -f "$ORIG_HOME/go/bin/subfinder" ]]; then
+            cp -f "$ORIG_HOME/go/bin/subfinder" /usr/local/bin/subfinder
+            log_success "Subfinder installed successfully"
+        else
+            log_error "Subfinder installation failed"
+        fi
     else
         log_info "Subfinder already installed"
     fi
@@ -1172,6 +1215,7 @@ finalize_installation() {
 verify_installation() {
     log_info "Verifying installation..."
     local failed=0
+    local os_id=$(detect_os)
     
     # Check if launcher scripts exist and are executable
     if [[ ! -x /usr/local/bin/kast ]]; then
@@ -1201,14 +1245,36 @@ verify_installation() {
         ((failed++))
     fi
     
-    # Check if key system tools are available
-    local tools=(firefox geckodriver terraform testssl whatweb)
-    for tool in "${tools[@]}"; do
-        if ! command -v "$tool" &>/dev/null; then
-            log_warning "$tool not found in PATH"
+    # Check OS-specific tools
+    # Firefox check - optional on Ubuntu (uses snap)
+    if [[ "$os_id" != "ubuntu" ]]; then
+        if ! command -v firefox &>/dev/null && ! command -v firefox-esr &>/dev/null; then
+            log_warning "firefox not found in PATH"
             ((failed++))
         fi
-    done
+    fi
+    
+    # Check other tools
+    if ! command -v geckodriver &>/dev/null; then
+        log_warning "geckodriver not found in PATH"
+        ((failed++))
+    fi
+    
+    if ! command -v terraform &>/dev/null; then
+        log_warning "terraform not found in PATH"
+        ((failed++))
+    fi
+    
+    # testssl.sh has different command names on different systems
+    if ! command -v testssl.sh &>/dev/null && ! command -v testssl &>/dev/null; then
+        log_warning "testssl not found in PATH"
+        ((failed++))
+    fi
+    
+    if ! command -v whatweb &>/dev/null; then
+        log_warning "whatweb not found in PATH"
+        ((failed++))
+    fi
     
     if [[ $failed -eq 0 ]]; then
         log_success "All verification checks passed!"
