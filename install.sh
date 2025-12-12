@@ -796,9 +796,9 @@ install_golang_manual() {
     log_info "Minimum required version: $min_version"
     log_info "System architecture: $arch"
     
-    # Determine Go version to install (use latest stable that meets minimum)
-    # For simplicity, we'll install 1.21.13 which meets the 1.21.0 requirement
-    local go_version="1.21.13"
+    # Determine Go version to install
+    # ProjectDiscovery tools now require Go 1.23+ (they specify 1.24 in go.mod but 1.23 works)
+    local go_version="1.23.4"
     local go_tarball="go${go_version}.linux-${arch}.tar.gz"
     local download_url="https://go.dev/dl/${go_tarball}"
     
@@ -824,24 +824,33 @@ install_golang_manual() {
     # Clean up tarball
     rm -f "$go_tarball"
     
+    # Remove APT golang package to prevent conflicts
+    log_info "Removing APT golang package to prevent PATH conflicts..."
+    apt remove -y golang 2>/dev/null || true
+    
     # Update system-wide Go path
     log_info "Updating PATH for Go..."
     
     # Add to /etc/profile.d for system-wide access
     cat > /etc/profile.d/go.sh <<'EOF'
-export PATH=$PATH:/usr/local/go/bin
+export PATH=/usr/local/go/bin:$PATH
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 EOF
     
     chmod +x /etc/profile.d/go.sh
     
-    # Also update current session
-    export PATH=$PATH:/usr/local/go/bin
-    export GOPATH=$HOME/go
+    # CRITICAL: Force PATH update in current installer session
+    # This ensures the new Go takes precedence over any existing installation
+    export PATH=/usr/local/go/bin:$PATH
+    export GOPATH=$ORIG_HOME/go
     export PATH=$PATH:$GOPATH/bin
     
-    # Verify installation
+    log_info "Updated PATH in current session:"
+    log_info "  PATH=$PATH"
+    log_info "  GOPATH=$GOPATH"
+    
+    # Verify installation using full path first, then which
     local installed_version=$(/usr/local/go/bin/go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
     
     if [[ -z "$installed_version" ]]; then
@@ -849,7 +858,12 @@ EOF
         return 1
     fi
     
-    log_success "Go ${installed_version} installed successfully"
+    log_success "Go ${installed_version} installed successfully to /usr/local/go"
+    
+    # Verify which go is being used
+    local go_path=$(which go 2>/dev/null)
+    local active_version=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+    log_info "Active Go binary: $go_path (version: $active_version)"
     
     # Verify it meets minimum requirements
     if version_compare "$installed_version" "$min_version"; then

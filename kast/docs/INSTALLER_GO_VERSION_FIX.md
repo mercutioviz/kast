@@ -195,6 +195,43 @@ To test the fix:
 - `install.sh` - Fixed strategy contamination and added enhanced logging
 - `test_version_detection.sh` - Created test script for validation
 
+## Additional Fix: PATH Precedence Issue
+
+### Problem
+Even after successfully installing Go 1.21.13, the system was still using the old APT-installed Go 1.19.8 because:
+- `/usr/bin/go` (APT version) was in PATH before `/usr/local/go/bin`
+- `/etc/profile.d/go.sh` is only sourced in new login shells
+- The installer's current shell session didn't pick up the new PATH
+
+### Solution
+1. **Update Go version to 1.23.4**: ProjectDiscovery tools require Go 1.23+ (go.mod specifies 1.24, but 1.23 works)
+2. **Remove APT golang package**: Prevents PATH conflicts
+3. **Force PATH update in current session**: Explicitly prepend `/usr/local/go/bin` to PATH
+4. **Verify active Go binary**: Log which `go` is actually being used
+
+### Implementation
+```bash
+# Remove APT golang to prevent conflicts
+apt remove -y golang 2>/dev/null || true
+
+# Update profile.d (prepend, not append)
+cat > /etc/profile.d/go.sh <<'EOF'
+export PATH=/usr/local/go/bin:$PATH
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+EOF
+
+# CRITICAL: Force PATH update in current installer session
+export PATH=/usr/local/go/bin:$PATH
+export GOPATH=$ORIG_HOME/go
+export PATH=$PATH:$GOPATH/bin
+
+# Verify which go is active
+go_path=$(which go 2>/dev/null)
+active_version=$(go version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+log_info "Active Go binary: $go_path (version: $active_version)"
+```
+
 ## Version
 
-Fixed in KAST Installer v2.6.4
+Fixed in KAST Installer v2.6.4 (PATH precedence fix included)
