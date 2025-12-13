@@ -760,8 +760,8 @@ install_system_packages() {
     
     log_info "Installing system packages..."
     
-    # Install base tools first
-    apt install -y ca-certificates curl gnupg rsync jq
+    # Install base tools first (including build-essential for CGO support)
+    apt install -y ca-certificates curl gnupg rsync jq build-essential
     
     # Determine OS-specific packages
     local os_id=$(detect_os)
@@ -985,10 +985,20 @@ install_go_tools() {
         return 1
     fi
     
-    # Install katana
+    # Install katana (requires CGO for go-tree-sitter dependency)
     if [[ ! -f "$ORIG_HOME/go/bin/katana" ]] || [[ ! -f "/usr/local/bin/katana" ]]; then
         log_info "Installing katana..."
+        
+        # Verify gcc is available (required for CGO)
+        if ! command -v gcc &>/dev/null; then
+            log_error "gcc not found - required for katana (CGO dependency)"
+            log_error "Ensure build-essential package is installed"
+            return 1
+        fi
+        
+        log_info "Building katana with CGO enabled (required for go-tree-sitter)..."
         sudo -u "$ORIG_USER" bash -c "
+            export CGO_ENABLED=1
             export GOPATH='$gopath'
             export GOBIN='$gopath/bin'
             '$go_binary' install github.com/projectdiscovery/katana/cmd/katana@latest
