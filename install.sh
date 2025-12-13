@@ -766,50 +766,131 @@ install_system_packages() {
     # Determine OS-specific packages
     local os_id=$(detect_os)
     local os_version=$(get_os_version)
-    local java_package="openjdk-17-jre"  # Default to 17 for Debian 12
-    local firefox_package="firefox-esr"  # Default for Debian/Kali
+    local java_package=""
+    local firefox_package=""
     
-    # Set OS-specific package names
-    if [[ "$os_id" == "kali" ]] || [[ "$os_id" == "ubuntu" && $os_version -ge 24 ]]; then
-        java_package="openjdk-21-jre"
-    fi
-    
-    if [[ "$os_id" == "ubuntu" ]]; then
-        # Ubuntu uses firefox snap, so we skip the package or it may not exist
-        firefox_package=""
+    # Set OS-specific package names based on distribution and version
+    # Java: Different distributions and versions have different OpenJDK packages
+    if [[ "$os_id" == "debian" ]]; then
+        if [[ $os_version -ge 13 ]]; then
+            java_package="openjdk-21-jre"  # Debian 13+ (Trixie, Forky)
+            firefox_package="firefox-esr"
+        elif [[ $os_version -ge 12 ]]; then
+            java_package="openjdk-17-jre"  # Debian 12 (Bookworm)
+            firefox_package="firefox-esr"
+        else
+            java_package="openjdk-17-jre"  # Fallback
+            firefox_package="firefox-esr"
+        fi
+    elif [[ "$os_id" == "ubuntu" ]]; then
+        java_package="openjdk-21-jre"  # Ubuntu 24+ uses OpenJDK 21
+        firefox_package=""  # Ubuntu uses Firefox snap
         log_info "Ubuntu detected - Firefox will be installed via snap (if not already present)"
+    elif [[ "$os_id" == "kali" ]]; then
+        java_package="openjdk-21-jre"  # Kali uses OpenJDK 21
+        firefox_package="firefox-esr"
+    else
+        # Fallback for unknown distributions
+        java_package="openjdk-21-jre"
+        firefox_package="firefox-esr"
+        log_warning "Unknown distribution '$os_id' - using default Java package"
     fi
     
-    log_info "Installing Java package: $java_package"
+    log_info "Target Java package: $java_package"
     
-    # Build package list dynamically (exclude golang - will be handled by strategy)
-    local packages="git gpg htop nginx $java_package python3 python3-venv sslscan testssl.sh wafw00f whatweb"
+    # Build package lists - separate critical from optional
+    local critical_packages="git gpg python3 python3-venv build-essential"
+    local tool_packages="htop nginx sslscan wafw00f"
+    local optional_packages=""
     
-    # Add firefox package only if specified
+    # Add distribution-specific packages
+    # Note: testssl and whatweb have different package names across distributions
+    case "$os_id" in
+        debian|kali)
+            optional_packages="testssl.sh whatweb"
+            ;;
+        ubuntu)
+            # Ubuntu may have different package names
+            optional_packages="testssl.sh whatweb"
+            ;;
+    esac
+    
+    # Add firefox if specified
     if [[ -n "$firefox_package" ]]; then
-        packages="$firefox_package $packages"
+        optional_packages="$firefox_package $optional_packages"
+    fi
+    
+    # Add Java package
+    if [[ -n "$java_package" ]]; then
+        tool_packages="$tool_packages $java_package"
     fi
     
     # Only add golang if strategy says to use APT
     if [[ "${INSTALL_STRATEGY[golang]}" == "USE_APT" ]]; then
-        packages="golang $packages"
+        tool_packages="$tool_packages golang"
         log_info "Adding golang from APT (strategy: USE_APT)"
     else
         log_info "Skipping golang from APT (strategy: ${INSTALL_STRATEGY[golang]})"
     fi
     
-    # Install main packages with OS-appropriate versions
-    apt install -y $packages || {
-        log_warning "Some packages may have failed to install. Checking critical ones..."
-        
-        # Verify python3-venv specifically since it's critical
-        if ! dpkg -l | grep -q "python3.*-venv"; then
-            log_info "Installing python3-venv package specifically..."
-            # Try with Python version detection
-            local py_version=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
-            apt install -y python${py_version}-venv 2>/dev/null || apt install -y python3-venv || log_error "Failed to install python3-venv"
+    # Install critical packages first (must succeed)
+    log_info "Installing critical packages..."
+    if ! apt install -y $critical_packages; then
+        log_error "Failed to install critical packages"
+        return 1
+    fi
+    
+    # Verify python3-venv specifically since it's critical
+    if ! dpkg -l | grep -q "python3.*-venv"; then
+        log_info "Installing python3-venv package specifically..."
+        # Try with Python version detection
+        local py_version=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
+        apt install -y python${py_version}-venv 2>/dev/null || apt install -y python3-venv || {
+            log_error "Failed to install python3-venv"
+            return 1
+        }
+    fi
+    
+    # Install tool packages (continue on failure)
+    log_info "Installing tool packages..."
+    local failed_tools=()
+    for pkg in $tool_packages; do
+        log_info "  Installing $pkg..."
+        if apt install -y $pkg 2>/dev/null; then
+            log_success "    ✓ $pkg installed"
+        else
+            log_warning "    ✗ $pkg failed to install"
+            failed_tools+=("$pkg")
         fi
-    }
+    done
+    
+    # Install optional packages (continue on failure)
+    log_info "Installing optional packages..."
+    local failed_optional=()
+    for pkg in $optional_packages; do
+        log_info "  Installing $pkg..."
+        if apt install -y $pkg 2>/dev/null; then
+            log_success "    ✓ $pkg installed"
+        else
+            log_warning "    ✗ $pkg failed to install"
+            failed_optional+=("$pkg")
+        fi
+    done
+    
+    # Report summary
+    if [[ ${#failed_tools[@]} -gt 0 ]] || [[ ${#failed_optional[@]} -gt 0 ]]; then
+        echo ""
+        log_warning "Package Installation Summary:"
+        if [[ ${#failed_tools[@]} -gt 0 ]]; then
+            log_warning "  Failed tool packages: ${failed_tools[*]}"
+        fi
+        if [[ ${#failed_optional[@]} -gt 0 ]]; then
+            log_warning "  Failed optional packages: ${failed_optional[*]}"
+        fi
+        echo ""
+        log_info "Installation will continue. Some features may be unavailable."
+        echo ""
+    fi
     
     save_checkpoint "$CHECKPOINT_PACKAGES"
     log_success "System packages installed"
