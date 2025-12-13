@@ -991,7 +991,7 @@ install_go_tools() {
         sudo -u "$ORIG_USER" bash -c "
             export GOPATH='$gopath'
             export GOBIN='$gopath/bin'
-            CGO_ENABLED=1 '$go_binary' install github.com/projectdiscovery/katana/cmd/katana@latest
+            '$go_binary' install github.com/projectdiscovery/katana/cmd/katana@latest
         "
         if [[ -f "$ORIG_HOME/go/bin/katana" ]]; then
             cp -f "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
