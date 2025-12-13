@@ -18,6 +18,7 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 logging.getLogger('fontTools').setLevel(logging.WARNING)
 logging.getLogger('fontTools.subset').setLevel(logging.WARNING)
 logging.getLogger('fontTools.ttLib').setLevel(logging.WARNING)
+logging.getLogger('fontTools.ttLib.ttFont').setLevel(logging.WARNING)
 
 # Logger for warnings when registry entries are missing
 logger = logging.getLogger(__name__)
