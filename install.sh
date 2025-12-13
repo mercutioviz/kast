@@ -1112,6 +1112,98 @@ install_libpango() {
     log_success "Libpango installed"
 }
 
+install_pdf_fonts() {
+    log_info "Installing fonts for PDF generation..."
+    
+    # Track font installation results
+    local fonts_installed=0
+    local fonts_failed=0
+    local failed_fonts=()
+    
+    # Define font packages to install
+    # Priority order: Essential -> Important -> Optional
+    local essential_fonts=(
+        "fonts-noto-core:Core Latin and common scripts"
+        "fonts-noto-color-emoji:Emoji support"
+    )
+    
+    local important_fonts=(
+        "fonts-dejavu:Extended Unicode coverage"
+        "fonts-dejavu-extra:Additional DejaVu fonts"
+        "fonts-liberation2:Professional document fonts"
+    )
+    
+    local optional_fonts=(
+        "fonts-noto-cjk:Asian language support (CJK)"
+        "fonts-symbola:Extensive symbol coverage"
+    )
+    
+    # Function to install a single font package
+    install_font_package() {
+        local package_info=$1
+        local package_name=$(echo "$package_info" | cut -d':' -f1)
+        local package_desc=$(echo "$package_info" | cut -d':' -f2)
+        
+        log_info "  Installing $package_name ($package_desc)..."
+        
+        if apt install -y "$package_name" 2>/dev/null; then
+            log_success "    ✓ $package_name installed"
+            ((fonts_installed++))
+            return 0
+        else
+            log_warning "    ✗ $package_name failed to install"
+            failed_fonts+=("$package_name")
+            ((fonts_failed++))
+            return 1
+        fi
+    }
+    
+    # Install essential fonts
+    log_info "Installing essential fonts..."
+    for font in "${essential_fonts[@]}"; do
+        install_font_package "$font"
+    done
+    
+    # Install important fonts
+    log_info "Installing important fonts..."
+    for font in "${important_fonts[@]}"; do
+        install_font_package "$font"
+    done
+    
+    # Install optional fonts (continue even if these fail)
+    log_info "Installing optional fonts..."
+    for font in "${optional_fonts[@]}"; do
+        install_font_package "$font" || true  # Don't fail if optional fonts fail
+    done
+    
+    # Update font cache
+    log_info "Updating font cache..."
+    if fc-cache -f -v >/dev/null 2>&1; then
+        log_success "Font cache updated"
+    else
+        log_warning "Font cache update failed (non-critical)"
+    fi
+    
+    # Display summary
+    echo ""
+    log_info "Font Installation Summary:"
+    log_info "  Fonts installed: $fonts_installed"
+    if [[ $fonts_failed -gt 0 ]]; then
+        log_warning "  Fonts failed: $fonts_failed"
+        log_warning "  Failed packages: ${failed_fonts[*]}"
+        echo ""
+        log_warning "Some fonts failed to install. This may impact PDF report rendering"
+        log_warning "of special characters, emojis, and international text."
+        log_warning "PDF reports will still be generated but may show rectangles (□)"
+        log_warning "for unsupported characters."
+        echo ""
+    else
+        log_success "  All fonts installed successfully"
+    fi
+    
+    log_success "PDF fonts installation complete"
+}
+
 copy_project_files() {
     if checkpoint_completed "$CHECKPOINT_FILES"; then
         log_info "Project files already copied, skipping..."
@@ -1603,6 +1695,7 @@ main() {
     install_terraform
     install_observatory
     install_libpango
+    install_pdf_fonts
     copy_project_files
     setup_python_venv
     install_ftap
