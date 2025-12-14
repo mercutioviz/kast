@@ -469,11 +469,8 @@ get_installed_version() {
 get_apt_version() {
     local package=$1
     
-    # Update apt cache if it's stale (older than 1 hour)
-    local apt_cache="/var/cache/apt/pkgcache.bin"
-    if [[ ! -f "$apt_cache" ]] || [[ $(find "$apt_cache" -mmin +60 2>/dev/null) ]]; then
-        apt update -qq 2>/dev/null || true
-    fi
+    # Note: APT cache should be updated once at the start of validate_prerequisites()
+    # to ensure consistent version detection across all tool checks
     
     # Try apt-cache policy first (most reliable)
     local version=$(apt-cache policy "$package" 2>/dev/null | grep "Candidate:" | awk '{print $2}')
@@ -595,6 +592,14 @@ validate_prerequisites() {
     echo "  Pre-Requisite Analysis"
     echo "======================================================================"
     echo ""
+    
+    # Update APT cache once at the beginning for consistent version detection
+    log_info "Updating APT package cache..."
+    if apt update -qq 2>&1 | grep -q "Err:"; then
+        log_warning "APT cache update encountered errors (continuing anyway)"
+    else
+        log_success "APT cache updated successfully"
+    fi
     
     log_info "Analyzing tool version requirements..."
     
@@ -910,12 +915,59 @@ install_golang_manual() {
     local go_tarball="go${go_version}.linux-${arch}.tar.gz"
     local download_url="https://go.dev/dl/${go_tarball}"
     
-    log_info "Downloading Go ${go_version}..."
+    # Check network connectivity before attempting download
+    log_info "Checking connectivity to go.dev..."
+    if ! curl -s --connect-timeout 10 --max-time 10 -I "https://go.dev" >/dev/null 2>&1; then
+        log_error "Cannot reach go.dev. Please check your network connection."
+        log_error "You may need to configure proxy settings or try again later."
+        
+        # Offer fallback to APT if available
+        local apt_ver=$(get_apt_version "golang")
+        if [[ -n "$apt_ver" ]]; then
+            log_warning "APT version available: $apt_ver"
+            echo ""
+            read -p "Would you like to install golang from APT instead? [y/N]: " fallback
+            if [[ "$fallback" =~ ^[Yy]$ ]]; then
+                log_info "Installing golang from APT..."
+                apt install -y golang
+                return $?
+            fi
+        fi
+        
+        return 1
+    fi
+    
+    log_info "Downloading Go ${go_version} (approximately 150MB)..."
+    log_info "This may take several minutes on slow connections..."
     
     # Download to /tmp
     cd /tmp
-    if ! wget -q "$download_url"; then
+    
+    # Use wget with timeout, retries, and progress display
+    # --timeout=60: 60 second timeout per network operation
+    # --tries=3: retry up to 3 times
+    # --show-progress: display progress bar
+    # --progress=bar:force: force progress bar even if output is redirected
+    if ! wget --timeout=60 --tries=3 --show-progress --progress=bar:force "$download_url" 2>&1; then
         log_error "Failed to download Go from $download_url"
+        log_error "This could be due to:"
+        log_error "  - Network connectivity issues"
+        log_error "  - Slow connection that timed out"
+        log_error "  - Proxy or firewall restrictions"
+        
+        # Offer fallback to APT if available
+        local apt_ver=$(get_apt_version "golang")
+        if [[ -n "$apt_ver" ]]; then
+            log_warning "APT version available: $apt_ver"
+            echo ""
+            read -p "Would you like to install golang from APT instead? [y/N]: " fallback
+            if [[ "$fallback" =~ ^[Yy]$ ]]; then
+                log_info "Installing golang from APT..."
+                apt install -y golang
+                return $?
+            fi
+        fi
+        
         return 1
     fi
     
