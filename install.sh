@@ -80,6 +80,7 @@ TOOL_MANUAL_INSTALL["nodejs"]="nodesource_repo"
 # Installation strategy results (populated during validation)
 declare -gA INSTALL_STRATEGY
 declare -gA APT_AVAILABLE_VERSIONS
+declare -gA TOOL_BINARY_PATHS
 
 ###############################################################################
 # LOGGING AND OUTPUT FUNCTIONS
@@ -619,6 +620,17 @@ validate_prerequisites() {
         local strategy=$(determine_install_strategy "$tool")
         INSTALL_STRATEGY["$tool"]="$strategy"
         
+        # Store binary path for tools that are already installed
+        if [[ "$strategy" == "SKIP_ALREADY_INSTALLED" ]]; then
+            if [[ "$tool" == "golang" ]]; then
+                local go_path=$(command -v go 2>/dev/null)
+                if [[ -n "$go_path" ]]; then
+                    TOOL_BINARY_PATHS["golang"]="$go_path"
+                    log_info "  - Detected Go binary at: $go_path"
+                fi
+            fi
+        fi
+        
         # Log the strategy with context
         log_info "Analyzing $tool:"
         log_info "  - Minimum required: $min_version"
@@ -1106,17 +1118,59 @@ install_go_tools() {
     mkdir -p "$ORIG_HOME/go/bin"
     chown -R "$ORIG_USER:$ORIG_USER" "$ORIG_HOME/go"
     
-    # CRITICAL: Use absolute path to Go binary
-    # Non-interactive shells don't source .bashrc, so we can't rely on PATH
-    local go_binary="/usr/local/go/bin/go"
+    # CRITICAL: Dynamically locate Go binary
+    # Try multiple sources in order of preference:
+    # 1. Stored path from prerequisite validation (if Go was already installed)
+    # 2. Current PATH (dynamic lookup)
+    # 3. Manual install location (/usr/local/go/bin/go)
+    local go_binary=""
     local gopath="$ORIG_HOME/go"
     
-    # Verify Go is available
-    if [[ ! -x "$go_binary" ]]; then
-        log_error "Go binary not found at $go_binary"
+    # First: Check if we stored the path during prerequisite validation
+    if [[ -n "${TOOL_BINARY_PATHS[golang]}" ]]; then
+        go_binary="${TOOL_BINARY_PATHS[golang]}"
+        log_info "Using Go binary from stored path: $go_binary"
+    fi
+    
+    # Second: Try to find Go in current PATH
+    if [[ -z "$go_binary" ]] || [[ ! -x "$go_binary" ]]; then
+        local path_go=$(command -v go 2>/dev/null)
+        if [[ -n "$path_go" ]] && [[ -x "$path_go" ]]; then
+            go_binary="$path_go"
+            log_info "Found Go binary in PATH: $go_binary"
+        fi
+    fi
+    
+    # Third: Check manual install location
+    if [[ -z "$go_binary" ]] || [[ ! -x "$go_binary" ]]; then
+        if [[ -x "/usr/local/go/bin/go" ]]; then
+            go_binary="/usr/local/go/bin/go"
+            log_info "Found Go binary at manual install location: $go_binary"
+        fi
+    fi
+    
+    # Verify we found a working Go binary
+    if [[ -z "$go_binary" ]] || [[ ! -x "$go_binary" ]]; then
+        log_error "Go binary not found"
+        log_error "Searched locations:"
+        log_error "  - Stored path: ${TOOL_BINARY_PATHS[golang]:-<not set>}"
+        log_error "  - PATH lookup: $(command -v go 2>/dev/null || echo '<not found>')"
+        log_error "  - Manual install: /usr/local/go/bin/go"
+        log_error ""
         log_error "Go must be installed before installing Go tools"
+        log_error "Installation strategy was: ${INSTALL_STRATEGY[golang]}"
         return 1
     fi
+    
+    # Verify the Go binary actually works
+    local go_version=$("$go_binary" version 2>/dev/null | awk '{print $3}' | sed 's/go//')
+    if [[ -z "$go_version" ]]; then
+        log_error "Go binary at $go_binary exists but does not work"
+        log_error "Cannot determine Go version"
+        return 1
+    fi
+    
+    log_success "Using Go $go_version at: $go_binary"
     
     # Install katana (requires CGO for go-tree-sitter dependency)
     if [[ ! -f "$ORIG_HOME/go/bin/katana" ]] || [[ ! -f "/usr/local/bin/katana" ]]; then
