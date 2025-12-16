@@ -46,7 +46,7 @@ This plugin uses the **standalone mode** approach:
 - **Name**: `related_sites`
 - **Display Name**: Related Sites Discovery
 - **Priority**: 45 (runs after initial recon, before deep analysis)
-- **Scan Type**: Active (makes HTTP requests to discovered hosts)
+- **Scan Type**: Passive (makes HTTP requests to discovered hosts)
 - **Output Type**: File-based
 
 ### HTTPx Settings
@@ -54,6 +54,7 @@ This plugin uses the **standalone mode** approach:
 - **Timeout**: 10 seconds per host
 - **Retries**: 2
 - **Threads**: 50 (parallel execution)
+- **Rate Limit**: 10 requests/second (default, configurable via CLI)
 - **Features**: Follow redirects, tech detection, CDN detection, WebSocket support
 
 ### Subfinder Settings
@@ -252,6 +253,19 @@ Output: Shows detailed debug information about subfinder/httpx execution
 python -m kast.main --target example.com
 ```
 Output: Includes related_sites along with all other plugins
+
+### Example 4: Custom Rate Limiting
+```bash
+# Conservative rate limiting (5 requests/second)
+python -m kast.main --target example.com --run-only related_sites --httpx-rate-limit 5
+
+# Aggressive rate limiting (50 requests/second)
+python -m kast.main --target example.com --run-only related_sites --httpx-rate-limit 50
+
+# No rate limiting (0 = unlimited)
+python -m kast.main --target example.com --run-only related_sites --httpx-rate-limit 0
+```
+Output: Adjusts httpx request rate to avoid overwhelming targets or triggering rate limits
 
 ## Security Considerations
 

@@ -190,6 +190,10 @@ class RelatedSitesPlugin(KastPlugin):
         
         output_file = os.path.join(output_dir, "related_sites_httpx.json")
         
+        # Get rate limit from CLI args (default 10 if not specified)
+        rate_limit = getattr(self.cli_args, 'httpx_rate_limit', 10)
+        self.debug(f"Using httpx rate limit: {rate_limit} requests/second")
+        
         # Configure httpx command
         cmd = [
             "httpx",
@@ -200,6 +204,7 @@ class RelatedSitesPlugin(KastPlugin):
             "-timeout", "10",            # 10 second timeout per host
             "-retries", "2",             # Retry failed requests
             "-threads", "50",            # Parallel requests
+            "-rate-limit", str(rate_limit),  # Rate limit requests/second
             "-ports", "80,443,8080,8443,8000,8888",  # Common web ports
             "-follow-redirects",         # Follow redirects
             "-status-code",              # Include status code

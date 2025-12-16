@@ -102,6 +102,12 @@ def parse_args():
         type=str,
         help="Custom logo file (PNG or JPG) to use in reports (optional)"
     )
+    parser.add_argument(
+        "--httpx-rate-limit",
+        type=int,
+        default=10,
+        help="Rate limit for httpx requests per second (default: 10, used by related_sites plugin)"
+    )
     return parser.parse_args()
 
 def setup_logging(log_dir, verbose):
