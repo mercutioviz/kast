@@ -104,6 +104,51 @@
    python -m kast.main --list-plugins
    ```
 
+## 🔄 Updating KAST
+
+KAST includes a comprehensive update script for safely updating production installations.
+
+### Quick Update
+
+```bash
+cd /path/to/kast/repo
+git pull
+sudo ./update.sh
+```
+
+### Update Features
+
+- ✅ **Automatic Backups**: Creates timestamped backups before each update
+- ✅ **Configuration Preservation**: Keeps your custom settings during updates
+- ✅ **Easy Rollback**: Instantly restore any previous backup if issues occur
+- ✅ **Version Tracking**: Tracks current and target versions
+- ✅ **Validation**: Pre and post-update checks ensure system integrity
+- ✅ **Multiple Modes**: Interactive, automated, and dry-run options
+
+### Update Commands
+
+```bash
+# Interactive update (recommended)
+sudo ./update.sh
+
+# Automated update (for scripts/CI/CD)
+sudo ./update.sh --auto
+
+# Preview changes without modifying anything
+sudo ./update.sh --dry-run
+
+# List available backups
+sudo ./update.sh --list-backups
+
+# Rollback to previous version
+sudo ./update.sh --rollback <timestamp>
+```
+
+### Documentation
+
+- **Quick Reference**: [UPDATE.md](UPDATE.md)
+- **Full Guide**: [kast/docs/UPDATE_SCRIPT_GUIDE.md](kast/docs/UPDATE_SCRIPT_GUIDE.md)
+
 ## 🚀 Usage
 
 ### Basic Syntax

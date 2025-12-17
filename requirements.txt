@@ -7,6 +7,7 @@ aioquic>=0.9.21
 
 # HTML/Web parsing
 beautifulsoup4>=4.12.2
+tldextract>=3.4.0
 
 # CLI and output
 rich>=13.7.0
