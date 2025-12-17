@@ -25,7 +25,7 @@ class RelatedSitesPlugin(KastPlugin):
         self.display_name = "Related Sites Discovery"
         self.description = "Discovers related subdomains and probes for live web services"
         self.website_url = "https://github.com/mercutioviz/kast"
-        self.scan_type = "active"  # Makes HTTP requests
+        self.scan_type = "passive"  # Makes HTTP requests
         self.output_type = "file"
         self.command_executed = {
             "subfinder": None,
@@ -252,29 +252,25 @@ class RelatedSitesPlugin(KastPlugin):
         """
         Parse httpx JSON output and categorize findings.
         
+        A "host" is a subdomain. A host is "live" if it responds on ANY port.
+        Results are aggregated by host, not by port response.
+        
         :param output_file: Path to httpx JSON output
         :param all_subdomains: List of all subdomains that were probed
         :return: Dict with categorized results
         """
-        results = {
-            "live_hosts": [],
-            "dead_hosts": [],
-            "by_status": {},
-            "by_port": {},
-            "technologies": {},
-            "redirects": [],
-            "with_cdn": [],
-            "websockets": []
-        }
+        # Aggregate responses by host
+        hosts_data = {}  # host -> list of port responses
         
         if not os.path.exists(output_file):
             self.debug(f"HTTPx output file not found: {output_file}")
-            results["dead_hosts"] = all_subdomains
-            return results
+            return {
+                "live_hosts": [],
+                "dead_hosts": all_subdomains,
+                "hosts_by_subdomain": {}
+            }
         
-        # Parse httpx JSON Lines output
-        live_hosts_set = set()
-        
+        # Parse httpx JSON Lines output and group by host
         try:
             with open(output_file, 'r') as f:
                 for line in f:
@@ -283,22 +279,22 @@ class RelatedSitesPlugin(KastPlugin):
                         continue
                     try:
                         data = json.loads(line)
-                        url = data.get('url', '')
                         host = data.get('host', '')
-                        port = data.get('port', 0)
+                        if not host:
+                            continue
+                        
+                        # Port can be string or int from httpx, normalize to int
+                        port = int(data.get('port', 0)) if data.get('port') else 0
                         status_code = data.get('status_code', 0)
                         title = data.get('title', '')
                         tech = data.get('tech', [])
                         cdn = data.get('cdn', '')
                         websocket = data.get('websocket', False)
+                        url = data.get('url', '')
                         
-                        # Track live host
-                        live_hosts_set.add(host)
-                        
-                        host_info = {
-                            "url": url,
-                            "host": host,
+                        port_response = {
                             "port": port,
+                            "url": url,
                             "status_code": status_code,
                             "title": title,
                             "technologies": tech if isinstance(tech, list) else [],
@@ -306,49 +302,55 @@ class RelatedSitesPlugin(KastPlugin):
                             "websocket": websocket
                         }
                         
-                        results["live_hosts"].append(host_info)
+                        if host not in hosts_data:
+                            hosts_data[host] = []
+                        hosts_data[host].append(port_response)
                         
-                        # Categorize by status code
-                        if status_code not in results["by_status"]:
-                            results["by_status"][status_code] = []
-                        results["by_status"][status_code].append(host_info)
-                        
-                        # Categorize by port
-                        if port not in results["by_port"]:
-                            results["by_port"][port] = []
-                        results["by_port"][port].append(host_info)
-                        
-                        # Track technologies
-                        for t in tech if isinstance(tech, list) else []:
-                            if t not in results["technologies"]:
-                                results["technologies"][t] = []
-                            results["technologies"][t].append(host)
-                        
-                        # Track CDN usage
-                        if cdn:
-                            results["with_cdn"].append(host_info)
-                        
-                        # Track websockets
-                        if websocket:
-                            results["websockets"].append(host_info)
-                        
-                        # Track redirects (3xx status codes)
-                        if 300 <= status_code < 400:
-                            results["redirects"].append(host_info)
-                            
                     except json.JSONDecodeError as e:
                         self.debug(f"Failed to parse HTTPx line: {line}, error: {e}")
                         continue
         except Exception as e:
             self.debug(f"Error reading HTTPx output: {e}")
         
-        # Determine dead hosts (subdomains that didn't respond)
-        results["dead_hosts"] = [h for h in all_subdomains if h not in live_hosts_set]
+        # Build host-centric results
+        live_hosts = []
+        for host, port_responses in hosts_data.items():
+            # Aggregate technologies across all ports
+            all_technologies = set()
+            ports = []
+            has_cdn = False
+            has_websocket = False
+            
+            for resp in port_responses:
+                ports.append(resp["port"])
+                all_technologies.update(resp["technologies"])
+                if resp["cdn"]:
+                    has_cdn = True
+                if resp["websocket"]:
+                    has_websocket = True
+            
+            host_info = {
+                "host": host,
+                "ports": sorted(list(set(ports))),  # Unique ports, sorted
+                "port_responses": port_responses,  # Detailed per-port data
+                "technologies": sorted(list(all_technologies)),
+                "has_cdn": has_cdn,
+                "has_websocket": has_websocket
+            }
+            live_hosts.append(host_info)
         
-        self.debug(f"HTTPx found {len(results['live_hosts'])} live host(s), "
-                  f"{len(results['dead_hosts'])} dead host(s)")
+        # Determine dead hosts (subdomains that didn't respond on any port)
+        live_hosts_set = set(hosts_data.keys())
+        dead_hosts = [h for h in all_subdomains if h not in live_hosts_set]
         
-        return results
+        self.debug(f"HTTPx found {len(live_hosts)} unique live host(s) (responded on any port), "
+                  f"{len(dead_hosts)} dead host(s)")
+        
+        return {
+            "live_hosts": live_hosts,  # List of host info dicts
+            "dead_hosts": dead_hosts,  # List of hostnames
+            "hosts_by_subdomain": hosts_data  # Raw data for reference
+        }
 
     def run(self, target, output_dir, report_only):
         """
@@ -410,30 +412,38 @@ class RelatedSitesPlugin(KastPlugin):
         self.debug(f"Probing {len(subdomains)} subdomain(s) with httpx")
         probe_results = self._probe_subdomains_with_httpx(subdomains, output_dir)
         
-        # Step 4: Aggregate results
+        # Step 4: Calculate statistics from host-centric data
+        live_hosts = probe_results["live_hosts"]
+        dead_hosts = probe_results["dead_hosts"]
+        
+        # Aggregate technologies across all live hosts
+        all_technologies = set()
+        cdn_count = 0
+        websocket_count = 0
+        
+        for host_info in live_hosts:
+            all_technologies.update(host_info["technologies"])
+            if host_info["has_cdn"]:
+                cdn_count += 1
+            if host_info["has_websocket"]:
+                websocket_count += 1
+        
         final_results = {
             "target": target,
             "apex_domain": apex_domain,
             "scanned_domain": scan_target,
             "total_subdomains": len(subdomains),
             "subdomains": subdomains,
-            "live_hosts": probe_results["live_hosts"],
-            "dead_hosts": probe_results["dead_hosts"],
-            "by_status": probe_results["by_status"],
-            "by_port": probe_results["by_port"],
-            "technologies": probe_results["technologies"],
-            "redirects": probe_results["redirects"],
-            "with_cdn": probe_results["with_cdn"],
-            "websockets": probe_results["websockets"],
+            "live_hosts": live_hosts,
+            "dead_hosts": dead_hosts,
             "statistics": {
                 "total_discovered": len(subdomains),
-                "total_live": len(probe_results["live_hosts"]),
-                "total_dead": len(probe_results["dead_hosts"]),
-                "response_rate": (len(probe_results["live_hosts"]) / len(subdomains) * 100) if len(subdomains) > 0 else 0,
-                "unique_technologies": len(probe_results["technologies"]),
-                "cdn_protected": len(probe_results["with_cdn"]),
-                "websocket_enabled": len(probe_results["websockets"]),
-                "redirects_count": len(probe_results["redirects"])
+                "total_live": len(live_hosts),
+                "total_dead": len(dead_hosts),
+                "response_rate": (len(live_hosts) / len(subdomains) * 100) if len(subdomains) > 0 else 0,
+                "unique_technologies": len(all_technologies),
+                "cdn_protected": cdn_count,
+                "websocket_enabled": websocket_count
             }
         }
         
@@ -454,7 +464,10 @@ class RelatedSitesPlugin(KastPlugin):
         :param output_dir: Directory to write processed output
         :return: Path to processed JSON file
         """
-        findings = raw_output if isinstance(raw_output, dict) else {}
+        # Extract the actual results from the nested structure
+        # raw_output has structure: {"name": ..., "disposition": ..., "results": {...}}
+        # We need to pass the "results" dict to our helper methods
+        findings = raw_output.get("results", {}) if isinstance(raw_output, dict) else {}
         
         self.debug(f"{self.name} processing findings")
         
@@ -479,7 +492,8 @@ class RelatedSitesPlugin(KastPlugin):
             "executive_summary": exec_summary,
             "custom_html": custom_html,
             "custom_html_pdf": custom_html_pdf,
-            "commands_executed": self.command_executed
+            "commands_executed": self.command_executed,
+            "results_message": "See live and dead host information below"
         }
         
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
@@ -513,36 +527,57 @@ class RelatedSitesPlugin(KastPlugin):
             f"{live_count} responding to HTTP requests ({response_rate:.1f}% response rate)"
         )
         
-        # Highlight interesting findings
-        by_status = findings.get("by_status", {})
-        if 200 in by_status:
-            summary_points.append(f"{len(by_status[200])} subdomain(s) with active web servers (200 OK)")
+        # Analyze live hosts for interesting findings
+        live_hosts = findings.get("live_hosts", [])
         
-        redirects = findings.get("redirects", [])
-        if redirects:
-            summary_points.append(f"{len(redirects)} subdomain(s) configured with redirects")
+        if live_hosts:
+            # Count status codes across all port responses
+            status_200_count = 0
+            redirect_count = 0
+            
+            for host_info in live_hosts:
+                for port_resp in host_info.get("port_responses", []):
+                    status = port_resp.get("status_code", 0)
+                    if status == 200:
+                        status_200_count += 1
+                    elif 300 <= status < 400:
+                        redirect_count += 1
+            
+            if status_200_count > 0:
+                summary_points.append(f"{status_200_count} successful HTTP response(s) (200 OK) across all hosts")
+            
+            if redirect_count > 0:
+                summary_points.append(f"{redirect_count} redirect response(s) configured")
         
-        cdn_hosts = findings.get("with_cdn", [])
-        if cdn_hosts:
-            summary_points.append(f"{len(cdn_hosts)} subdomain(s) using CDN protection")
+        # CDN and WebSocket stats
+        cdn_count = stats.get("cdn_protected", 0)
+        if cdn_count > 0:
+            summary_points.append(f"{cdn_count} subdomain(s) using CDN protection")
         
-        websockets = findings.get("websockets", [])
-        if websockets:
-            summary_points.append(f"{len(websockets)} subdomain(s) supporting WebSocket connections")
+        websocket_count = stats.get("websocket_enabled", 0)
+        if websocket_count > 0:
+            summary_points.append(f"{websocket_count} subdomain(s) supporting WebSocket connections")
         
-        tech = findings.get("technologies", {})
-        if tech:
-            top_techs = sorted(tech.items(), key=lambda x: len(x[1]), reverse=True)[:3]
-            tech_summary = ", ".join([f"{name} ({len(hosts)})" for name, hosts in top_techs])
-            summary_points.append(f"Most common technologies: {tech_summary}")
+        # Technology summary
+        if live_hosts:
+            # Count technology occurrences across hosts
+            tech_counts = {}
+            for host_info in live_hosts:
+                for tech in host_info.get("technologies", []):
+                    tech_counts[tech] = tech_counts.get(tech, 0) + 1
+            
+            if tech_counts:
+                top_techs = sorted(tech_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                tech_summary = ", ".join([f"{name} ({count})" for name, count in top_techs])
+                summary_points.append(f"Most common technologies: {tech_summary}")
         
         return summary_points
 
     def _generate_details(self, findings):
-        """Generate detailed findings text."""
+        """Generate concise details summary."""
         stats = findings.get("statistics", {})
-        lines = []
         
+        lines = []
         lines.append(f"Target: {findings.get('target', 'N/A')}")
         lines.append(f"Apex Domain: {findings.get('apex_domain', 'N/A')}")
         lines.append(f"Scanned Domain: {findings.get('scanned_domain', 'N/A')}")
@@ -551,37 +586,13 @@ class RelatedSitesPlugin(KastPlugin):
         lines.append(f"Live Hosts: {stats.get('total_live', 0)}")
         lines.append(f"Dead Hosts: {stats.get('total_dead', 0)}")
         lines.append(f"Response Rate: {stats.get('response_rate', 0):.1f}%")
-        lines.append("")
-        
-        by_status = findings.get("by_status", {})
-        if by_status:
-            lines.append("Response by Status Code:")
-            for status, hosts in sorted(by_status.items()):
-                lines.append(f"  {status}: {len(hosts)} host(s)")
-            lines.append("")
-        
-        by_port = findings.get("by_port", {})
-        if by_port:
-            lines.append("Response by Port:")
-            for port, hosts in sorted(by_port.items()):
-                lines.append(f"  {port}: {len(hosts)} host(s)")
-            lines.append("")
-        
-        technologies = findings.get("technologies", {})
-        if technologies:
-            lines.append(f"Technologies Detected: {len(technologies)}")
-            for tech, hosts in sorted(technologies.items(), key=lambda x: len(x[1]), reverse=True)[:10]:
-                lines.append(f"  {tech}: {len(hosts)} host(s)")
-            lines.append("")
+        lines.append(f"Unique Technologies: {stats.get('unique_technologies', 0)}")
         
         if stats.get('cdn_protected', 0) > 0:
-            lines.append(f"CDN Protected Hosts: {stats['cdn_protected']}")
+            lines.append(f"CDN Protected: {stats['cdn_protected']}")
         
         if stats.get('websocket_enabled', 0) > 0:
-            lines.append(f"WebSocket Enabled Hosts: {stats['websocket_enabled']}")
-        
-        if stats.get('redirects_count', 0) > 0:
-            lines.append(f"Redirects Configured: {stats['redirects_count']}")
+            lines.append(f"WebSocket Enabled: {stats['websocket_enabled']}")
         
         return "\n".join(lines)
 
@@ -596,30 +607,35 @@ class RelatedSitesPlugin(KastPlugin):
         return issues
 
     def _generate_custom_html(self, findings):
-        """Generate custom HTML widget for interactive report display."""
+        """Generate custom HTML widget for interactive report display with host-centric view."""
         stats = findings.get("statistics", {})
         live_hosts = findings.get("live_hosts", [])
+        dead_hosts = findings.get("dead_hosts", [])
         
-        if not live_hosts:
-            return "<p>No live hosts discovered.</p>"
+        total_subdomains = stats.get("total_discovered", 0)
+        total_live = stats.get("total_live", 0)
+        total_dead = stats.get("total_dead", 0)
+        response_rate = stats.get("response_rate", 0)
         
-        # Group by status code for display
-        by_status = findings.get("by_status", {})
+        # Serialize data for JavaScript
+        import json
+        live_hosts_json = json.dumps(live_hosts)
+        dead_hosts_json = json.dumps(dead_hosts)
         
         html = f'''
         <div class="related-sites-widget">
             <div class="stats-summary">
                 <div class="stat-card">
-                    <div class="stat-value">{stats.get("total_discovered", 0)}</div>
-                    <div class="stat-label">Subdomains</div>
+                    <div class="stat-value">{total_subdomains}</div>
+                    <div class="stat-label">Total Subdomains</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">{stats.get("total_live", 0)}</div>
-                    <div class="stat-label">Live Hosts</div>
+                <div class="stat-card stat-success">
+                    <div class="stat-value">{total_live}</div>
+                    <div class="stat-label">Live Hosts ({response_rate:.1f}%)</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">{stats.get("response_rate", 0):.1f}%</div>
-                    <div class="stat-label">Response Rate</div>
+                <div class="stat-card stat-dead">
+                    <div class="stat-value">{total_dead}</div>
+                    <div class="stat-label">Dead Hosts ({100 - response_rate:.1f}%)</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">{stats.get("unique_technologies", 0)}</div>
@@ -627,228 +643,497 @@ class RelatedSitesPlugin(KastPlugin):
                 </div>
             </div>
             
-            <div class="hosts-container">
-                <h4>Live Hosts by Status Code</h4>
-        '''
-        
-        # Display hosts grouped by status code
-        for status, hosts in sorted(by_status.items(), key=lambda x: x[0]):
-            status_class = "status-success" if 200 <= status < 300 else "status-redirect" if 300 <= status < 400 else "status-error"
-            
-            html += f'''
-                <div class="status-group">
-                    <div class="status-header" onclick="toggleStatusGroup('status-{status}')">
-                        <span class="status-code {status_class}">{status}</span>
-                        <span class="host-count">{len(hosts)} host(s)</span>
-                        <span class="toggle-icon">▼</span>
-                    </div>
-                    <div class="status-content" id="status-{status}" style="display: none;">
-            '''
-            
-            for host_info in hosts[:50]:  # Limit display
-                url = host_info.get('url', '')
-                title = host_info.get('title', 'No title')
-                tech = host_info.get('technologies', [])
-                cdn = host_info.get('cdn', '')
-                
-                html += f'''
-                    <div class="host-item">
-                        <div class="host-url"><a href="{url}" target="_blank">{url}</a></div>
-                        <div class="host-title">{title}</div>
-                '''
-                
-                if tech:
-                    html += f'<div class="host-tech">🔧 {", ".join(tech[:5])}</div>'
-                if cdn:
-                    html += f'<div class="host-cdn">🛡️ CDN: {cdn}</div>'
-                
-                html += '</div>'
-            
-            if len(hosts) > 50:
-                html += f'<div class="more-hosts">... and {len(hosts) - 50} more</div>'
-            
-            html += '''
-                    </div>
+            <!-- Live Hosts Section -->
+            <div class="hosts-section">
+                <div class="section-header" onclick="toggleSection('live-hosts-section')">
+                    <h3>▼ Live Hosts ({total_live})</h3>
                 </div>
-            '''
-        
-        html += '''
+                <div class="section-content" id="live-hosts-section">
+                    <div class="pagination-controls">
+                        <button onclick="setLivePageSize(25)">Show 25</button>
+                        <button onclick="setLivePageSize(50)">Show 50</button>
+                        <button onclick="setLivePageSize(100)">Show 100</button>
+                        <button onclick="setLivePageSize(-1)">Show All</button>
+                        <span id="live-pagination-info"></span>
+                    </div>
+                    <div id="live-hosts-container"></div>
+                    <div class="pagination-nav" id="live-pagination-nav"></div>
+                </div>
+            </div>
+            
+            <!-- Dead Hosts Section -->
+            <div class="hosts-section">
+                <div class="section-header" onclick="toggleSection('dead-hosts-section')">
+                    <h3>▶ Dead Hosts ({total_dead})</h3>
+                </div>
+                <div class="section-content" id="dead-hosts-section" style="display: none;">
+                    <div class="pagination-controls">
+                        <button onclick="setDeadPageSize(25)">Show 25</button>
+                        <button onclick="setDeadPageSize(50)">Show 50</button>
+                        <button onclick="setDeadPageSize(100)">Show 100</button>
+                        <button onclick="setDeadPageSize(-1)">Show All</button>
+                        <span id="dead-pagination-info"></span>
+                    </div>
+                    <div id="dead-hosts-container"></div>
+                    <div class="pagination-nav" id="dead-pagination-nav"></div>
+                </div>
             </div>
         </div>
         
         <script>
-        function toggleStatusGroup(groupId) {
-            const content = document.getElementById(groupId);
-            const header = content.previousElementSibling;
-            const icon = header.querySelector('.toggle-icon');
+        // Data
+        const liveHostsData = {live_hosts_json};
+        const deadHostsData = {dead_hosts_json};
+        
+        // State
+        let livePageSize = 25;
+        let liveCurrentPage = 1;
+        let deadPageSize = 25;
+        let deadCurrentPage = 1;
+        
+        // Toggle section visibility
+        function toggleSection(sectionId) {{
+            const section = document.getElementById(sectionId);
+            const header = section.previousElementSibling;
+            const h3 = header.querySelector('h3');
             
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                icon.style.transform = 'rotate(180deg)';
-            } else {
-                content.style.display = 'none';
-                icon.style.transform = 'rotate(0deg)';
-            }
-        }
+            if (section.style.display === 'none') {{
+                section.style.display = 'block';
+                h3.textContent = h3.textContent.replace('▶', '▼');
+            }} else {{
+                section.style.display = 'none';
+                h3.textContent = h3.textContent.replace('▼', '▶');
+            }}
+        }}
+        
+        // Live hosts pagination
+        function setLivePageSize(size) {{
+            livePageSize = size;
+            liveCurrentPage = 1;
+            renderLiveHosts();
+        }}
+        
+        function renderLiveHosts() {{
+            const container = document.getElementById('live-hosts-container');
+            const paginationNav = document.getElementById('live-pagination-nav');
+            const paginationInfo = document.getElementById('live-pagination-info');
+            
+            const totalHosts = liveHostsData.length;
+            const itemsPerPage = livePageSize === -1 ? totalHosts : livePageSize;
+            const totalPages = Math.ceil(totalHosts / itemsPerPage);
+            const start = (liveCurrentPage - 1) * itemsPerPage;
+            const end = livePageSize === -1 ? totalHosts : Math.min(start + itemsPerPage, totalHosts);
+            
+            // Render hosts
+            let html = '<div class="hosts-list">';
+            for (let i = start; i < end; i++) {{
+                const host = liveHostsData[i];
+                html += renderLiveHost(host);
+            }}
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Render pagination info
+            paginationInfo.textContent = `Showing ${{start + 1}}-${{end}} of ${{totalHosts}}`;
+            
+            // Render pagination controls
+            if (totalPages > 1) {{
+                let navHtml = '';
+                if (liveCurrentPage > 1) {{
+                    navHtml += '<button onclick="changeLivePage(-1)">Previous</button>';
+                }}
+                navHtml += ` Page ${{liveCurrentPage}} of ${{totalPages}} `;
+                if (liveCurrentPage < totalPages) {{
+                    navHtml += '<button onclick="changeLivePage(1)">Next</button>';
+                }}
+                paginationNav.innerHTML = navHtml;
+            }} else {{
+                paginationNav.innerHTML = '';
+            }}
+        }}
+        
+        function changeLivePage(delta) {{
+            liveCurrentPage += delta;
+            renderLiveHosts();
+        }}
+        
+        function renderLiveHost(host) {{
+            let html = `
+                <div class="host-card">
+                    <div class="host-name">${{host.host}}</div>
+                    <div class="host-ports">Ports: ${{host.ports.join(', ')}}</div>
+            `;
+            
+            // Render each port response
+            for (const resp of host.port_responses) {{
+                const statusClass = resp.status_code >= 200 && resp.status_code < 300 ? 'status-success' : 
+                                  resp.status_code >= 300 && resp.status_code < 400 ? 'status-redirect' : 'status-error';
+                html += `
+                    <div class="port-response">
+                        <div class="port-header">
+                            <span class="port-number">Port ${{resp.port}}</span>
+                            <span class="status-badge ${{statusClass}}">${{resp.status_code}}</span>
+                        </div>
+                        <div class="port-url"><a href="${{resp.url}}" target="_blank">${{resp.url}}</a></div>
+                        <div class="port-title">${{resp.title || 'No title'}}</div>
+                `;
+                
+                if (resp.technologies && resp.technologies.length > 0) {{
+                    html += `<div class="port-tech">🔧 ${{resp.technologies.join(', ')}}</div>`;
+                }}
+                if (resp.cdn) {{
+                    html += `<div class="port-cdn">🛡️ CDN: ${{resp.cdn}}</div>`;
+                }}
+                if (resp.websocket) {{
+                    html += `<div class="port-websocket">🔌 WebSocket Enabled</div>`;
+                }}
+                
+                html += '</div>';
+            }}
+            
+            html += '</div>';
+            return html;
+        }}
+        
+        // Dead hosts pagination
+        function setDeadPageSize(size) {{
+            deadPageSize = size;
+            deadCurrentPage = 1;
+            renderDeadHosts();
+        }}
+        
+        function renderDeadHosts() {{
+            const container = document.getElementById('dead-hosts-container');
+            const paginationNav = document.getElementById('dead-pagination-nav');
+            const paginationInfo = document.getElementById('dead-pagination-info');
+            
+            const totalHosts = deadHostsData.length;
+            const itemsPerPage = deadPageSize === -1 ? totalHosts : deadPageSize;
+            const totalPages = Math.ceil(totalHosts / itemsPerPage);
+            const start = (deadCurrentPage - 1) * itemsPerPage;
+            const end = deadPageSize === -1 ? totalHosts : Math.min(start + itemsPerPage, totalHosts);
+            
+            // Render hosts
+            let html = '<div class="dead-hosts-list">';
+            for (let i = start; i < end; i++) {{
+                html += `<div class="dead-host-item">${{deadHostsData[i]}}</div>`;
+            }}
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Render pagination info
+            paginationInfo.textContent = `Showing ${{start + 1}}-${{end}} of ${{totalHosts}}`;
+            
+            // Render pagination controls
+            if (totalPages > 1) {{
+                let navHtml = '';
+                if (deadCurrentPage > 1) {{
+                    navHtml += '<button onclick="changeDeadPage(-1)">Previous</button>';
+                }}
+                navHtml += ` Page ${{deadCurrentPage}} of ${{totalPages}} `;
+                if (deadCurrentPage < totalPages) {{
+                    navHtml += '<button onclick="changeDeadPage(1)">Next</button>';
+                }}
+                paginationNav.innerHTML = navHtml;
+            }} else {{
+                paginationNav.innerHTML = '';
+            }}
+        }}
+        
+        function changeDeadPage(delta) {{
+            deadCurrentPage += delta;
+            renderDeadHosts();
+        }}
+        
+        // Initial render
+        renderLiveHosts();
+        renderDeadHosts();
         </script>
         
         <style>
-        .related-sites-widget {
-            margin: 1em 0;
-        }
+        .related-sites-widget {{
+            margin: 2em 0;
+        }}
         
-        .stats-summary {
-            display: flex;
+        .stats-summary {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1em;
             margin-bottom: 2em;
-            flex-wrap: wrap;
-        }
+        }}
         
-        .stat-card {
-            flex: 1;
-            min-width: 150px;
-            padding: 1em;
+        .stat-card {{
+            padding: 1.5em;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 8px;
             text-align: center;
-        }
+        }}
         
-        .stat-value {
-            font-size: 2em;
+        .stat-card.stat-success {{
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }}
+        
+        .stat-card.stat-dead {{
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }}
+        
+        .stat-value {{
+            font-size: 2.5em;
             font-weight: bold;
             margin-bottom: 0.25em;
-        }
+        }}
         
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
+        .stat-label {{
+            font-size: 0.95em;
+            opacity: 0.95;
+        }}
         
-        .hosts-container h4 {
-            color: #075985;
-            margin-bottom: 1em;
-        }
-        
-        .status-group {
-            margin-bottom: 1em;
+        .hosts-section {{
+            margin: 2em 0;
             border: 1px solid #e6eef6;
-            border-radius: 4px;
+            border-radius: 8px;
             overflow: hidden;
-        }
+        }}
         
-        .status-header {
-            display: flex;
-            align-items: center;
-            padding: 1em;
+        .section-header {{
             background: #f8fbfd;
+            padding: 1em 1.5em;
             cursor: pointer;
             user-select: none;
-        }
+        }}
         
-        .status-header:hover {
+        .section-header:hover {{
             background: #e6f0fa;
-        }
+        }}
         
-        .status-code {
-            font-weight: bold;
-            padding: 0.25em 0.75em;
-            border-radius: 4px;
-            margin-right: 1em;
-        }
-        
-        .status-success {
-            background: #dcfce7;
-            color: #166534;
-        }
-        
-        .status-redirect {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        
-        .status-error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .host-count {
-            flex: 1;
+        .section-header h3 {{
+            margin: 0;
             color: #075985;
-        }
+        }}
         
-        .toggle-icon {
-            color: #075985;
-            transition: transform 0.2s;
-        }
-        
-        .status-content {
-            padding: 1em;
+        .section-content {{
+            padding: 1.5em;
             background: white;
-        }
+        }}
         
-        .host-item {
+        .pagination-controls {{
+            display: flex;
+            gap: 0.5em;
+            align-items: center;
+            margin-bottom: 1em;
             padding: 1em;
-            margin-bottom: 0.5em;
             background: #f8fbfd;
             border-radius: 4px;
-            border-left: 3px solid #075985;
-        }
+        }}
         
-        .host-url a {
+        .pagination-controls button {{
+            padding: 0.5em 1em;
+            background: #075985;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }}
+        
+        .pagination-controls button:hover {{
+            background: #0c4a6e;
+        }}
+        
+        #live-pagination-info, #dead-pagination-info {{
+            margin-left: auto;
             color: #075985;
+            font-weight: 500;
+        }}
+        
+        .hosts-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }}
+        
+        .host-card {{
+            border: 1px solid #e6eef6;
+            border-radius: 8px;
+            padding: 1.5em;
+            background: #fafbfc;
+        }}
+        
+        .host-name {{
+            font-size: 1.2em;
             font-weight: bold;
-            text-decoration: none;
-        }
+            color: #075985;
+            margin-bottom: 0.5em;
+        }}
         
-        .host-url a:hover {
-            text-decoration: underline;
-        }
-        
-        .host-title {
+        .host-ports {{
             color: #666;
             font-size: 0.9em;
-            margin-top: 0.25em;
-        }
+            margin-bottom: 1em;
+        }}
         
-        .host-tech, .host-cdn {
+        .port-response {{
+            margin: 1em 0;
+            padding: 1em;
+            background: white;
+            border-left: 3px solid #075985;
+            border-radius: 4px;
+        }}
+        
+        .port-header {{
+            display: flex;
+            align-items: center;
+            gap: 1em;
+            margin-bottom: 0.5em;
+        }}
+        
+        .port-number {{
+            font-weight: bold;
+            color: #075985;
+        }}
+        
+        .status-badge {{
+            padding: 0.25em 0.75em;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }}
+        
+        .status-success {{
+            background: #dcfce7;
+            color: #166534;
+        }}
+        
+        .status-redirect {{
+            background: #fef3c7;
+            color: #92400e;
+        }}
+        
+        .status-error {{
+            background: #fee2e2;
+            color: #991b1b;
+        }}
+        
+        .port-url a {{
+            color: #075985;
+            text-decoration: none;
+            font-weight: 500;
+        }}
+        
+        .port-url a:hover {{
+            text-decoration: underline;
+        }}
+        
+        .port-title {{
+            color: #666;
+            font-size: 0.9em;
+            margin: 0.5em 0;
+        }}
+        
+        .port-tech, .port-cdn, .port-websocket {{
             font-size: 0.85em;
             color: #666;
-            margin-top: 0.25em;
-        }
+            margin: 0.25em 0;
+        }}
         
-        .more-hosts {
-            text-align: center;
+        .dead-hosts-list {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 0.5em;
+        }}
+        
+        .dead-host-item {{
+            padding: 0.75em;
+            background: #f8fbfd;
+            border-radius: 4px;
             color: #666;
-            font-style: italic;
+            font-family: monospace;
+            font-size: 0.9em;
+        }}
+        
+        .pagination-nav {{
+            margin-top: 1em;
             padding: 1em;
-        }
+            text-align: center;
+            background: #f8fbfd;
+            border-radius: 4px;
+        }}
+        
+        .pagination-nav button {{
+            padding: 0.5em 1.5em;
+            background: #075985;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 0.5em;
+        }}
+        
+        .pagination-nav button:hover {{
+            background: #0c4a6e;
+        }}
         </style>
         '''
         
         return html
 
     def _generate_pdf_html(self, findings):
-        """Generate PDF-friendly HTML output."""
+        """Generate PDF-friendly HTML output with host-centric table."""
         stats = findings.get("statistics", {})
         live_hosts = findings.get("live_hosts", [])
+        dead_hosts = findings.get("dead_hosts", [])
         
         html = '<div class="pdf-related-sites">'
         html += f'<p><strong>Total Subdomains:</strong> {stats.get("total_discovered", 0)}</p>'
         html += f'<p><strong>Live Hosts:</strong> {stats.get("total_live", 0)} ({stats.get("response_rate", 0):.1f}% response rate)</p>'
+        html += f'<p><strong>Dead Hosts:</strong> {stats.get("total_dead", 0)}</p>'
         
         if live_hosts:
             html += '<h4>Live Hosts (Top 25)</h4>'
-            html += '<ul>'
+            html += '<table style="width:100%; border-collapse: collapse; margin: 1em 0;">'
+            html += '<tr style="background: #f0f0f0; border-bottom: 2px solid #333;">'
+            html += '<th style="padding: 0.5em; text-align: left;">Host</th>'
+            html += '<th style="padding: 0.5em; text-align: left;">Ports</th>'
+            html += '<th style="padding: 0.5em; text-align: left;">Technologies</th>'
+            html += '</tr>'
+            
             for host_info in live_hosts[:25]:
-                url = host_info.get('url', '')
-                status = host_info.get('status_code', 0)
-                title = host_info.get('title', 'No title')
-                html += f'<li><strong>{status}</strong> - <a href="{url}">{url}</a> - {title}</li>'
-            html += '</ul>'
+                host = host_info.get('host', 'N/A')
+                ports = ', '.join(map(str, host_info.get('ports', [])))
+                
+                # Build per-port details
+                port_details = []
+                for port_resp in host_info.get('port_responses', []):
+                    port = port_resp.get('port', '')
+                    status = port_resp.get('status_code', '')
+                    tech = port_resp.get('technologies', [])
+                    tech_str = ', '.join(tech) if tech else 'None'
+                    port_details.append(f"Port {port} ({status}): {tech_str}")
+                
+                technologies = '<br/>'.join(port_details) if port_details else 'None detected'
+                
+                html += '<tr style="border-bottom: 1px solid #ddd;">'
+                html += f'<td style="padding: 0.5em; vertical-align: top;"><strong>{host}</strong></td>'
+                html += f'<td style="padding: 0.5em; vertical-align: top;">{ports}</td>'
+                html += f'<td style="padding: 0.5em; vertical-align: top; font-size: 0.9em;">{technologies}</td>'
+                html += '</tr>'
+            
+            html += '</table>'
             
             if len(live_hosts) > 25:
-                html += f'<p><em>... and {len(live_hosts) - 25} more host(s). View full HTML report for complete list.</em></p>'
+                html += f'<p><em>... and {len(live_hosts) - 25} more live host(s). View full HTML report for complete list.</em></p>'
+        
+        if dead_hosts:
+            dead_count = len(dead_hosts)
+            html += f'<h4>Dead Hosts ({dead_count})</h4>'
+            if dead_count <= 50:
+                html += '<p style="font-family: monospace; font-size: 0.9em; line-height: 1.6;">'
+                html += ', '.join(dead_hosts)
+                html += '</p>'
+            else:
+                html += '<p style="font-family: monospace; font-size: 0.9em; line-height: 1.6;">'
+                html += ', '.join(dead_hosts[:50])
+                html += f'</p><p><em>... and {dead_count - 50} more dead hosts. View full HTML report for complete list.</em></p>'
         
         html += '</div>'
         

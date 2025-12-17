@@ -226,10 +226,10 @@ Generate HTML Widgets → Executive Summary → Report
 
 ## Security Considerations
 
-1. **Active Scanning**: Makes HTTP requests to discovered hosts
+1. **Passive Scanning**: Makes HTTP requests to discovered hosts
    - May trigger IDS/IPS alerts
    - May be logged by target systems
-   - Requires authorization before use
+   - Only makes GETs and does so at a slow rate
 
 2. **Rate Limiting**: Uses 50 parallel threads
    - May trigger rate limiting
