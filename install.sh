@@ -15,6 +15,10 @@ LOG_DIR="/var/log/kast"
 INSTALL_LOG="$LOG_DIR/install.log"
 BACKUP_PREFIX="/opt/kast.backup"
 
+# Mode flags
+TOOLS_ONLY_MODE=false
+AUTO_MODE=false
+
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -60,7 +64,7 @@ TOOL_MIN_VERSIONS["golang"]="1.24.0"
 TOOL_APT_PACKAGES["golang"]="golang"
 # Check for go in PATH first, then try absolute path (for sudo context)
 TOOL_CHECK_COMMANDS["golang"]="(command -v go >/dev/null 2>&1 && go version 2>/dev/null | awk '{print \$3}' | sed 's/go//') || (/usr/local/go/bin/go version 2>/dev/null | awk '{print \$3}' | sed 's/go//')"
-TOOL_REQUIRED_BY["golang"]="katana, subfinder"
+TOOL_REQUIRED_BY["golang"]="katana, subfinder, httpx"
 TOOL_MANUAL_INSTALL["golang"]="golang_tarball"
 
 # Java Runtime Environment - Required by OWASP ZAP
@@ -1218,6 +1222,24 @@ install_go_tools() {
         log_info "Subfinder already installed"
     fi
     
+    # Install httpx
+    if [[ ! -f "$ORIG_HOME/go/bin/httpx" ]] || [[ ! -f "/usr/local/bin/httpx" ]]; then
+        log_info "Installing httpx..."
+        sudo -u "$ORIG_USER" bash -c "
+            export GOPATH='$gopath'
+            export GOBIN='$gopath/bin'
+            '$go_binary' install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+        "
+        if [[ -f "$ORIG_HOME/go/bin/httpx" ]]; then
+            cp -f "$ORIG_HOME/go/bin/httpx" /usr/local/bin/httpx
+            log_success "httpx installed successfully"
+        else
+            log_error "httpx installation failed"
+        fi
+    else
+        log_info "httpx already installed"
+    fi
+    
     save_checkpoint "$CHECKPOINT_GO_TOOLS"
     log_success "Go tools installed"
 }
@@ -1548,6 +1570,11 @@ verify_installation() {
         ((failed++))
     fi
     
+    if ! command -v httpx &>/dev/null; then
+        log_warning "httpx not found in PATH"
+        ((failed++))
+    fi
+    
     # Check OS-specific tools
     # Firefox check - optional on Ubuntu (uses snap)
     if [[ "$os_id" != "ubuntu" ]]; then
@@ -1589,8 +1616,129 @@ verify_installation() {
 }
 
 ###############################################################################
+# TOOLS-ONLY MODE FUNCTION
+###############################################################################
+
+check_and_install_tools() {
+    log_info "Running external tools check and installation..."
+    echo ""
+    
+    # Validate prerequisites (determines installation strategies)
+    validate_prerequisites
+    
+    # Track what gets installed
+    local tools_installed=0
+    local tools_skipped=0
+    
+    echo ""
+    echo "======================================================================"
+    echo "  Installing Missing Tools"
+    echo "======================================================================"
+    echo ""
+    
+    # Check and install Go if needed
+    if [[ "${INSTALL_STRATEGY[golang]}" == "USE_MANUAL" ]]; then
+        log_info "Installing Go (manual installation required)..."
+        if install_golang_manual; then
+            ((tools_installed++))
+        fi
+    elif [[ "${INSTALL_STRATEGY[golang]}" == "SKIP_ALREADY_INSTALLED" ]]; then
+        log_info "✓ Go already installed with sufficient version"
+        ((tools_skipped++))
+    elif [[ "${INSTALL_STRATEGY[golang]}" == "USE_APT" ]]; then
+        log_info "Installing Go from APT..."
+        if apt install -y golang; then
+            ((tools_installed++))
+        fi
+    fi
+    
+    # Install Go tools (katana, subfinder, httpx)
+    if install_go_tools; then
+        ((tools_installed++))
+    fi
+    
+    # Check and install Node.js if needed
+    if [[ "${INSTALL_STRATEGY[nodejs]}" == "USE_MANUAL" ]]; then
+        log_info "Installing Node.js..."
+        if install_nodejs; then
+            ((tools_installed++))
+        fi
+    elif [[ "${INSTALL_STRATEGY[nodejs]}" == "SKIP_ALREADY_INSTALLED" ]]; then
+        log_info "✓ Node.js already installed with sufficient version"
+        ((tools_skipped++))
+    elif [[ "${INSTALL_STRATEGY[nodejs]}" == "USE_APT" ]]; then
+        log_info "Installing Node.js from APT..."
+        if apt install -y nodejs; then
+            ((tools_installed++))
+        fi
+    fi
+    
+    # Install Observatory (requires Node.js)
+    if ! command -v observatory &>/dev/null; then
+        log_info "Installing Observatory..."
+        if install_observatory; then
+            ((tools_installed++))
+        fi
+    else
+        log_info "✓ Observatory already installed"
+        ((tools_skipped++))
+    fi
+    
+    # Install Geckodriver
+    if ! command -v geckodriver &>/dev/null; then
+        log_info "Installing Geckodriver..."
+        if install_geckodriver; then
+            ((tools_installed++))
+        fi
+    else
+        log_info "✓ Geckodriver already installed"
+        ((tools_skipped++))
+    fi
+    
+    echo ""
+    echo "======================================================================"
+    echo "  Tools Check Summary"
+    echo "======================================================================"
+    echo ""
+    log_success "Tools check complete"
+    log_info "  Tools installed/updated: $tools_installed"
+    log_info "  Tools already present: $tools_skipped"
+    echo ""
+}
+
+###############################################################################
 # USER INTERACTION FUNCTIONS
 ###############################################################################
+
+show_usage() {
+    cat <<EOF
+Usage: sudo ./install.sh [OPTIONS]
+
+Install KAST and all required dependencies.
+
+OPTIONS:
+    --check-tools, --tools-only
+                        Check and install only external tools (safe for
+                        existing installations). Skips Python venv, file
+                        copying, and launcher scripts.
+    --auto             Non-interactive mode (auto-accept defaults)
+    --install-dir <path>
+                        Installation directory (default: /opt/kast)
+    -h, --help         Show this help message
+
+EXAMPLES:
+    # Normal installation
+    sudo ./install.sh
+
+    # Check and install missing tools only
+    sudo ./install.sh --check-tools
+
+    # Automated tools check (for scripts)
+    sudo ./install.sh --check-tools --auto --install-dir /opt/kast
+
+For full documentation, see the KAST documentation.
+EOF
+}
 
 prompt_user_choice() {
     local prompt=$1
@@ -1764,6 +1912,61 @@ handle_partial_install() {
 ###############################################################################
 
 main() {
+    # Parse command-line arguments first
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --check-tools|--tools-only)
+                TOOLS_ONLY_MODE=true
+                shift
+                ;;
+            --auto)
+                AUTO_MODE=true
+                shift
+                ;;
+            --install-dir)
+                INSTALL_DIR="$2"
+                shift 2
+                ;;
+            -h|--help)
+                show_usage
+                exit 0
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Validate root
+    validate_root
+    
+    # Create log directory early
+    mkdir -p "$LOG_DIR"
+    
+    # Capture original user and home directory
+    ORIG_USER=${SUDO_USER:-$USER}
+    ORIG_HOME=$(getent passwd "$ORIG_USER" | cut -d: -f6)
+    
+    # Handle tools-only mode
+    if [[ "$TOOLS_ONLY_MODE" == true ]]; then
+        echo ""
+        echo "======================================================================"
+        echo "  KAST External Tools Check Mode"
+        echo "======================================================================"
+        echo ""
+        
+        # Use existing installation directory or default
+        INSTALL_DIR=${INSTALL_DIR:-/opt/kast}
+        
+        log_info "Checking and installing external tools..."
+        log_info "Installation started by user: $ORIG_USER"
+        
+        check_and_install_tools
+        exit 0
+    fi
+    
     # Display banner
     if [[ -f "assets/mascot.ans" ]]; then
         cat assets/mascot.ans
@@ -1778,9 +1981,6 @@ main() {
     echo "This installer will set up KAST on your system."
     echo "KAST works best on a fresh Debian or Kali instance."
     echo ""
-    
-    # Validate root
-    validate_root
     
     # Create log directory early for OS validation logging
     mkdir -p "$LOG_DIR"
