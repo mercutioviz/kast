@@ -31,11 +31,78 @@
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.7 or higher
-- Kali Linux (recommended) or any Linux distribution
-- Security scanning tools (see [Plugin Requirements](#-plugin-requirements))
 
-### Quick Install
+**Operating System:**
+- **Kali Linux 2024.x or later** (tested, works well)
+- **Debian 12 (Bookworm) or 13 (Trixie)** - **RECOMMENDED** for clean installations
+- **Ubuntu 24.04 (Noble Numbat) or later**
+
+> **Note:** KAST works well on Kali Linux, but the automated installer works best on a **clean Debian 12 or 13 system**. The installer validates your OS before proceeding and will not run on unsupported systems.
+
+**System Requirements:**
+- Python 3.7 or higher (Python 3.9-3.11 tested)
+- APT package manager (Debian-based systems)
+- Root access (for installer)
+- Internet connection for downloading dependencies
+
+### Recommended: Automated Installer
+
+The easiest way to install KAST is using the automated installer, which handles all dependencies and system configuration:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/mercutioviz/kast.git
+   cd kast
+   ```
+
+2. **Run the installer:**
+   ```bash
+   sudo ./install.sh
+   ```
+
+The installer will:
+- ✅ Validate your operating system and version
+- ✅ Analyze tool version requirements (Go, Node.js, Java)
+- ✅ Automatically install missing dependencies via APT or manual methods
+- ✅ Install all security scanning tools (WhatWeb, TestSSL, Subfinder, Katana, etc.)
+- ✅ Set up Python virtual environment with all required packages
+- ✅ Create system-wide launcher scripts (`kast` and `ftap` commands)
+- ✅ Create automatic backups before upgrades
+- ✅ Support recovery from interrupted installations
+
+**Installer Options:**
+```bash
+# Interactive installation (recommended for first-time setup)
+sudo ./install.sh
+
+# Check and update only external tools (safe for existing installations)
+sudo ./install.sh --check-tools
+
+# Automated/non-interactive mode (for scripts/CI-CD)
+sudo ./install.sh --auto
+
+# Custom installation directory
+sudo ./install.sh --install-dir /custom/path
+
+# View help
+sudo ./install.sh --help
+```
+
+> **Important:** If the installer upgrades Go, you'll need to reload your shell:
+> ```bash
+> source ~/.bashrc  # or source ~/.zshrc
+> # or simply open a new terminal
+> ```
+
+3. **Verify installation:**
+   ```bash
+   kast --version
+   kast --list-plugins
+   ```
+
+### Alternative: Manual Installation
+
+For advanced users or specific requirements, you can install manually:
 
 1. **Clone the repository:**
    ```bash
@@ -498,7 +565,7 @@ For issues, questions, or feature requests:
 
 ---
 
-**Version:** 2.6.2
+**Version:** 2.1.0 (Installer: 2.7.1)
 **Last Updated:** December 2024
 
 Made with ❤️ for the security community
