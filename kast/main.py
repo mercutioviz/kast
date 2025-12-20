@@ -224,28 +224,14 @@ def main():
         list_plugins()
         sys.exit(0)
 
-    # Handle target requirement - can be extracted from kast_info.json in report-only mode
-    if not args.target and not args.report_only:
-        console.print("[bold red]Error:[/bold red] --target is required unless using --version or --report-only.")
-        sys.exit(1)
-
-    # Capture start time
-    start_time = time.time()
-    start_timestamp = datetime.now().isoformat()
-
-    # Print startup info
-    console.print(f"[bold green]KAST - Kali Automated Scan Tool[/bold green]")
-
-    # Set up logging
+    # Set up logging early for config commands
     setup_logging(args.log_dir, args.verbose)
     log = logging.getLogger("kast")
-
-    log.info("KAST started with arguments: %s", args)
     
     # Initialize configuration manager
     config_manager = ConfigManager(cli_args=args, logger=log)
     
-    # Handle config-only commands (exit after execution)
+    # Handle config-only commands (exit after execution, no target required)
     if args.config_schema:
         # Discover plugins to register their schemas
         plugins = discover_plugins(log)
@@ -253,8 +239,13 @@ def main():
             class MinimalArgs:
                 verbose = False
             try:
-                plugin_instance = plugin_cls(MinimalArgs(), config_manager)
-                # Plugin will register its schema during init
+                # Try new-style (with config_manager), fall back to old-style
+                try:
+                    plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+                except TypeError:
+                    # Old-style plugin that doesn't accept config_manager
+                    plugin_instance = plugin_cls(MinimalArgs())
+                # Plugin will register its schema during init (if new-style)
             except Exception as e:
                 log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
         
@@ -270,7 +261,12 @@ def main():
             class MinimalArgs:
                 verbose = False
             try:
-                plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+                # Try new-style (with config_manager), fall back to old-style
+                try:
+                    plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+                except TypeError:
+                    # Old-style plugin that doesn't accept config_manager
+                    plugin_instance = plugin_cls(MinimalArgs())
             except Exception as e:
                 log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
         
@@ -290,7 +286,12 @@ def main():
             class MinimalArgs:
                 verbose = False
             try:
-                plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+                # Try new-style (with config_manager), fall back to old-style
+                try:
+                    plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+                except TypeError:
+                    # Old-style plugin that doesn't accept config_manager
+                    plugin_instance = plugin_cls(MinimalArgs())
             except Exception as e:
                 log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
         
@@ -299,6 +300,20 @@ def main():
         console.print("[bold cyan]Current Configuration:[/bold cyan]")
         console.print(config_yaml)
         sys.exit(0)
+    
+    # Handle target requirement - can be extracted from kast_info.json in report-only mode
+    if not args.target and not args.report_only:
+        console.print("[bold red]Error:[/bold red] --target is required unless using --version, --list-plugins, or config commands.")
+        sys.exit(1)
+
+    # Capture start time
+    start_time = time.time()
+    start_timestamp = datetime.now().isoformat()
+
+    # Print startup info
+    console.print(f"[bold green]KAST - Kali Automated Scan Tool[/bold green]")
+
+    log.info("KAST started with arguments: %s", args)
     
     # Load configuration for normal operation
     config_manager.load(args.config)

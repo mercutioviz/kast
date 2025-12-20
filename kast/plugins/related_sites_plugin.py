@@ -15,6 +15,7 @@ import json
 from datetime import datetime
 from kast.plugins.base import KastPlugin
 from pprint import pformat
+import tldextract
 
 class RelatedSitesPlugin(KastPlugin):
     priority = 45  # After initial recon, before deep analysis
@@ -127,20 +128,10 @@ class RelatedSitesPlugin(KastPlugin):
         :param fqdn: The fully qualified domain name
         :return: The apex domain (domain.tld)
         """
-        try:
-            import tldextract
-            extracted = tldextract.extract(fqdn)
-            apex = f"{extracted.domain}.{extracted.suffix}"
-            self.debug(f"Extracted apex domain '{apex}' from '{fqdn}'")
-            return apex
-        except ImportError:
-            self.debug("tldextract not available, using fallback method")
-            # Simple fallback: take last 2 segments
-            # Note: This fails on multi-part TLDs like .co.uk
-            parts = fqdn.split('.')
-            if len(parts) >= 2:
-                return '.'.join(parts[-2:])
-            return fqdn
+        extracted = tldextract.extract(fqdn)
+        apex = f"{extracted.domain}.{extracted.suffix}"
+        self.debug(f"Extracted apex domain '{apex}' from '{fqdn}'")
+        return apex
 
     def _should_scan_apex(self, original_target, apex_domain):
         """
