@@ -29,12 +29,21 @@ class KastPlugin(ABC):
         """
         self.cli_args = cli_args
         self.config_manager = config_manager
-        self.name = "BasePlugin"
-        self.display_name = "Base Plugin"  # Human-readable name for reports
-        self.description = "Abstract base class for KAST plugins."
-        self.scan_type = "passive"  # or "active"
-        self.output_type = "stdout"  # or "file"
-        self.dependencies = []  # List of dependency specifications
+        
+        # Only set defaults if child class hasn't set them
+        # Child classes should set these BEFORE calling super().__init__()
+        if not hasattr(self, 'name'):
+            self.name = "BasePlugin"
+        if not hasattr(self, 'display_name'):
+            self.display_name = "Base Plugin"
+        if not hasattr(self, 'description'):
+            self.description = "Abstract base class for KAST plugins."
+        if not hasattr(self, 'scan_type'):
+            self.scan_type = "passive"
+        if not hasattr(self, 'output_type'):
+            self.output_type = "stdout"
+        if not hasattr(self, 'dependencies'):
+            self.dependencies = []
         
         # Register schema and load configuration
         if self.config_manager:
