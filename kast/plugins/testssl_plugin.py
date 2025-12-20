@@ -13,16 +13,77 @@ from pprint import pformat
 
 class TestsslPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
+    
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "TestSSL Configuration",
+        "description": "SSL/TLS security testing configuration",
+        "properties": {
+            "timeout": {
+                "type": "integer",
+                "default": 300,
+                "minimum": 60,
+                "maximum": 1800,
+                "description": "Maximum scan timeout in seconds"
+            },
+            "test_vulnerabilities": {
+                "type": "boolean",
+                "default": True,
+                "description": "Test for SSL/TLS vulnerabilities (-U flag)"
+            },
+            "test_ciphers": {
+                "type": "boolean",
+                "default": True,
+                "description": "Test cipher categories (-E flag)"
+            },
+            "connect_timeout": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 5,
+                "maximum": 60,
+                "description": "Connection timeout in seconds"
+            },
+            "warnings_batch_mode": {
+                "type": "boolean",
+                "default": True,
+                "description": "Suppress connection warnings for batch mode"
+            }
+        }
+    }
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        # IMPORTANT: Set plugin attributes BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "testssl"
         self.display_name = "Test SSL"
         self.description = "Tests SSL and TLS posture"
         self.website_url = "https://testssl.sh/"
         self.scan_type = "passive"
         self.output_type = "file"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
+        
         self.command_executed = None
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.timeout = self.get_config('timeout', 300)
+        self.test_vulnerabilities = self.get_config('test_vulnerabilities', True)
+        self.test_ciphers = self.get_config('test_ciphers', True)
+        self.connect_timeout = self.get_config('connect_timeout', 10)
+        self.warnings_batch_mode = self.get_config('warnings_batch_mode', True)
+        
+        self.debug(f"TestSSL config loaded: timeout={self.timeout}, "
+                  f"vulnerabilities={self.test_vulnerabilities}, "
+                  f"ciphers={self.test_ciphers}, "
+                  f"connect_timeout={self.connect_timeout}, "
+                  f"warnings_batch={self.warnings_batch_mode}")
 
     def setup(self, target, output_dir):
         """
@@ -44,12 +105,25 @@ class TestsslPlugin(KastPlugin):
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
         
-        # Build command as specified
-        cmd = ["testssl",
-               "-U",
-               "-E",
-               "-oJ", output_file,
-               target]
+        # Build command dynamically based on configuration
+        cmd = ["testssl"]
+        
+        # Add test flags based on configuration
+        if self.test_vulnerabilities:
+            cmd.append("-U")
+        if self.test_ciphers:
+            cmd.append("-E")
+        
+        # Add connection timeout if configured
+        if self.connect_timeout:
+            cmd.extend(["--connect-timeout", str(self.connect_timeout)])
+        
+        # Add warnings batch mode flag
+        if self.warnings_batch_mode:
+            cmd.append("--warnings=batch")
+        
+        # Add JSON output and target
+        cmd.extend(["-oJ", output_file, target])
 
         # Store command for reference
         self.command_executed = " ".join(cmd)
