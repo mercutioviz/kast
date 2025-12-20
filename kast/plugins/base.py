@@ -12,20 +12,71 @@ class KastPlugin(ABC):
     Abstract base class for all KAST plugins.
     """
     priority = 100  # Default priority (lower number = higher priority)
+    
+    # Plugin configuration schema (override in subclasses)
+    config_schema = {
+        "type": "object",
+        "title": "Base Plugin Configuration",
+        "description": "Base configuration schema for KAST plugins",
+        "properties": {}
+    }
 
-    def __init__(self, cli_args):
+    def __init__(self, cli_args, config_manager=None):
         """
-        Initialize the plugin with CLI arguments.
+        Initialize the plugin with CLI arguments and optional config manager.
         :param cli_args: Namespace object from argparse containing CLI arguments.
+        :param config_manager: ConfigManager instance for loading plugin configuration.
         """
         self.cli_args = cli_args
+        self.config_manager = config_manager
         self.name = "BasePlugin"
         self.display_name = "Base Plugin"  # Human-readable name for reports
         self.description = "Abstract base class for KAST plugins."
         self.scan_type = "passive"  # or "active"
         self.output_type = "stdout"  # or "file"
         self.dependencies = []  # List of dependency specifications
+        
+        # Register schema and load configuration
+        if self.config_manager:
+            self.config_manager.register_plugin_schema(self.name, self.config_schema)
+            self.config = self._load_config()
+        else:
+            self.config = {}
 
+    def _load_config(self):
+        """
+        Load and validate plugin configuration.
+        
+        This method loads configuration from the ConfigManager, merges with
+        CLI overrides, and validates against the plugin's schema.
+        
+        :return: Dictionary of configuration values
+        """
+        if not self.config_manager:
+            return {}
+        
+        # Get merged config (file + CLI overrides)
+        config = self.config_manager.get_plugin_config(self.name)
+        
+        # Validate config
+        is_valid, errors = self.config_manager.validate_plugin_config(self.name, config)
+        if not is_valid:
+            self.debug(f"Configuration validation warnings for {self.name}:")
+            for error in errors:
+                self.debug(f"  - {error}")
+        
+        return config
+    
+    def get_config(self, key, default=None):
+        """
+        Get a configuration value with optional default.
+        
+        :param key: Configuration key
+        :param default: Default value if key not found
+        :return: Configuration value or default
+        """
+        return self.config.get(key, default)
+    
     def setup(self, target, output_dir):
         """
         Optional setup step before running the plugin.

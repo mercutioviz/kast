@@ -19,8 +19,57 @@ from pprint import pformat
 class RelatedSitesPlugin(KastPlugin):
     priority = 45  # After initial recon, before deep analysis
     
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "Related Sites Discovery Configuration",
+        "description": "Settings for subdomain enumeration and HTTP probing",
+        "properties": {
+            "httpx_rate_limit": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Maximum HTTP requests per second for httpx probing"
+            },
+            "subfinder_timeout": {
+                "type": "integer",
+                "default": 300,
+                "minimum": 30,
+                "maximum": 3600,
+                "description": "Timeout for subfinder execution in seconds"
+            },
+            "max_subdomains": {
+                "type": ["integer", "null"],
+                "default": None,
+                "minimum": 1,
+                "description": "Maximum number of subdomains to process (null for unlimited)"
+            },
+            "httpx_ports": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "default": [80, 443, 8080, 8443, 8000, 8888],
+                "description": "List of ports to probe with httpx"
+            },
+            "httpx_timeout": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 5,
+                "maximum": 60,
+                "description": "Timeout per host for httpx in seconds"
+            },
+            "httpx_threads": {
+                "type": "integer",
+                "default": 50,
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Number of parallel threads for httpx"
+            }
+        }
+    }
+    
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "related_sites"
         self.display_name = "Related Sites Discovery"
         self.description = "Discovers related subdomains and probes for live web services"
@@ -31,6 +80,24 @@ class RelatedSitesPlugin(KastPlugin):
             "subfinder": None,
             "httpx": None
         }
+        
+        # Load configuration values (with backward compatibility for CLI args)
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with backward compatibility for legacy CLI args."""
+        # Get config values (defaults from schema if not set)
+        self.httpx_rate_limit = self.get_config('httpx_rate_limit', 10)
+        self.subfinder_timeout = self.get_config('subfinder_timeout', 300)
+        self.max_subdomains = self.get_config('max_subdomains', None)
+        self.httpx_ports = self.get_config('httpx_ports', [80, 443, 8080, 8443, 8000, 8888])
+        self.httpx_timeout = self.get_config('httpx_timeout', 10)
+        self.httpx_threads = self.get_config('httpx_threads', 50)
+        
+        # Backward compatibility: Check for legacy CLI args
+        if hasattr(self.cli_args, 'httpx_rate_limit') and self.cli_args.httpx_rate_limit:
+            self.httpx_rate_limit = self.cli_args.httpx_rate_limit
+            self.debug("Using deprecated --httpx-rate-limit CLI arg. Please use --set related_sites.httpx_rate_limit=N")
 
     def is_available(self):
         """
@@ -124,7 +191,7 @@ class RelatedSitesPlugin(KastPlugin):
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=self.subfinder_timeout  # Use config value
             )
             
             if proc.returncode != 0:
@@ -155,7 +222,7 @@ class RelatedSitesPlugin(KastPlugin):
             return unique_subdomains
             
         except subprocess.TimeoutExpired:
-            self.debug("Subfinder timed out after 300 seconds")
+            self.debug(f"Subfinder timed out after {self.subfinder_timeout} seconds")
             return []
         except Exception as e:
             self.debug(f"Subfinder execution error: {e}")
@@ -188,24 +255,34 @@ class RelatedSitesPlugin(KastPlugin):
         
         self.debug(f"Wrote {len(subdomains)} subdomains to {input_file}")
         
+        # Apply max_subdomains limit if configured
+        if self.max_subdomains and len(subdomains) > self.max_subdomains:
+            self.debug(f"Limiting subdomains from {len(subdomains)} to {self.max_subdomains}")
+            subdomains = subdomains[:self.max_subdomains]
+            # Re-write limited list to input file
+            with open(input_file, 'w') as f:
+                f.write('\n'.join(subdomains))
+        
         output_file = os.path.join(output_dir, "related_sites_httpx.json")
         
-        # Get rate limit from CLI args (default 10 if not specified)
-        rate_limit = getattr(self.cli_args, 'httpx_rate_limit', 10)
-        self.debug(f"Using httpx rate limit: {rate_limit} requests/second")
+        # Use config values
+        self.debug(f"Using httpx rate limit: {self.httpx_rate_limit} requests/second")
+        self.debug(f"Using httpx timeout: {self.httpx_timeout} seconds")
+        self.debug(f"Using httpx threads: {self.httpx_threads}")
+        self.debug(f"Using httpx ports: {','.join(map(str, self.httpx_ports))}")
         
-        # Configure httpx command
+        # Configure httpx command with config values
         cmd = [
             "httpx",
             "-l", input_file,           # Input list
             "-json",                     # JSON output
             "-o", output_file,          # Output file
             "-silent",                   # Reduce noise
-            "-timeout", "10",            # 10 second timeout per host
+            "-timeout", str(self.httpx_timeout),  # Use config value
             "-retries", "2",             # Retry failed requests
-            "-threads", "50",            # Parallel requests
-            "-rate-limit", str(rate_limit),  # Rate limit requests/second
-            "-ports", "80,443,8080,8443,8000,8888",  # Common web ports
+            "-threads", str(self.httpx_threads),  # Use config value
+            "-rate-limit", str(self.httpx_rate_limit),  # Use config value
+            "-ports", ",".join(map(str, self.httpx_ports)),  # Use config value
             "-follow-redirects",         # Follow redirects
             "-status-code",              # Include status code
             "-title",                    # Extract page title

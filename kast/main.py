@@ -16,6 +16,7 @@ from rich.logging import RichHandler
 
 from kast.utils import discover_plugins
 from kast.orchestrator import ScannerOrchestrator
+from kast.config_manager import ConfigManager
 
 # Set up rich console for CLI output
 console = Console()
@@ -106,8 +107,36 @@ def parse_args():
         "--httpx-rate-limit",
         type=int,
         default=10,
-        help="Rate limit for httpx requests per second (default: 10, used by related_sites plugin)"
+        help="(DEPRECATED: use --set related_sites.httpx_rate_limit=N) Rate limit for httpx requests per second (default: 10, used by related_sites plugin)"
     )
+    
+    # Configuration management arguments
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to configuration file (default: ~/.config/kast/config.yaml)"
+    )
+    parser.add_argument(
+        "--config-init",
+        action="store_true",
+        help="Create default configuration file with all plugin options"
+    )
+    parser.add_argument(
+        "--config-show",
+        action="store_true",
+        help="Display current configuration (merged from file + CLI overrides)"
+    )
+    parser.add_argument(
+        "--config-schema",
+        action="store_true",
+        help="Export JSON schema for all plugins (for GUI tools like kast-web)"
+    )
+    parser.add_argument(
+        "--set",
+        action="append",
+        help="Override config value: --set plugin.key=value (can be used multiple times)"
+    )
+    
     return parser.parse_args()
 
 def setup_logging(log_dir, verbose):
@@ -213,6 +242,67 @@ def main():
 
     log.info("KAST started with arguments: %s", args)
     
+    # Initialize configuration manager
+    config_manager = ConfigManager(cli_args=args, logger=log)
+    
+    # Handle config-only commands (exit after execution)
+    if args.config_schema:
+        # Discover plugins to register their schemas
+        plugins = discover_plugins(log)
+        for plugin_cls in plugins:
+            class MinimalArgs:
+                verbose = False
+            try:
+                plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+                # Plugin will register its schema during init
+            except Exception as e:
+                log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
+        
+        # Export schema
+        schema = config_manager.export_schema(format="json")
+        console.print(schema)
+        sys.exit(0)
+    
+    if args.config_init:
+        # Discover plugins to register their schemas first
+        plugins = discover_plugins(log)
+        for plugin_cls in plugins:
+            class MinimalArgs:
+                verbose = False
+            try:
+                plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+            except Exception as e:
+                log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
+        
+        # Create default config
+        config_path = config_manager.create_default_config()
+        console.print(f"[green]Created default configuration at:[/green] {config_path}")
+        console.print("[cyan]Edit this file to customize plugin settings.[/cyan]")
+        sys.exit(0)
+    
+    if args.config_show:
+        # Load configuration
+        config_manager.load(args.config)
+        
+        # Discover plugins to register their schemas
+        plugins = discover_plugins(log)
+        for plugin_cls in plugins:
+            class MinimalArgs:
+                verbose = False
+            try:
+                plugin_instance = plugin_cls(MinimalArgs(), config_manager)
+            except Exception as e:
+                log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
+        
+        # Show current config
+        config_yaml = config_manager.show_current_config()
+        console.print("[bold cyan]Current Configuration:[/bold cyan]")
+        console.print(config_yaml)
+        sys.exit(0)
+    
+    # Load configuration for normal operation
+    config_manager.load(args.config)
+    
     # Validate custom logo if provided
     custom_logo_path = None
     if args.logo:
@@ -293,7 +383,7 @@ def main():
     else:
         report_only=False
 
-    # Discover plugins
+    # Discover plugins and register their schemas
     plugins = discover_plugins(log)
     log.info(f"Discovered {len(plugins)} plugins: {[p.__name__ for p in plugins]}")
 
@@ -326,8 +416,8 @@ def main():
         plugins = [plugin_map[name] for name in requested_plugins if name in plugin_map]
         log.info(f"Filtered to {len(plugins)} plugin(s): {[p.__name__ for p in plugins]}")
 
-    # Launch orchestrator
-    orchestrator = ScannerOrchestrator(plugins, args, output_dir, log, report_only)
+    # Launch orchestrator with config manager
+    orchestrator = ScannerOrchestrator(plugins, args, output_dir, log, report_only, config_manager)
     results = orchestrator.run()
     
     # Capture end time

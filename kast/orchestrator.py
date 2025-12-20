@@ -10,18 +10,21 @@ from datetime import datetime
 import threading
 
 class ScannerOrchestrator:
-    def __init__(self, plugins, cli_args, output_dir, log, report_only=False):
+    def __init__(self, plugins, cli_args, output_dir, log, report_only=False, config_manager=None):
         """
         :param plugins: List of plugin classes (not instances)
         :param cli_args: Namespace from argparse
         :param output_dir: Directory for plugin outputs
         :param log: Logger instance
+        :param report_only: Whether to only generate reports from existing data
+        :param config_manager: ConfigManager instance for plugin configuration
         """
         self.plugins = plugins
         self.cli_args = cli_args
         self.output_dir = output_dir
         self.log = log
         self.report_only = report_only
+        self.config_manager = config_manager
         self.plugin_timings = []
         self.timings_lock = threading.Lock()  # Thread-safe access to plugin_timings
 
@@ -39,7 +42,7 @@ class ScannerOrchestrator:
             # Apply same filtering logic as normal execution
             for plugin_cls in self.plugins:
                 try:
-                    plugin_instance = plugin_cls(self.cli_args)
+                    plugin_instance = plugin_cls(self.cli_args, self.config_manager)
                     plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
                     
                     # Check if plugin should run based on mode
@@ -66,7 +69,7 @@ class ScannerOrchestrator:
         for plugin_cls in self.plugins:
             try:
                 # Create instance once to check scan_type
-                plugin_instance = plugin_cls(self.cli_args)
+                plugin_instance = plugin_cls(self.cli_args, self.config_manager)
                 plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
                 
                 # Check if plugin should run based on mode
@@ -106,7 +109,7 @@ class ScannerOrchestrator:
         return results
 
     def _run_plugin(self, plugin_cls):
-        plugin = plugin_cls(self.cli_args)
+        plugin = plugin_cls(self.cli_args, self.config_manager)
         plugin_name = plugin.name
         
         # Initialize timing info
@@ -184,7 +187,7 @@ class ScannerOrchestrator:
         # Create instances and map by name for dependency checking
         for plugin_cls in selected_plugins:
             try:
-                plugin_instance = plugin_cls(self.cli_args)
+                plugin_instance = plugin_cls(self.cli_args, self.config_manager)
                 pending_plugins[plugin_cls] = plugin_instance
             except Exception as e:
                 self.log.error(f"Error instantiating plugin {plugin_cls.__name__}: {e}")

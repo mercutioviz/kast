@@ -1,0 +1,36 @@
+# KAST Default Configuration File
+# Copy to ~/.config/kast/config.yaml and customize as needed
+#
+# Configuration priority (highest to lowest):
+# 1. CLI overrides (--set plugin.key=value)
+# 2. Legacy CLI arguments (deprecated)
+# 3. Project-specific config (./kast_config.yaml)
+# 4. User config (~/.config/kast/config.yaml)
+# 5. System config (/etc/kast/config.yaml)
+# 6. Plugin defaults
+
+kast:
+  config_version: "1.0"
+
+# Global settings (currently unused, reserved for future features)
+global:
+  timeout: 300
+  retry_count: 2
+
+# Plugin-specific configurations
+plugins:
+  # Related Sites Discovery Plugin
+  # Discovers subdomains and probes for live web services
+  related_sites:
+    httpx_rate_limit: 10          # Max HTTP requests per second (1-100)
+    subfinder_timeout: 300        # Subfinder timeout in seconds (30-3600)
+    max_subdomains: null          # Max subdomains to process (null = unlimited)
+    httpx_ports: [80, 443, 8080, 8443, 8000, 8888]  # Ports to probe
+    httpx_timeout: 10             # Timeout per host in seconds (5-60)
+    httpx_threads: 50             # Number of parallel threads (1-200)
+  
+  # Add configurations for other plugins here as they are updated
+  # Example format:
+  # plugin_name:
+  #   setting1: value1
+  #   setting2: value2
