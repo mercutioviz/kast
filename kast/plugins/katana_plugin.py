@@ -14,8 +14,8 @@ from pprint import pformat
 class KatanaPlugin(KastPlugin):
     priority = 60  # Set plugin run order (lower runs earlier)
     
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "katana"
         self.description = "Site crawler and URL finder."
         self.display_name = "Katana"

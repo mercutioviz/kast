@@ -14,8 +14,8 @@ from pprint import pformat
 class Wafw00fPlugin(KastPlugin):
     priority = 10  # High priority (lower number = higher priority)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "wafw00f"
         self.display_name = "Wafw00f"
         self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."

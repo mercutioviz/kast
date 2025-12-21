@@ -22,7 +22,7 @@ from kast.config_manager import ConfigManager
 console = Console()
 
 # Version number
-KAST_VERSION = "2.8.0"
+KAST_VERSION = "2.8.1"
 
 def parse_args():
     parser = argparse.ArgumentParser(

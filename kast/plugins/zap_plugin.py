@@ -16,8 +16,8 @@ from kast.scripts.zap_provider_factory import ZapProviderFactory
 class ZapPlugin(KastPlugin):
     priority = 200  # Run later (higher number = lower priority)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "zap"
         self.display_name = "OWASP ZAP"
         self.description = "OWASP ZAP Active Scanner (Multi-Mode)"

@@ -21,8 +21,8 @@ from pprint import pformat
 class FtapPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "ftap"
         self.display_name = "Find The Admin Panel"  # Human-readable name for reports
         self.description = "Scans target for exposed admin login pages"

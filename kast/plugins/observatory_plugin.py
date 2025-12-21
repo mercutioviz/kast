@@ -14,8 +14,8 @@ from pprint import pformat
 class ObservatoryPlugin(KastPlugin):
     priority = 5  # High priority (lower number = higher priority)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "mozilla_observatory"
         self.display_name = "Mozilla Observatory"
         self.description = "Runs Mozilla Observatory to analyze web application security."
