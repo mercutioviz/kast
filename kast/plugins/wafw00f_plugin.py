@@ -354,3 +354,22 @@ class Wafw00fPlugin(KastPlugin):
         summary_text = f"Detected {len(waf_names)} WAF(s): {', '.join(waf_names)}"
         self.debug(f"Generated summary: {summary_text}")
         return summary_text
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what this plugin would do in a real run.
+        """
+        output_file = os.path.join(output_dir, "wafw00f.json")
+        cmd = [
+            "wafw00f",
+            target,
+            "-a",
+            "-vvv",
+            "-f", "json",
+            "-o", output_file
+        ]
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description
+        }

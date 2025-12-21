@@ -446,3 +446,23 @@ class KatanaPlugin(KastPlugin):
         html += '</div>'
         
         return html
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what this plugin would do in a real run.
+        """
+        output_file = os.path.join(output_dir, "katana.txt")
+        cmd = [
+            "katana",
+            "-silent",
+            "-u", target,
+            "-ob",
+            "-rl", "15",
+            "-fs", "fqdn",
+            "-o", output_file
+        ]
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description
+        }

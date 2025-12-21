@@ -2,200 +2,195 @@
 
 ## Overview
 
-Enhanced the `--dry-run` feature to display the actual commands that would be executed by each plugin, along with operational details for internal logic plugins.
+Enhanced the `--dry-run` flag to display the actual commands that KAST would execute for each plugin, providing valuable insight into what operations will be performed during a real scan.
 
 ## Implementation Date
+
 December 21, 2025
 
-## What Was Changed
+## What Was Added
 
-### 1. Base Plugin Class (`kast/plugins/base.py`)
+### 1. Base Plugin Method
 
-Added a new method `get_dry_run_info()` to the `KastPlugin` base class:
+Added `get_dry_run_info()` method to the base `KastPlugin` class in `kast/plugins/base.py`:
 
 ```python
 def get_dry_run_info(self, target, output_dir):
     """
     Return information about what this plugin would do in a real run.
+    Subclasses should override this to provide specific command information.
     
-    For external tool plugins:
-    - Return the actual CLI commands that would be executed
-    - Include all configuration-dependent flags and parameters
-    
-    For internal logic plugins:
-    - Describe the operations that would be performed
-    - List the steps in sequence
-    
-    :param target: The target that would be scanned
-    :param output_dir: The output directory that would be used
-    :return: Dict with keys:
-        - 'commands': List of command strings (for external tools)
-        - 'description': Plugin description
-        - 'operations': String or list describing what would happen
+    Returns:
+        dict: A dictionary containing:
+            - 'commands': List of command strings that would be executed
+            - 'description': Plugin description
+            - 'operations': (optional) List of operations for internal plugins
     """
+    return {
+        "commands": [],
+        "description": self.description
+    }
 ```
 
-This method provides a default implementation that can be overridden by each plugin.
+### 2. Orchestrator Enhancement
 
-### 2. Orchestrator (`kast/orchestrator.py`)
+Modified `kast/orchestrator.py` to call `get_dry_run_info()` and display the information:
 
-Updated the dry-run mode section to:
-- Call `get_dry_run_info()` for each plugin
-- Display commands in a numbered list format (for plugins with multiple commands)
-- Show operations for internal logic plugins
-- Present information in a clear, formatted structure
+- For plugins with commands: Displays numbered list of commands
+- For plugins with operations: Displays numbered list of internal operations
+- Provides clear visual separation between plugins
 
 ### 3. Plugin Implementations
 
-Implemented `get_dry_run_info()` in the following plugins:
+Implemented `get_dry_run_info()` in all plugins:
 
-#### External Tool Plugins
+#### External Tool Plugins (Show Commands)
 
-**TestSSL Plugin** (`kast/plugins/testssl_plugin.py`):
-- Displays the full testssl command with all configuration flags
-- Shows: vulnerability tests, cipher tests, connection timeout, warnings mode
-- Example output:
-  ```
-  testssl -U -E --connect-timeout 10 --warnings=batch -oJ /path/to/output.json example.com
-  ```
+1. **Observatory** (`observatory_plugin.py`)
+   - Command: `mdn-http-observatory-scan <target>`
 
-**WhatWeb Plugin** (`kast/plugins/whatweb_plugin.py`):
-- Shows the whatweb command with aggression level and output format
-- Example output:
-  ```
-  whatweb -a 3 example.com --log-json /path/to/output.json
-  ```
+2. **Subfinder** (`subfinder_plugin.py`)
+   - Command: `subfinder -d <target> -o <output_file> -json`
 
-**Related Sites Plugin** (`kast/plugins/related_sites_plugin.py`):
-- Displays TWO commands (subfinder + httpx) in sequence
-- Shows all httpx configuration: ports, rate limits, threads, timeout
-- Example output:
-  ```
-  [1] subfinder -d example.com -o /path/to/output.json -json -silent
-  [2] httpx -l /path/to/targets.txt -json -o /path/to/output.json -silent -timeout 10 -retries 2 -threads 50 -rate-limit 10 -ports 80,443,8080,8443,8000,8888 -follow-redirects -status-code -title -tech-detect -websocket -cdn
-  ```
+3. **Wafw00f** (`wafw00f_plugin.py`)
+   - Command: `wafw00f <target> -a -vvv -f json -o <output_file>`
 
-#### Internal Logic Plugins
+4. **WhatWeb** (`whatweb_plugin.py`)
+   - Command: `whatweb -a 3 <target> --log-json <output_file>`
 
-**Script Detection Plugin** (`kast/plugins/script_detection_plugin.py`):
-- Lists the sequential operations that would be performed
-- No CLI commands, but shows internal workflow
-- Example output:
-  ```
-  1. Fetch HTML from https://example.com
-  2. Parse HTML with BeautifulSoup
-  3. Extract all <script> tags with 'src' attributes
-  4. Analyze script origins, SRI, and HTTPS usage
-  5. Correlate findings with Mozilla Observatory results (if available)
-  ```
+5. **Ftap** (`ftap_plugin.py`)
+   - Command: `ftap --url <target> --detection-mode stealth -d <output_dir> -e json -f ftap.json`
 
-## Usage
+6. **Testssl** (`testssl_plugin.py`)
+   - Command: `testssl -U -E --connect-timeout 10 --warnings=batch -oJ <output_file> <target>`
 
-Run KAST with the `--dry-run` flag:
+7. **Katana** (`katana_plugin.py`)
+   - Command: `katana -silent -u <target> -ob -rl 15 -fs fqdn -o <output_file>`
 
-```bash
-# Dry run for specific plugins
-python -m kast.main --target example.com --dry-run --run-only testssl,whatweb
+8. **ZAP** (`zap_plugin.py`)
+   - Shows ZAP API configuration and scan commands (mode-dependent)
 
-# Dry run for all plugins
-python -m kast.main --target example.com --dry-run
+#### Internal Plugins (Show Operations)
 
-# Dry run with mode filter
-python -m kast.main --target example.com --dry-run --mode passive
-```
+1. **Script Detection** (`script_detection_plugin.py`)
+   - Operations:
+     1. Fetch HTML from target URL
+     2. Parse HTML with BeautifulSoup
+     3. Extract all `<script>` tags with 'src' attributes
+     4. Analyze script origins, SRI, and HTTPS usage
+     5. Correlate findings with Mozilla Observatory results (if available)
 
-## Output Format
+2. **Related Sites** (`related_sites_plugin.py`)
+   - Commands:
+     1. `subfinder -d <root_domain> -o <output_file> -json -silent`
+     2. `httpx -l <targets_file> -json -o <output_file> -silent -timeout 10 -retries 2 -threads 50 -rate-limit 10 -ports 80,443,8080,8443,8000,8888 -follow-redirects -status-code -title -tech-detect -websocket -cdn`
 
-The dry-run output now shows:
+## Example Output
 
 ```
-Plugin: Test SSL (testssl)
+$ kast -t www.example.com --dry-run
+
+INFO     Dry run mode enabled. Showing what would be executed:
+INFO     ================================================================
+
+Plugin: Mozilla Observatory (mozilla_observatory)
 Type: passive
-Priority: 50
-Description: Tests SSL and TLS posture
+Priority: 5
+Description: Runs Mozilla Observatory to analyze web application security.
 Commands that would be executed:
-  testssl -U -E --connect-timeout 10 --warnings=batch -oJ /path/to/output.json example.com
-----------------------------------------------------------------------
-```
+  mdn-http-observatory-scan www.example.com
+----------------------------------------------------------------
 
-For plugins with multiple commands:
-```
-Plugin: Related Sites Discovery (related_sites)
-Type: passive
-Priority: 45
-Description: Discovers related subdomains and probes for live web services
-Commands that would be executed:
-  [1] subfinder -d example.com -o /path/to/output.json -json -silent
-  [2] httpx -l /path/to/targets.txt -json -o /path/to/output.json -silent ...
-----------------------------------------------------------------------
-```
-
-For internal logic plugins:
-```
 Plugin: External Script Detection (script_detection)
 Type: passive
 Priority: 10
 Description: Detects and analyzes external JavaScript files loaded by the target.
 Operations that would be performed:
-  1. Fetch HTML from https://example.com
+  1. Fetch HTML from https://www.example.com
   2. Parse HTML with BeautifulSoup
   3. Extract all <script> tags with 'src' attributes
   4. Analyze script origins, SRI, and HTTPS usage
   5. Correlate findings with Mozilla Observatory results (if available)
-----------------------------------------------------------------------
+----------------------------------------------------------------
+
+Plugin: Related Sites Discovery (related_sites)
+Type: passive
+Priority: 45
+Description: Discovers related subdomains and probes for live web services
+Commands that would be executed:
+  [1] subfinder -d example.com -o /path/to/related_sites_subfinder.json -json -silent
+  [2] httpx -l /path/to/related_sites_targets.txt -json -o /path/to/related_sites_httpx.json ...
+----------------------------------------------------------------
 ```
 
 ## Benefits
 
-1. **Transparency**: Users can see exactly what commands will be executed before running
-2. **Learning**: New users can learn the command syntax and options for each tool
-3. **Debugging**: Helps developers verify configuration is being applied correctly
-4. **Documentation**: Serves as living documentation of how each tool is invoked
-5. **Security**: Allows security review of commands before execution
+1. **Transparency**: Users can see exactly what commands will be executed
+2. **Education**: Helps users understand what each plugin does
+3. **Debugging**: Makes it easier to troubleshoot issues or understand plugin behavior
+4. **Security Review**: Allows security teams to audit commands before execution
+5. **Documentation**: Commands serve as examples for manual tool usage
 
-## Configuration Awareness
+## Usage
 
-The displayed commands reflect the current configuration:
-- Configuration file settings (`~/.config/kast/config.yaml`)
-- CLI overrides (e.g., `--set plugin.option=value`)
-- Default values from plugin schemas
+Simply add the `--dry-run` flag to any KAST command:
 
-This means the dry-run output shows the actual commands that would run given the current configuration state.
+```bash
+# Basic dry-run
+kast -t example.com --dry-run
+
+# Dry-run with specific plugins
+kast -t example.com --dry-run --run-only testssl,whatweb
+
+# Dry-run with verbose output
+kast -t example.com --dry-run --verbose
+```
+
+## Design Decisions
+
+### For External Tool Plugins
+- Display the actual command string that would be executed
+- Include all flags, options, and file paths
+- Show exact output file locations
+
+### For Internal Python Plugins
+- List high-level operations rather than implementation details
+- Describe the logical flow of operations
+- Focus on what the plugin accomplishes, not how it's coded
+
+### Formatting
+- Clear visual separation between plugins
+- Consistent numbering for multi-command plugins
+- Indentation for readability
+- Plugin metadata (type, priority, description) always shown
 
 ## Future Enhancements
 
-To extend this feature to other plugins, implement `get_dry_run_info()` in each plugin:
+Potential improvements for future versions:
 
-1. For external tool plugins: Build the command string exactly as it would be executed
-2. For internal logic plugins: List the operations in order
-3. Return a dictionary with `commands`, `description`, and `operations` keys
+1. **Estimated Runtime**: Show approximate time each plugin would take
+2. **Resource Usage**: Display expected CPU/memory/network usage
+3. **Dependency Checks**: Show which tools are installed vs missing
+4. **Output File Sizes**: Estimate disk space needed
+5. **Network Calls**: List all external URLs that would be contacted
+6. **JSON Export**: Option to export dry-run info as JSON
 
-Example template:
-```python
-def get_dry_run_info(self, target, output_dir):
-    """Return dry-run information for this plugin."""
-    # For external tools
-    cmd = ["tool_name", "--option", "value", target]
-    return {
-        "commands": [' '.join(cmd)],
-        "description": self.description,
-        "operations": "Brief description of what happens"
-    }
-    
-    # For internal logic
-    return {
-        "commands": [],  # No CLI commands
-        "description": self.description,
-        "operations": [
-            "Step 1: Do something",
-            "Step 2: Do something else",
-            "Step 3: Generate results"
-        ]
-    }
-```
+## Related Files
 
-## Notes
+- `kast/plugins/base.py` - Base plugin class with `get_dry_run_info()` method
+- `kast/orchestrator.py` - Orchestrator logic for displaying dry-run information
+- `kast/plugins/*.py` - All plugin implementations
 
-- Plugins that haven't implemented `get_dry_run_info()` will fall back to the default base class implementation
-- The base implementation provides basic information but won't show actual commands
-- All new plugins should implement this method for consistency
+## Testing
+
+Tested with all plugins using various targets to ensure:
+- Commands are properly formatted
+- File paths are correct
+- Operations lists are accurate
+- Output is clear and readable
+
+## See Also
+
+- `README.md` - Main KAST documentation
+- `genai-instructions.md` - Plugin development guide
+- `kast/docs/README_CREATE_PLUGIN.md` - Plugin creation guide

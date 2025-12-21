@@ -663,3 +663,20 @@ class SubfinderPlugin(KastPlugin):
         html += '</div>'
         
         return html
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what this plugin would do in a real run.
+        """
+        output_file = os.path.join(output_dir, "subfinder_tmp.json")
+        cmd = [
+            "subfinder",
+            "-d", target,
+            "-o", output_file,
+            "-json"
+        ]
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description
+        }

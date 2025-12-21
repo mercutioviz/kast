@@ -504,3 +504,21 @@ class FtapPlugin(KastPlugin):
         html += '</div>'
         
         return html
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what this plugin would do in a real run.
+        """
+        cmd = [
+            "ftap",
+            "--url", target,
+            "--detection-mode", "stealth",
+            "-d", str(output_dir),
+            "-e", "json",
+            "-f", "ftap.json"
+        ]
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description
+        }

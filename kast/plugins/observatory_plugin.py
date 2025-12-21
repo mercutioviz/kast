@@ -223,3 +223,17 @@ class ObservatoryPlugin(KastPlugin):
         )
         self.debug(f"Generated summary: {summary_text}")
         return summary_text
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what this plugin would do in a real run.
+        """
+        cmd = [
+            "mdn-http-observatory-scan",
+            target
+        ]
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description
+        }
