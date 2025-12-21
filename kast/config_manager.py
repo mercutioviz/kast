@@ -27,7 +27,7 @@ class ConfigManager:
     6. Plugin defaults (from schema)
     """
     
-    CONFIG_VERSION = "1.0"
+    CONFIG_VERSION = "1.1"
     
     def __init__(self, cli_args=None, logger=None):
         """
