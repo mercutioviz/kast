@@ -460,3 +460,36 @@ class TestsslPlugin(KastPlugin):
         """
         # TODO: Implement deduplication logic if needed for testssl results
         return findings
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what testssl would execute.
+        Builds the actual command with current configuration.
+        """
+        output_file = os.path.join(output_dir, f"{self.name}.json")
+        
+        # Build command with current configuration
+        cmd = ["testssl"]
+        
+        # Add test flags based on configuration
+        if self.test_vulnerabilities:
+            cmd.append("-U")
+        if self.test_ciphers:
+            cmd.append("-E")
+        
+        # Add connection timeout if configured
+        if self.connect_timeout:
+            cmd.extend(["--connect-timeout", str(self.connect_timeout)])
+        
+        # Add warnings batch mode flag
+        if self.warnings_batch_mode:
+            cmd.append("--warnings=batch")
+        
+        # Add JSON output and target
+        cmd.extend(["-oJ", output_file, target])
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description,
+            "operations": f"SSL/TLS security testing (timeout: {self.timeout}s)"
+        }

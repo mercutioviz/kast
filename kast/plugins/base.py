@@ -225,3 +225,32 @@ class KastPlugin(ABC):
             return f"{self.name} produced {len(findings)} result items."
         else:
             return f"{self.name} produced findings of type: {type(findings).__name__}"
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what this plugin would do in a real run.
+        
+        This method should be overridden in subclasses to provide detailed
+        information about commands that would be executed or operations that
+        would be performed during a dry-run.
+        
+        For external tool plugins:
+        - Return the actual CLI commands that would be executed
+        - Include all configuration-dependent flags and parameters
+        
+        For internal logic plugins:
+        - Describe the operations that would be performed
+        - List the steps in sequence
+        
+        :param target: The target that would be scanned
+        :param output_dir: The output directory that would be used
+        :return: Dict with keys:
+            - 'commands': List of command strings (for external tools)
+            - 'description': Plugin description
+            - 'operations': String or list describing what would happen
+        """
+        return {
+            "commands": [],
+            "description": self.description,
+            "operations": f"Would execute {self.display_name} plugin"
+        }

@@ -1211,3 +1211,54 @@ class RelatedSitesPlugin(KastPlugin):
         html += '</div>'
         
         return html
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what related_sites would execute.
+        This plugin runs TWO commands in sequence.
+        """
+        apex_domain = self._extract_apex_domain(target)
+        scan_target = apex_domain if self._should_scan_apex(target, apex_domain) else target
+        
+        # Command 1: Subfinder
+        subfinder_output = os.path.join(output_dir, "related_sites_subfinder.json")
+        subfinder_cmd = [
+            "subfinder",
+            "-d", scan_target,
+            "-o", subfinder_output,
+            "-json",
+            "-silent"
+        ]
+        
+        # Command 2: HTTPx  
+        httpx_input = os.path.join(output_dir, "related_sites_targets.txt")
+        httpx_output = os.path.join(output_dir, "related_sites_httpx.json")
+        httpx_cmd = [
+            "httpx",
+            "-l", httpx_input,
+            "-json",
+            "-o", httpx_output,
+            "-silent",
+            "-timeout", str(self.httpx_timeout),
+            "-retries", "2",
+            "-threads", str(self.httpx_threads),
+            "-rate-limit", str(self.httpx_rate_limit),
+            "-ports", ",".join(map(str, self.httpx_ports)),
+            "-follow-redirects",
+            "-status-code",
+            "-title",
+            "-tech-detect",
+            "-websocket",
+            "-cdn"
+        ]
+        
+        operations_desc = (
+            f"1. Subdomain enumeration for {scan_target}\n"
+            f"2. HTTP probing discovered subdomains on ports: {','.join(map(str, self.httpx_ports))}"
+        )
+        
+        return {
+            "commands": [' '.join(subfinder_cmd), ' '.join(httpx_cmd)],
+            "description": self.description,
+            "operations": operations_desc
+        }

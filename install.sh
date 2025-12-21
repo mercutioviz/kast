@@ -7,7 +7,7 @@
 # CONSTANTS AND CONFIGURATION
 ###############################################################################
 
-SCRIPT_VERSION="2.7.2"
+SCRIPT_VERSION="2.8.0"
 INSTALL_STATE_FILE=".kast_install_state"
 VERSION_FILE=".kast_version"
 LOCK_FILE="/tmp/kast_install.lock"

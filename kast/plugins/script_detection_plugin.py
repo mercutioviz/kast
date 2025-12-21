@@ -16,8 +16,8 @@ from pprint import pformat
 class ScriptDetectionPlugin(KastPlugin):
     priority = 10  # Run after Observatory (priority 5)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "script_detection"
         self.display_name = "External Script Detection"
         self.description = "Detects and analyzes external JavaScript files loaded by the target."
@@ -452,3 +452,26 @@ class ScriptDetectionPlugin(KastPlugin):
         html_parts.append('</div>')
         
         return '\n'.join(html_parts)
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what script_detection would do.
+        This is an internal logic plugin with no CLI commands.
+        """
+        # Ensure target has protocol for display
+        if not target.startswith(('http://', 'https://')):
+            display_target = f'https://{target}'
+        else:
+            display_target = target
+        
+        return {
+            "commands": [],  # No CLI commands
+            "description": self.description,
+            "operations": [
+                f"1. Fetch HTML from {display_target}",
+                "2. Parse HTML with BeautifulSoup",
+                "3. Extract all <script> tags with 'src' attributes",
+                "4. Analyze script origins, SRI, and HTTPS usage",
+                "5. Correlate findings with Mozilla Observatory results (if available)"
+            ]
+        }

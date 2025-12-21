@@ -37,7 +37,8 @@ class ScannerOrchestrator:
         self.log.info(f"Scan mode: {self.cli_args.mode}")
         
         if self.cli_args.dry_run:
-            self.log.info("Dry run mode enabled. No plugins will be executed.")
+            self.log.info("Dry run mode enabled. Showing what would be executed:")
+            self.log.info("=" * 70)
             
             # Apply same filtering logic as normal execution
             for plugin_cls in self.plugins:
@@ -52,11 +53,51 @@ class ScannerOrchestrator:
                     )
                     
                     if should_run:
-                        self.log.info(f"[DRY RUN] Would run plugin: {plugin_instance.name} (scan_type: {plugin_scan_type})")
+                        # Get dry-run information from the plugin
+                        try:
+                            dry_run_info = plugin_instance.get_dry_run_info(
+                                self.cli_args.target,
+                                self.output_dir
+                            )
+                            
+                            self.log.info(f"\nPlugin: {plugin_instance.display_name} ({plugin_instance.name})")
+                            self.log.info(f"Type: {plugin_scan_type}")
+                            self.log.info(f"Priority: {plugin_instance.priority}")
+                            self.log.info(f"Description: {dry_run_info.get('description', plugin_instance.description)}")
+                            
+                            # Show commands if available (for external tool plugins)
+                            commands = dry_run_info.get('commands', [])
+                            if commands:
+                                self.log.info("Commands that would be executed:")
+                                for i, cmd in enumerate(commands, 1):
+                                    if len(commands) > 1:
+                                        self.log.info(f"  [{i}] {cmd}")
+                                    else:
+                                        self.log.info(f"  {cmd}")
+                            
+                            # Show operations for internal logic plugins
+                            operations = dry_run_info.get('operations', '')
+                            if operations and not commands:
+                                if isinstance(operations, list):
+                                    self.log.info("Operations that would be performed:")
+                                    for op in operations:
+                                        self.log.info(f"  {op}")
+                                else:
+                                    self.log.info(f"Operations: {operations}")
+                            
+                            self.log.info("-" * 70)
+                            
+                        except Exception as e:
+                            self.log.error(f"Error getting dry-run info for {plugin_instance.name}: {e}")
+                            self.log.info(f"[DRY RUN] Would run plugin: {plugin_instance.name} (scan_type: {plugin_scan_type})")
+                            self.log.info("-" * 70)
                     else:
-                        self.log.debug(f"[DRY RUN] Would skip plugin: {plugin_instance.name} (scan_type: {plugin_scan_type}, mode: {self.cli_args.mode})")
+                        self.log.debug(f"[SKIPPED] {plugin_instance.name} (scan_type: {plugin_scan_type}, mode filter: {self.cli_args.mode})")
+                        
                 except Exception as e:
                     self.log.error(f"Error checking plugin {plugin_cls.__name__}: {e}")
+            
+            self.log.info("\nDry run complete. No actions were performed.")
             return []
 
         # Filter plugins by scan type (active/passive/both)

@@ -16,8 +16,8 @@ from urllib.parse import urlparse, urlunparse
 class WhatWebPlugin(KastPlugin):
     priority = 15  # High priority (lower number = higher priority)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
         self.name = "whatweb"
         self.display_name = "WhatWeb"
         self.description = "Identifies technologies used by a website."
@@ -278,3 +278,21 @@ class WhatWebPlugin(KastPlugin):
                     summary_list.append({key: techs})
 
             return summary_list
+
+    def get_dry_run_info(self, target, output_dir):
+        """
+        Return information about what WhatWeb would execute.
+        """
+        output_file = os.path.join(output_dir, "whatweb.json")
+        cmd = [
+            "whatweb",
+            "-a", "3",
+            target,
+            "--log-json", output_file
+        ]
+        
+        return {
+            "commands": [' '.join(cmd)],
+            "description": self.description,
+            "operations": "Technology detection and web fingerprinting (aggression level 3)"
+        }
