@@ -279,6 +279,54 @@ Potential additional configuration options for future versions:
 - **TestSSL Plugin Code:** `kast/plugins/testssl_plugin.py`
 - **Reference Implementation:** `kast/plugins/related_sites_plugin.py`
 
+## Bug Fixes
+
+### Timeout Not Enforced (Fixed: 2025-12-20)
+
+**Issue:** The `timeout` configuration value was loaded but not applied to the subprocess execution.
+
+**Symptoms:**
+- Config showed `timeout=250` correctly
+- Debug logs confirmed timeout was loaded
+- Command executed without timeout constraint
+- Long-running scans could exceed configured timeout
+
+**Root Cause:** The timeout needed to be passed to `subprocess.run()` as a keyword argument, not as a testssl command-line flag (testssl.sh doesn't have a `--timeout` flag).
+
+**Fix Applied:**
+```python
+# Before (WRONG)
+proc = subprocess.run(cmd, capture_output=True, text=True)
+
+# After (CORRECT)
+proc = subprocess.run(
+    cmd,
+    capture_output=True,
+    text=True,
+    timeout=self.timeout  # ← Timeout now enforced by Python
+)
+```
+
+**Exception Handling:**
+```python
+try:
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+except subprocess.TimeoutExpired:
+    return self.get_result_dict(
+        disposition="fail",
+        results=f"testssl scan exceeded timeout of {self.timeout} seconds",
+        timestamp=timestamp
+    )
+```
+
+**Verification:**
+```bash
+# Test with short timeout (should timeout on most targets)
+kast -t example.com --run-only testssl --set testssl.timeout=10
+
+# Expected result: Error message about timeout exceeded
+```
+
 ## Summary
 
 The testssl plugin successfully migrated to the new configuration system with:
@@ -287,6 +335,7 @@ The testssl plugin successfully migrated to the new configuration system with:
 - ✅ CLI override capability via `--set`
 - ✅ Backward compatibility maintained
 - ✅ Dynamic command building based on config
+- ✅ Timeout enforcement via subprocess (bug fixed)
 - ✅ Comprehensive testing completed
 
 The plugin is production-ready and serves as the second reference implementation (after related_sites) for migrating other plugins to the configuration system.

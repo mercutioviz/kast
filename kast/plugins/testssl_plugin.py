@@ -159,12 +159,24 @@ class TestsslPlugin(KastPlugin):
                         timestamp=timestamp
                     )
             else:
-                # Execute the command
-                proc = subprocess.run(cmd, capture_output=True, text=True)
-                if proc.returncode != 0:
+                # Execute the command with configured timeout
+                try:
+                    proc = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=self.timeout
+                    )
+                    if proc.returncode != 0:
+                        return self.get_result_dict(
+                            disposition="fail",
+                            results=proc.stderr.strip(),
+                            timestamp=timestamp
+                        )
+                except subprocess.TimeoutExpired:
                     return self.get_result_dict(
                         disposition="fail",
-                        results=proc.stderr.strip(),
+                        results=f"testssl scan exceeded timeout of {self.timeout} seconds",
                         timestamp=timestamp
                     )
 
