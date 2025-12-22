@@ -108,9 +108,9 @@ class WhatWebPlugin(KastPlugin):
         # Add aggression level
         cmd.extend(["-a", str(self.aggression_level)])
         
-        # Add timeout if configured
+        # Add read timeout if configured
         if self.timeout:
-            cmd.extend(["--max-http-scan-time", str(self.timeout)])
+            cmd.extend(["--read-timeout", str(self.timeout)])
         
         # Add custom user-agent if configured
         if self.user_agent:
@@ -146,6 +146,19 @@ class WhatWebPlugin(KastPlugin):
                     return self.get_result_dict(
                         disposition="fail",
                         results=proc.stderr.strip()
+                    )
+                
+                # Check if output file was created
+                if not os.path.exists(output_file):
+                    error_msg = "WhatWeb completed but did not create output file."
+                    if proc.stderr:
+                        error_msg += f" Stderr: {proc.stderr.strip()}"
+                    if proc.stdout:
+                        error_msg += f" Stdout: {proc.stdout.strip()}"
+                    return self.get_result_dict(
+                        disposition="fail",
+                        results=error_msg,
+                        timestamp=timestamp
                     )
 
             # Read the output file
@@ -391,9 +404,9 @@ class WhatWebPlugin(KastPlugin):
         # Add aggression level
         cmd.extend(["-a", str(self.aggression_level)])
         
-        # Add timeout if configured
+        # Add read timeout if configured
         if self.timeout:
-            cmd.extend(["--max-http-scan-time", str(self.timeout)])
+            cmd.extend(["--read-timeout", str(self.timeout)])
         
         # Add custom user-agent if configured
         if self.user_agent:

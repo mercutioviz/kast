@@ -119,7 +119,7 @@ class TestWhatWebConfig(unittest.TestCase):
         
         # Verify command includes default values
         self.assertIn("-a 3", command)  # Default aggression
-        self.assertIn("--max-http-scan-time 30", command)  # Default timeout
+        self.assertIn("--read-timeout 30", command)  # Default timeout
         self.assertIn("--max-redirects 2", command)  # Default redirects
         self.assertNotIn("--user-agent", command)  # No custom user agent
         
@@ -147,7 +147,7 @@ class TestWhatWebConfig(unittest.TestCase):
         
         # Verify command includes custom values
         self.assertIn("-a 1", command)
-        self.assertIn("--max-http-scan-time 45", command)
+        self.assertIn("--read-timeout 45", command)
         self.assertIn("--user-agent TestAgent/1.0", command)
         self.assertIn("--max-redirects 3", command)
     

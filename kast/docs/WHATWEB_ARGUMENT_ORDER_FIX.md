@@ -12,19 +12,23 @@ This document describes the fix for a critical bug in the WhatWeb plugin where i
 
 ### Symptoms
 
-When running WhatWeb with the new configuration system, the plugin would fail with:
+When running WhatWeb with the new configuration system, the plugin would fail with various errors:
+
+1. Initial error:
 ```
 [Errno 2] No such file or directory: '/path/to/whatweb.json'
+AttributeError: 'str' object has no attribute 'get'
 ```
 
-Followed by a secondary error in `post_process()`:
+2. After initial fixes:
 ```
-AttributeError: 'str' object has no attribute 'get'
+WhatWeb completed but did not create output file. 
+Stderr: /usr/local/bin/whatweb: unrecognized option `--max-http-scan-time'
 ```
 
 ### Root Cause
 
-The issue had two parts:
+The issue had three parts:
 
 1. **Incorrect Argument Order**: WhatWeb requires the target URL to be the **last** argument, but the plugin was placing it before `--log-json`:
    ```bash
@@ -36,9 +40,48 @@ The issue had two parts:
 
 2. **Poor Error Handling**: The `post_process()` method didn't properly handle failure cases from `run()`, attempting to parse error messages as if they were successful findings.
 
+3. **Incorrect Timeout Flag**: The plugin was using `--max-http-scan-time` which doesn't exist in WhatWeb. The correct flag is `--read-timeout`.
+
 ## Solution
 
-### 1. Fixed Argument Order
+### 1. Added Output File Existence Check
+
+After the command executes successfully, we now verify the output file was created:
+
+```python
+# Check if output file was created
+if not os.path.exists(output_file):
+    error_msg = "WhatWeb completed but did not create output file."
+    if proc.stderr:
+        error_msg += f" Stderr: {proc.stderr.strip()}"
+    if proc.stdout:
+        error_msg += f" Stdout: {proc.stdout.strip()}"
+    return self.get_result_dict(
+        disposition="fail",
+        results=error_msg,
+        timestamp=timestamp
+    )
+```
+
+This prevents the `FileNotFoundError` when WhatWeb completes but fails to create output.
+
+### 2. Fixed Timeout Flag
+
+Changed from the non-existent `--max-http-scan-time` to the correct `--read-timeout`:
+
+**Before:**
+```python
+if self.timeout:
+    cmd.extend(["--max-http-scan-time", str(self.timeout)])
+```
+
+**After:**
+```python
+if self.timeout:
+    cmd.extend(["--read-timeout", str(self.timeout)])
+```
+
+### 3. Fixed Argument Order
 
 Updated both `run()` and `get_dry_run_info()` methods to place the target URL at the end:
 
