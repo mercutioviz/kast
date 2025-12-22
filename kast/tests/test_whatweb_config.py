@@ -122,6 +122,9 @@ class TestWhatWebConfig(unittest.TestCase):
         self.assertIn("--max-http-scan-time 30", command)  # Default timeout
         self.assertIn("--max-redirects 2", command)  # Default redirects
         self.assertNotIn("--user-agent", command)  # No custom user agent
+        
+        # Verify argument order: target must come LAST
+        self.assertTrue(command.endswith("https://example.com"))
     
     def test_command_building_with_custom_config(self):
         """Test that commands are built correctly with custom config."""

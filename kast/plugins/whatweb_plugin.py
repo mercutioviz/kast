@@ -120,8 +120,8 @@ class WhatWebPlugin(KastPlugin):
         if self.follow_redirects:
             cmd.extend(["--max-redirects", str(self.follow_redirects)])
         
-        # Add target and output
-        cmd.extend([target, "--log-json", output_file])
+        # Add output file and target (target must come LAST)
+        cmd.extend(["--log-json", output_file, target])
 
         if getattr(self.cli_args, "verbose", False):
             self.debug(f"Running command: {' '.join(cmd)}")
@@ -168,7 +168,35 @@ class WhatWebPlugin(KastPlugin):
     def post_process(self, raw_output, output_dir):
         """
         Post-process WhatWeb output into standardized structure.
+        Handles both successful findings and failure cases gracefully.
         """
+        # Handle failure cases from run() method
+        if isinstance(raw_output, dict) and raw_output.get('disposition') == 'fail':
+            # This is a failed run result, not actual findings
+            error_message = raw_output.get('results', 'Unknown error')
+            self.debug(f"{self.name} failed during execution: {error_message}")
+            
+            # Return a minimal processed result for failures
+            processed = {
+                "plugin-name": self.name,
+                "plugin-description": self.description,
+                "plugin-display-name": getattr(self, 'display_name', None),
+                "plugin-website-url": getattr(self, 'website_url', None),
+                "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "findings": {"disposition": "fail", "results": error_message},
+                "summary": [{"Error": f"Plugin execution failed: {error_message}"}],
+                "details": "",
+                "issues": [],
+                "executive_summary": "",
+                "report": self._format_command_for_report()
+            }
+            
+            processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
+            with open(processed_path, "w") as f:
+                json.dump(processed, f, indent=2)
+            return processed_path
+        
+        # Handle successful findings
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
             with open(raw_output, "r") as f:
                 findings = json.load(f)
@@ -375,8 +403,8 @@ class WhatWebPlugin(KastPlugin):
         if self.follow_redirects:
             cmd.extend(["--max-redirects", str(self.follow_redirects)])
         
-        # Add target and output
-        cmd.extend([target, "--log-json", output_file])
+        # Add output file and target (target must come LAST)
+        cmd.extend(["--log-json", output_file, target])
         
         # Build operations description with config values
         operations_desc = (
