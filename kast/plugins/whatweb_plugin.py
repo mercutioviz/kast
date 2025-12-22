@@ -15,16 +15,72 @@ from urllib.parse import urlparse, urlunparse
 
 class WhatWebPlugin(KastPlugin):
     priority = 15  # High priority (lower number = higher priority)
+    
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "WhatWeb Configuration",
+        "description": "Web technology detection configuration",
+        "properties": {
+            "aggression_level": {
+                "type": "integer",
+                "default": 3,
+                "minimum": 1,
+                "maximum": 4,
+                "description": "Aggression level (1=stealthy, 3=aggressive, 4=heavy)"
+            },
+            "timeout": {
+                "type": "integer",
+                "default": 30,
+                "minimum": 5,
+                "maximum": 120,
+                "description": "HTTP request timeout in seconds"
+            },
+            "user_agent": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": "Custom User-Agent string (null for default)"
+            },
+            "follow_redirects": {
+                "type": "integer",
+                "default": 2,
+                "minimum": 0,
+                "maximum": 10,
+                "description": "Maximum redirect depth to follow"
+            }
+        }
+    }
 
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "whatweb"
         self.display_name = "WhatWeb"
         self.description = "Identifies technologies used by a website."
         self.website_url = "https://github.com/urbanadventurer/whatweb"
         self.scan_type = "passive"
         self.output_type = "file"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
+        
         self.command_executed = None  # Store the command for reporting
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.aggression_level = self.get_config('aggression_level', 3)
+        self.timeout = self.get_config('timeout', 30)
+        self.user_agent = self.get_config('user_agent', None)
+        self.follow_redirects = self.get_config('follow_redirects', 2)
+        
+        self.debug(f"WhatWeb config loaded: aggression={self.aggression_level}, "
+                  f"timeout={self.timeout}, "
+                  f"user_agent={'(custom)' if self.user_agent else '(default)'}, "
+                  f"follow_redirects={self.follow_redirects}")
 
     def is_available(self):
         """
@@ -45,12 +101,27 @@ class WhatWebPlugin(KastPlugin):
         """
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "whatweb.json")
-        cmd = [
-            "whatweb",
-            "-a", "3",
-            target,
-            "--log-json", output_file
-        ]
+        
+        # Build command dynamically based on configuration
+        cmd = ["whatweb"]
+        
+        # Add aggression level
+        cmd.extend(["-a", str(self.aggression_level)])
+        
+        # Add timeout if configured
+        if self.timeout:
+            cmd.extend(["--max-http-scan-time", str(self.timeout)])
+        
+        # Add custom user-agent if configured
+        if self.user_agent:
+            cmd.extend(["--user-agent", self.user_agent])
+        
+        # Add redirect follow depth
+        if self.follow_redirects:
+            cmd.extend(["--max-redirects", str(self.follow_redirects)])
+        
+        # Add target and output
+        cmd.extend([target, "--log-json", output_file])
 
         if getattr(self.cli_args, "verbose", False):
             self.debug(f"Running command: {' '.join(cmd)}")
@@ -282,17 +353,39 @@ class WhatWebPlugin(KastPlugin):
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what WhatWeb would execute.
+        Builds the actual command with current configuration.
         """
         output_file = os.path.join(output_dir, "whatweb.json")
-        cmd = [
-            "whatweb",
-            "-a", "3",
-            target,
-            "--log-json", output_file
-        ]
+        
+        # Build command with current configuration (same as run() method)
+        cmd = ["whatweb"]
+        
+        # Add aggression level
+        cmd.extend(["-a", str(self.aggression_level)])
+        
+        # Add timeout if configured
+        if self.timeout:
+            cmd.extend(["--max-http-scan-time", str(self.timeout)])
+        
+        # Add custom user-agent if configured
+        if self.user_agent:
+            cmd.extend(["--user-agent", self.user_agent])
+        
+        # Add redirect follow depth
+        if self.follow_redirects:
+            cmd.extend(["--max-redirects", str(self.follow_redirects)])
+        
+        # Add target and output
+        cmd.extend([target, "--log-json", output_file])
+        
+        # Build operations description with config values
+        operations_desc = (
+            f"Technology detection (aggression level {self.aggression_level}, "
+            f"timeout {self.timeout}s, max redirects {self.follow_redirects})"
+        )
         
         return {
             "commands": [' '.join(cmd)],
             "description": self.description,
-            "operations": "Technology detection and web fingerprinting (aggression level 3)"
+            "operations": operations_desc
         }
