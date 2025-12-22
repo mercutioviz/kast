@@ -21,8 +21,18 @@ from kast.config_manager import ConfigManager
 # Set up rich console for CLI output
 console = Console()
 
-# Version number
-KAST_VERSION = "2.8.2"
+# Read version from VERSION file
+def get_version():
+    """Read version from VERSION file in project root."""
+    try:
+        version_file = Path(__file__).parent.parent / "VERSION"
+        with open(version_file, 'r') as f:
+            return f.read().strip()
+    except Exception as e:
+        # Fallback version if file can't be read
+        return "2.8.2-dev"
+
+KAST_VERSION = get_version()
 
 def parse_args():
     parser = argparse.ArgumentParser(

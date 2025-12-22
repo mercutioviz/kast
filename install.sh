@@ -7,7 +7,9 @@
 # CONSTANTS AND CONFIGURATION
 ###############################################################################
 
-SCRIPT_VERSION="2.8.2"
+# Read version from VERSION file
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null | tr -d '[:space:]' || echo "2.8.2")
 INSTALL_STATE_FILE=".kast_install_state"
 VERSION_FILE=".kast_version"
 LOCK_FILE="/tmp/kast_install.lock"
