@@ -15,15 +15,171 @@ from kast.scripts.zap_provider_factory import ZapProviderFactory
 
 class ZapPlugin(KastPlugin):
     priority = 200  # Run later (higher number = lower priority)
+    
+    # Configuration schema for kast-web integration
+    # Note: ZAP uses hierarchical YAML config, schema mirrors that structure
+    config_schema = {
+        "type": "object",
+        "title": "OWASP ZAP Configuration",
+        "description": "Multi-mode configuration for OWASP ZAP security scanner (local/remote/cloud)",
+        "properties": {
+            "execution_mode": {
+                "type": "string",
+                "enum": ["auto", "local", "remote", "cloud"],
+                "default": "auto",
+                "description": "Execution mode: auto (intelligent discovery), local (Docker), remote (existing instance), cloud (ephemeral infrastructure)"
+            },
+            "auto_discovery": {
+                "type": "object",
+                "title": "Auto-Discovery Settings",
+                "properties": {
+                    "prefer_local": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Prefer local Docker over cloud when auto-discovering"
+                    },
+                    "check_env_vars": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Check for KAST_ZAP_URL and KAST_ZAP_API_KEY environment variables"
+                    }
+                }
+            },
+            "local": {
+                "type": "object",
+                "title": "Local Docker Configuration",
+                "properties": {
+                    "docker_image": {
+                        "type": "string",
+                        "default": "ghcr.io/zaproxy/zaproxy:stable",
+                        "description": "Docker image for local ZAP container"
+                    },
+                    "auto_start": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Automatically start ZAP container if not running"
+                    },
+                    "api_port": {
+                        "type": "integer",
+                        "default": 8080,
+                        "minimum": 1024,
+                        "maximum": 65535,
+                        "description": "API port for local ZAP instance"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "default": "kast-local",
+                        "description": "API key for local ZAP authentication"
+                    },
+                    "container_name": {
+                        "type": "string",
+                        "default": "kast-zap-local",
+                        "description": "Docker container name"
+                    },
+                    "cleanup_on_completion": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Remove container after scan (False = keep for reuse)"
+                    },
+                    "use_automation_framework": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Use ZAP automation framework vs direct API"
+                    }
+                }
+            },
+            "remote": {
+                "type": "object",
+                "title": "Remote ZAP Configuration",
+                "properties": {
+                    "api_url": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Remote ZAP API URL (supports env vars: ${KAST_ZAP_URL})"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Remote ZAP API key (supports env vars: ${KAST_ZAP_API_KEY})"
+                    },
+                    "timeout_seconds": {
+                        "type": "integer",
+                        "default": 30,
+                        "minimum": 5,
+                        "maximum": 300,
+                        "description": "Connection timeout in seconds"
+                    },
+                    "verify_ssl": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Verify SSL certificates"
+                    },
+                    "use_automation_framework": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Use automation framework (remote typically uses direct API)"
+                    }
+                }
+            },
+            "cloud": {
+                "type": "object",
+                "title": "Cloud Provider Configuration",
+                "properties": {
+                    "cloud_provider": {
+                        "type": "string",
+                        "enum": ["aws", "azure", "gcp"],
+                        "default": "aws",
+                        "description": "Cloud provider for ephemeral infrastructure"
+                    }
+                    # Note: Full cloud config remains in YAML file due to complexity
+                    # (AWS/Azure/GCP specific settings, credentials, Terraform state)
+                }
+            },
+            "zap_config": {
+                "type": "object",
+                "title": "Common ZAP Settings",
+                "properties": {
+                    "timeout_minutes": {
+                        "type": "integer",
+                        "default": 60,
+                        "minimum": 5,
+                        "maximum": 720,
+                        "description": "Maximum scan duration in minutes"
+                    },
+                    "poll_interval_seconds": {
+                        "type": "integer",
+                        "default": 30,
+                        "minimum": 5,
+                        "maximum": 300,
+                        "description": "Status polling interval in seconds"
+                    },
+                    "report_name": {
+                        "type": "string",
+                        "default": "zap_report.json",
+                        "description": "Output report filename"
+                    },
+                    "automation_plan": {
+                        "type": "string",
+                        "default": "kast/config/zap_automation_plan.yaml",
+                        "description": "Path to ZAP automation plan YAML file"
+                    }
+                }
+            }
+        }
+    }
 
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "zap"
         self.display_name = "OWASP ZAP"
         self.description = "OWASP ZAP Active Scanner (Multi-Mode)"
         self.website_url = "https://www.zaproxy.org/"
         self.scan_type = "active"
         self.output_type = "file"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
         
         # Provider components
         self.provider = None
@@ -59,7 +215,7 @@ class ZapPlugin(KastPlugin):
 
     def _load_config(self):
         """
-        Load ZAP configuration from YAML file
+        Load ZAP configuration from YAML file with ConfigManager CLI overrides
         
         Supports both new unified config (zap_config.yaml) and legacy cloud config
         
@@ -77,19 +233,92 @@ class ZapPlugin(KastPlugin):
                 with open(config_path, 'r') as f:
                     legacy_config = yaml.safe_load(f)
                 # Convert to new format with cloud mode
-                return self._adapt_legacy_config(legacy_config)
-        
-        if not config_path.exists():
-            raise FileNotFoundError(f"ZAP config not found: {config_path}")
-        
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
+                config = self._adapt_legacy_config(legacy_config)
+            else:
+                raise FileNotFoundError(f"ZAP config not found: {config_path}")
+        else:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
         
         # Expand environment variables
         config = self._expand_env_vars(config)
         
+        # Apply CLI overrides from ConfigManager
+        if self.config_manager:
+            config = self._apply_cli_overrides(config)
+        
         self.debug(f"Loaded ZAP config (mode: {config.get('execution_mode', 'auto')})")
         return config
+    
+    def _apply_cli_overrides(self, config):
+        """
+        Apply CLI overrides from ConfigManager to loaded YAML config
+        
+        Only overrides strategic parameters that users commonly adjust.
+        Preserves the hierarchical YAML structure.
+        
+        :param config: Configuration dictionary from YAML
+        :return: Configuration with CLI overrides applied
+        """
+        # Strategic parameters that can be overridden via CLI
+        # Format: 'nested.key.path' maps to config['nested']['key']['path']
+        overrideable_params = [
+            'execution_mode',
+            'auto_discovery.prefer_local',
+            'auto_discovery.check_env_vars',
+            'local.docker_image',
+            'local.auto_start',
+            'local.api_port',
+            'local.container_name',
+            'local.cleanup_on_completion',
+            'remote.api_url',
+            'remote.api_key',
+            'remote.timeout_seconds',
+            'remote.verify_ssl',
+            'cloud.cloud_provider',
+            'zap_config.timeout_minutes',
+            'zap_config.poll_interval_seconds',
+            'zap_config.report_name'
+        ]
+        
+        for param_path in overrideable_params:
+            # Get value directly from ConfigManager (avoid circular dependency with self.config)
+            override_value = None
+            if self.config_manager:
+                try:
+                    override_value = self.config_manager.get_config(self.name, param_path)
+                except:
+                    pass
+            
+            if override_value is not None:
+                # Apply the override to nested config
+                self._set_nested_value(config, param_path, override_value)
+                self.debug(f"CLI override applied: {param_path} = {override_value}")
+        
+        return config
+    
+    def _set_nested_value(self, config, path, value):
+        """
+        Set a value in nested dictionary using dot notation path
+        
+        Example: _set_nested_value(config, 'local.api_port', 8081)
+                 sets config['local']['api_port'] = 8081
+        
+        :param config: Configuration dictionary
+        :param path: Dot-notation path (e.g., 'local.api_port')
+        :param value: Value to set
+        """
+        keys = path.split('.')
+        current = config
+        
+        # Navigate to the parent of the target key
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        
+        # Set the final value
+        current[keys[-1]] = value
 
     def _adapt_legacy_config(self, legacy_config):
         """

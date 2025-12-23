@@ -13,16 +13,67 @@ from pprint import pformat
 
 class ObservatoryPlugin(KastPlugin):
     priority = 5  # High priority (lower number = higher priority)
+    
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "Mozilla Observatory Configuration",
+        "description": "Settings for Mozilla Observatory HTTP security scanner",
+        "properties": {
+            "timeout": {
+                "type": "integer",
+                "default": 300,
+                "minimum": 30,
+                "maximum": 1800,
+                "description": "Command execution timeout in seconds"
+            },
+            "retry_attempts": {
+                "type": "integer",
+                "default": 1,
+                "minimum": 1,
+                "maximum": 5,
+                "description": "Number of retry attempts on failure"
+            },
+            "additional_args": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+                "description": "Additional command line arguments to pass to mdn-http-observatory-scan"
+            },
+            "format": {
+                "type": "string",
+                "enum": ["json"],
+                "default": "json",
+                "description": "Output format (currently only JSON is supported)"
+            }
+        }
+    }
 
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "mozilla_observatory"
         self.display_name = "Mozilla Observatory"
         self.description = "Runs Mozilla Observatory to analyze web application security."
         self.website_url = "https://developer.mozilla.org/en-US/blog/mdn-http-observatory-launch/"
         self.scan_type = "passive"
         self.output_type = "stdout"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
+        
         self.command_executed = None  # Store the command for reporting
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.timeout = self.get_config('timeout', 300)
+        self.retry_attempts = self.get_config('retry_attempts', 1)
+        self.additional_args = self.get_config('additional_args', [])
+        self.format = self.get_config('format', 'json')
 
     def setup(self, target, output_dir):
         """
@@ -47,12 +98,19 @@ class ObservatoryPlugin(KastPlugin):
         output_file = os.path.join(output_dir, "mozilla_observatory.json")
         self.debug(f"Output file will be: {output_file}")
 
+        # Build command with configuration
         cmd = [
             "mdn-http-observatory-scan",
             target
         ]
+        
+        # Add any additional arguments from config
+        if self.additional_args:
+            cmd.extend(self.additional_args)
+            self.debug(f"Added additional args from config: {self.additional_args}")
 
         self.debug(f"Running command: {' '.join(cmd)}")
+        self.debug(f"Timeout: {self.timeout}s, Retry attempts: {self.retry_attempts}")
 
         # Store command for reporting
         self.command_executed = ' '.join(cmd)
@@ -63,37 +121,85 @@ class ObservatoryPlugin(KastPlugin):
                 results="mdn-http-observatory-scan is not installed or not found in PATH."
             )
 
-        try:
-            if report_only:
-                self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
+        # Try execution with retry logic
+        last_error = None
+        for attempt in range(self.retry_attempts):
+            if attempt > 0:
+                self.debug(f"Retry attempt {attempt + 1} of {self.retry_attempts}")
+            
+            try:
+                if report_only:
+                    self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
+                    # In report-only mode, check if results already exist
+                    if os.path.exists(output_file):
+                        with open(output_file, "r") as f:
+                            results = json.load(f)
+                        return self.get_result_dict(
+                            disposition="success",
+                            results=results,
+                            timestamp=timestamp
+                        )
+                    else:
+                        return self.get_result_dict(
+                            disposition="fail",
+                            results="No existing results found for report-only mode.",
+                            timestamp=timestamp
+                        )
+                else:
+                    # Execute command with timeout
+                    with open(output_file, "w") as outfile:
+                        proc = subprocess.run(
+                            cmd, 
+                            stdout=outfile, 
+                            stderr=subprocess.PIPE, 
+                            text=True,
+                            timeout=self.timeout
+                        )
 
-            else:
-                #proc = subprocess.run(cmd, capture_output=True, text=True)
-                with open(output_file, "w") as outfile:
-                    proc = subprocess.run(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
+                    if proc.returncode != 0:
+                        last_error = proc.stderr.strip()
+                        self.debug(f"Command failed (attempt {attempt + 1}): {last_error}")
+                        if attempt < self.retry_attempts - 1:
+                            continue  # Retry
+                        return self.get_result_dict(
+                            disposition="fail",
+                            results=last_error
+                        )
 
-                if proc.returncode != 0:
-                    self.debug(f"Command stderr: {proc.stderr} in Observatory run attempt")
-                    return self.get_result_dict(
-                        disposition="fail",
-                        results=proc.stderr.strip()
-                    )
+                # Read the output file
+                with open(output_file, "r") as f:
+                    results = json.load(f)
 
-            # Read the output file
-            with open(output_file, "r") as f:
-                results = json.load(f)
+                return self.get_result_dict(
+                    disposition="success",
+                    results=results,
+                    timestamp=timestamp
+                )
 
-            return self.get_result_dict(
-                disposition="success",
-                results=results,
-                timestamp=timestamp
-            )
-
-        except Exception as e:
-            return self.get_result_dict(
-                disposition="fail",
-                results=str(e)
-            )
+            except subprocess.TimeoutExpired:
+                last_error = f"Command timed out after {self.timeout} seconds"
+                self.debug(f"{last_error} (attempt {attempt + 1})")
+                if attempt < self.retry_attempts - 1:
+                    continue  # Retry
+                return self.get_result_dict(
+                    disposition="fail",
+                    results=last_error
+                )
+            except Exception as e:
+                last_error = str(e)
+                self.debug(f"Execution error (attempt {attempt + 1}): {last_error}")
+                if attempt < self.retry_attempts - 1:
+                    continue  # Retry
+                return self.get_result_dict(
+                    disposition="fail",
+                    results=last_error
+                )
+        
+        # Should not reach here, but just in case
+        return self.get_result_dict(
+            disposition="fail",
+            results=last_error or "Unknown error"
+        )
 
     def post_process(self, raw_output, output_dir):
         """

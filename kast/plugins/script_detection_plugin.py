@@ -15,15 +15,69 @@ from pprint import pformat
 
 class ScriptDetectionPlugin(KastPlugin):
     priority = 10  # Run after Observatory (priority 5)
+    
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "Script Detection Configuration",
+        "description": "Settings for external JavaScript detection and analysis",
+        "properties": {
+            "request_timeout": {
+                "type": "integer",
+                "default": 30,
+                "minimum": 5,
+                "maximum": 120,
+                "description": "HTTP request timeout in seconds"
+            },
+            "user_agent": {
+                "type": "string",
+                "default": "KAST-Security-Scanner/1.0",
+                "description": "User-Agent string for HTTP requests"
+            },
+            "verify_ssl": {
+                "type": "boolean",
+                "default": True,
+                "description": "Verify SSL certificates when making HTTPS requests"
+            },
+            "follow_redirects": {
+                "type": "boolean",
+                "default": True,
+                "description": "Follow HTTP redirects when fetching target"
+            },
+            "max_redirects": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 0,
+                "maximum": 30,
+                "description": "Maximum number of redirects to follow"
+            },
+            "max_scripts_to_analyze": {
+                "type": ["integer", "null"],
+                "default": None,
+                "minimum": 1,
+                "description": "Maximum number of scripts to analyze (null for unlimited)"
+            },
+            "custom_headers": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "default": {},
+                "description": "Custom HTTP headers to include in requests"
+            }
+        }
+    }
 
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "script_detection"
         self.display_name = "External Script Detection"
         self.description = "Detects and analyzes external JavaScript files loaded by the target."
         self.website_url = "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script"
         self.scan_type = "passive"
         self.output_type = "stdout"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
         
         # Dependency: wait for Observatory to complete for correlation
         self.dependencies = [
@@ -32,6 +86,20 @@ class ScriptDetectionPlugin(KastPlugin):
                 'condition': lambda result: result.get('disposition') in ['success', 'fail']
             }
         ]
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.request_timeout = self.get_config('request_timeout', 30)
+        self.user_agent = self.get_config('user_agent', 'KAST-Security-Scanner/1.0')
+        self.verify_ssl = self.get_config('verify_ssl', True)
+        self.follow_redirects = self.get_config('follow_redirects', True)
+        self.max_redirects = self.get_config('max_redirects', 10)
+        self.max_scripts_to_analyze = self.get_config('max_scripts_to_analyze', None)
+        self.custom_headers = self.get_config('custom_headers', {})
 
     def setup(self, target, output_dir):
         """Optional setup before run"""
@@ -107,23 +175,34 @@ class ScriptDetectionPlugin(KastPlugin):
 
     def _fetch_html(self, target):
         """
-        Fetch HTML content from target URL.
+        Fetch HTML content from target URL using configured settings.
         Handles http/https protocol prefix.
         """
         # Ensure target has protocol
         if not target.startswith(('http://', 'https://')):
             target = f'https://{target}'
         
+        # Build headers with configured user agent and custom headers
         headers = {
-            'User-Agent': 'KAST-Security-Scanner/1.0'
+            'User-Agent': self.user_agent
         }
         
+        # Add any custom headers from config
+        if self.custom_headers:
+            headers.update(self.custom_headers)
+            self.debug(f"Added custom headers: {list(self.custom_headers.keys())}")
+        
+        self.debug(f"Fetching {target} with timeout={self.request_timeout}s, "
+                  f"verify_ssl={self.verify_ssl}, follow_redirects={self.follow_redirects}")
+        
+        # Make request with configured parameters
         response = requests.get(
             target, 
             headers=headers,
-            timeout=30,
-            verify=True,  # Verify SSL certificates
-            allow_redirects=True
+            timeout=self.request_timeout,
+            verify=self.verify_ssl,
+            allow_redirects=self.follow_redirects,
+            max_redirects=self.max_redirects if self.follow_redirects else 0
         )
         response.raise_for_status()
         return response.text
@@ -131,6 +210,7 @@ class ScriptDetectionPlugin(KastPlugin):
     def _analyze_scripts(self, html_content, target_url):
         """
         Parse HTML and extract script information.
+        Respects max_scripts_to_analyze configuration.
         """
         soup = BeautifulSoup(html_content, 'html.parser')
         
@@ -142,6 +222,12 @@ class ScriptDetectionPlugin(KastPlugin):
         
         # Find all script tags with src attribute
         script_tags = soup.find_all('script', src=True)
+        
+        # Apply max_scripts_to_analyze limit if configured
+        total_found = len(script_tags)
+        if self.max_scripts_to_analyze is not None and total_found > self.max_scripts_to_analyze:
+            self.debug(f"Limiting analysis to {self.max_scripts_to_analyze} scripts (found {total_found} total)")
+            script_tags = script_tags[:self.max_scripts_to_analyze]
         
         scripts = []
         for script in script_tags:
@@ -201,6 +287,9 @@ class ScriptDetectionPlugin(KastPlugin):
             'target_url': target_url,
             'target_origin': target_origin,
             'total_scripts': len(scripts),
+            'total_scripts_found': total_found,  # Total before limit
+            'scripts_analyzed': len(scripts),    # After limit
+            'limited_by_config': self.max_scripts_to_analyze is not None and total_found > self.max_scripts_to_analyze,
             'same_origin_count': len(same_origin_scripts),
             'cross_origin_count': len(cross_origin_scripts),
             'scripts_with_sri': len(scripts_with_sri),
