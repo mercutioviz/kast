@@ -49,6 +49,11 @@ def parse_args():
         help="List all available plugins and exit"
     )
     parser.add_argument(
+        "--show-deps",
+        action="store_true",
+        help="Display plugin dependency tree filtered by scan mode and exit"
+    )
+    parser.add_argument(
         "--run-only",
         type=str,
         help="Run only specified plugins (comma-separated list of plugin names)"
@@ -234,9 +239,25 @@ def main():
         list_plugins()
         sys.exit(0)
 
-    # Set up logging early for config commands
+    # Set up logging early for config commands and show-deps
     setup_logging(args.log_dir, args.verbose)
     log = logging.getLogger("kast")
+    
+    # Handle --show-deps flag
+    if args.show_deps:
+        from kast.utils import show_dependency_tree
+        
+        # Initialize configuration manager
+        config_manager = ConfigManager(cli_args=args, logger=log)
+        config_manager.load(args.config)
+        
+        # Discover plugins
+        plugins = discover_plugins(log)
+        
+        # Generate and display dependency tree
+        tree_output = show_dependency_tree(plugins, args.mode, log, config_manager)
+        console.print(tree_output)
+        sys.exit(0)
     
     # Initialize configuration manager
     config_manager = ConfigManager(cli_args=args, logger=log)

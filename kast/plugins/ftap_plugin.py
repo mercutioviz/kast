@@ -100,7 +100,7 @@ class FtapPlugin(KastPlugin):
         self.display_name = "Find The Admin Panel"  # Human-readable name for reports
         self.description = "Scans target for exposed admin login pages"
         self.website_url = "https://github.com/DV64/Find-The-Admin-Panel"
-        self.scan_type = "active"
+        self.scan_type = "passive"
         self.output_type = "file"
         self.command_executed = None
         
