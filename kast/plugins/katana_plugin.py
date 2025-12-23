@@ -14,15 +14,183 @@ from pprint import pformat
 class KatanaPlugin(KastPlugin):
     priority = 60  # Set plugin run order (lower runs earlier)
     
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "Katana Configuration",
+        "description": "Web crawler configuration",
+        "properties": {
+            "depth": {
+                "type": "integer",
+                "default": 3,
+                "minimum": 1,
+                "maximum": 10,
+                "description": "Maximum depth to crawl"
+            },
+            "js_crawl": {
+                "type": "boolean",
+                "default": False,
+                "description": "Enable endpoint parsing/crawling in JavaScript files"
+            },
+            "crawl_duration": {
+                "type": "integer",
+                "default": 0,
+                "minimum": 0,
+                "description": "Maximum duration to crawl in seconds (0 = no limit)"
+            },
+            "known_files": {
+                "type": "string",
+                "enum": ["", "all", "robotstxt", "sitemapxml"],
+                "default": "",
+                "description": "Enable crawling of known files (requires depth >= 3)"
+            },
+            "automatic_form_fill": {
+                "type": "boolean",
+                "default": False,
+                "description": "Enable automatic form filling (experimental)"
+            },
+            "strategy": {
+                "type": "string",
+                "enum": ["depth-first", "breadth-first"],
+                "default": "depth-first",
+                "description": "Visit strategy for crawling"
+            },
+            "concurrency": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 50,
+                "description": "Number of concurrent fetchers"
+            },
+            "parallelism": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 50,
+                "description": "Number of concurrent inputs to process"
+            },
+            "rate_limit": {
+                "type": "integer",
+                "default": 150,
+                "minimum": 1,
+                "maximum": 500,
+                "description": "Maximum requests per second"
+            },
+            "delay": {
+                "type": "integer",
+                "default": 0,
+                "minimum": 0,
+                "maximum": 60,
+                "description": "Request delay in seconds between each request"
+            },
+            "timeout": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 5,
+                "maximum": 300,
+                "description": "Request timeout in seconds"
+            },
+            "retry": {
+                "type": "integer",
+                "default": 1,
+                "minimum": 0,
+                "maximum": 5,
+                "description": "Number of times to retry failed requests"
+            },
+            "proxy": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": "HTTP/SOCKS5 proxy to use (e.g., http://proxy:8080)"
+            },
+            "field_scope": {
+                "type": "string",
+                "enum": ["dn", "rdn", "fqdn"],
+                "default": "rdn",
+                "description": "Scope field for crawling (dn=domain, rdn=root domain, fqdn=full domain)"
+            },
+            "headless": {
+                "type": "boolean",
+                "default": False,
+                "description": "Enable headless browser crawling (experimental)"
+            },
+            "xhr_extraction": {
+                "type": "boolean",
+                "default": False,
+                "description": "Extract XHR request URLs in headless mode"
+            },
+            "extension_filter": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+                "description": "Filter out URLs with these extensions (e.g., png, css, jpg)"
+            },
+            "omit_body": {
+                "type": "boolean",
+                "default": True,
+                "description": "Omit response body from output (saves space)"
+            }
+        }
+    }
+    
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "katana"
         self.description = "Site crawler and URL finder."
         self.display_name = "Katana"
         self.website_url = "https://github.com/projectdiscovery/katana"
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
+        
         self.command_executed = None  # Store the command for reporting
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.depth = self.get_config('depth', 3)
+        self.js_crawl = self.get_config('js_crawl', False)
+        self.crawl_duration = self.get_config('crawl_duration', 0)
+        self.known_files = self.get_config('known_files', "")
+        self.automatic_form_fill = self.get_config('automatic_form_fill', False)
+        self.strategy = self.get_config('strategy', "depth-first")
+        self.concurrency = self.get_config('concurrency', 10)
+        self.parallelism = self.get_config('parallelism', 10)
+        self.rate_limit = self.get_config('rate_limit', 150)
+        self.delay = self.get_config('delay', 0)
+        self.timeout = self.get_config('timeout', 10)
+        self.retry = self.get_config('retry', 1)
+        self.proxy = self.get_config('proxy', None)
+        self.field_scope = self.get_config('field_scope', "rdn")
+        self.headless = self.get_config('headless', False)
+        self.xhr_extraction = self.get_config('xhr_extraction', False)
+        self.extension_filter = self.get_config('extension_filter', [])
+        self.omit_body = self.get_config('omit_body', True)
+        
+        self.debug(f"Katana config loaded: "
+                  f"depth={self.depth}, "
+                  f"js_crawl={self.js_crawl}, "
+                  f"duration={self.crawl_duration}s, "
+                  f"known_files='{self.known_files or '(none)'}', "
+                  f"form_fill={self.automatic_form_fill}, "
+                  f"strategy={self.strategy}, "
+                  f"concurrency={self.concurrency}, "
+                  f"parallelism={self.parallelism}, "
+                  f"rate_limit={self.rate_limit}/s, "
+                  f"delay={self.delay}s, "
+                  f"timeout={self.timeout}s, "
+                  f"retry={self.retry}, "
+                  f"proxy={'(set)' if self.proxy else '(none)'}, "
+                  f"field_scope={self.field_scope}, "
+                  f"headless={self.headless}, "
+                  f"xhr={self.xhr_extraction}, "
+                  f"ext_filter={self.extension_filter or '(none)'}, "
+                  f"omit_body={self.omit_body}")
 
     def is_available(self):
         """
@@ -37,15 +205,71 @@ class KatanaPlugin(KastPlugin):
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "katana.txt")
         
-        cmd = [
-            "katana",
-            "-silent",
-            "-u", target,
-            "-ob",
-            "-rl", "15",
-            "-fs", "fqdn",
-            "-o", output_file
-        ]
+        # Build command dynamically based on configuration
+        cmd = ["katana", "-silent", "-u", target]
+        
+        # Add crawl configuration
+        if self.depth != 3:  # Only add if different from default
+            cmd.extend(["-d", str(self.depth)])
+        
+        if self.js_crawl:
+            cmd.append("-jc")
+        
+        if self.crawl_duration > 0:
+            cmd.extend(["-ct", f"{self.crawl_duration}s"])
+        
+        if self.known_files:
+            cmd.extend(["-kf", self.known_files])
+        
+        if self.automatic_form_fill:
+            cmd.append("-aff")
+        
+        if self.strategy != "depth-first":  # Only add if not default
+            cmd.extend(["-s", self.strategy])
+        
+        # Add rate limiting and concurrency
+        if self.concurrency != 10:  # Only add if different from default
+            cmd.extend(["-c", str(self.concurrency)])
+        
+        if self.parallelism != 10:  # Only add if different from default
+            cmd.extend(["-p", str(self.parallelism)])
+        
+        if self.rate_limit != 150:  # Only add if different from default
+            cmd.extend(["-rl", str(self.rate_limit)])
+        
+        if self.delay > 0:
+            cmd.extend(["-rd", str(self.delay)])
+        
+        # Add network configuration
+        if self.timeout != 10:  # Only add if different from default
+            cmd.extend(["-timeout", str(self.timeout)])
+        
+        if self.retry != 1:  # Only add if different from default
+            cmd.extend(["-retry", str(self.retry)])
+        
+        if self.proxy:
+            cmd.extend(["-proxy", self.proxy])
+        
+        # Add scope configuration
+        if self.field_scope != "rdn":  # Only add if different from default
+            cmd.extend(["-fs", self.field_scope])
+        
+        # Add headless options
+        if self.headless:
+            cmd.append("-hl")
+        
+        if self.xhr_extraction:
+            cmd.append("-xhr")
+        
+        # Add filtering options
+        if self.extension_filter:
+            cmd.extend(["-ef", ",".join(self.extension_filter)])
+        
+        # Add output options
+        cmd.extend(["-o", output_file])
+        
+        if self.omit_body:
+            cmd.append("-ob")
 
         if getattr(self.cli_args, "verbose", False):
             cmd.insert(1, "-v")
@@ -450,19 +674,96 @@ class KatanaPlugin(KastPlugin):
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what this plugin would do in a real run.
+        Builds the actual command with current configuration.
         """
         output_file = os.path.join(output_dir, "katana.txt")
-        cmd = [
-            "katana",
-            "-silent",
-            "-u", target,
-            "-ob",
-            "-rl", "15",
-            "-fs", "fqdn",
-            "-o", output_file
-        ]
+        
+        # Build command with current configuration (same as run() method)
+        cmd = ["katana", "-silent", "-u", target]
+        
+        # Add crawl configuration
+        if self.depth != 3:
+            cmd.extend(["-d", str(self.depth)])
+        
+        if self.js_crawl:
+            cmd.append("-jc")
+        
+        if self.crawl_duration > 0:
+            cmd.extend(["-ct", f"{self.crawl_duration}s"])
+        
+        if self.known_files:
+            cmd.extend(["-kf", self.known_files])
+        
+        if self.automatic_form_fill:
+            cmd.append("-aff")
+        
+        if self.strategy != "depth-first":
+            cmd.extend(["-s", self.strategy])
+        
+        # Add rate limiting and concurrency
+        if self.concurrency != 10:
+            cmd.extend(["-c", str(self.concurrency)])
+        
+        if self.parallelism != 10:
+            cmd.extend(["-p", str(self.parallelism)])
+        
+        if self.rate_limit != 150:
+            cmd.extend(["-rl", str(self.rate_limit)])
+        
+        if self.delay > 0:
+            cmd.extend(["-rd", str(self.delay)])
+        
+        # Add network configuration
+        if self.timeout != 10:
+            cmd.extend(["-timeout", str(self.timeout)])
+        
+        if self.retry != 1:
+            cmd.extend(["-retry", str(self.retry)])
+        
+        if self.proxy:
+            cmd.extend(["-proxy", self.proxy])
+        
+        # Add scope configuration
+        if self.field_scope != "rdn":
+            cmd.extend(["-fs", self.field_scope])
+        
+        # Add headless options
+        if self.headless:
+            cmd.append("-hl")
+        
+        if self.xhr_extraction:
+            cmd.append("-xhr")
+        
+        # Add filtering options
+        if self.extension_filter:
+            cmd.extend(["-ef", ",".join(self.extension_filter)])
+        
+        # Add output options
+        cmd.extend(["-o", output_file])
+        
+        if self.omit_body:
+            cmd.append("-ob")
+        
+        # Build operations description with config values
+        operations_parts = []
+        operations_parts.append(f"depth: {self.depth}")
+        
+        if self.js_crawl:
+            operations_parts.append("JS crawling")
+        
+        if self.headless:
+            operations_parts.append("headless mode")
+        
+        operations_parts.append(f"rate: {self.rate_limit}/s")
+        operations_parts.append(f"timeout: {self.timeout}s")
+        
+        if self.extension_filter:
+            operations_parts.append(f"filtering: {', '.join(self.extension_filter)}")
+        
+        operations_desc = f"Web crawling ({', '.join(operations_parts)})"
         
         return {
             "commands": [' '.join(cmd)],
-            "description": self.description
+            "description": self.description,
+            "operations": operations_desc
         }

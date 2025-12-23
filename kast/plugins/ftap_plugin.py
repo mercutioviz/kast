@@ -20,17 +20,126 @@ from pprint import pformat
 
 class FtapPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
+    
+    # Configuration schema for FTAP
+    config_schema = {
+        "type": "object",
+        "title": "FTAP Configuration",
+        "description": "Configuration for Find The Admin Panel plugin",
+        "properties": {
+            "detection_mode": {
+                "type": "string",
+                "title": "Detection Mode",
+                "description": "Scanning strategy: simple (basic), stealth (careful), or aggressive (fast)",
+                "enum": ["simple", "stealth", "aggressive"],
+                "default": "stealth"
+            },
+            "wordlist_path": {
+                "type": "string",
+                "title": "Custom Wordlist Path",
+                "description": "Path to custom wordlist file for admin path discovery",
+                "default": None
+            },
+            "update_wordlist": {
+                "type": "boolean",
+                "title": "Update Wordlist",
+                "description": "Update wordlists with latest admin paths before scanning",
+                "default": False
+            },
+            "wordlist_source": {
+                "type": "string",
+                "title": "Wordlist Update Source",
+                "description": "Source URL for wordlist updates (requires update_wordlist=true)",
+                "default": None
+            },
+            "machine_learning": {
+                "type": "boolean",
+                "title": "Machine Learning Detection",
+                "description": "Enable ML-based admin panel detection (experimental)",
+                "default": False
+            },
+            "fuzzing": {
+                "type": "boolean",
+                "title": "Path Fuzzing",
+                "description": "Enable path fuzzing capabilities for discovery",
+                "default": False
+            },
+            "http3": {
+                "type": "boolean",
+                "title": "HTTP/3 Support",
+                "description": "Enable HTTP/3 protocol support",
+                "default": False
+            },
+            "concurrency": {
+                "type": "integer",
+                "title": "Concurrent Requests",
+                "description": "Maximum number of concurrent requests",
+                "minimum": 1,
+                "maximum": 200,
+                "default": None
+            },
+            "export_format": {
+                "type": "string",
+                "title": "Export Format",
+                "description": "Output format for results",
+                "enum": ["json", "html", "csv", "txt"],
+                "default": "json"
+            },
+            "interactive": {
+                "type": "boolean",
+                "title": "Interactive Mode",
+                "description": "Run in interactive mode (prompts for input)",
+                "default": False
+            }
+        }
+    }
 
     def __init__(self, cli_args, config_manager=None):
+        self.name = "ftap"  # Set name before calling parent __init__
         super().__init__(cli_args, config_manager)
-        self.name = "ftap"
         self.display_name = "Find The Admin Panel"  # Human-readable name for reports
         self.description = "Scans target for exposed admin login pages"
-        self.website_url = "https://github.com/DV64/Find-The-Admin-Panel"  # Replace with actual website
-        self.description = "Scans target for exposed admin login pages"
-        self.scan_type = "passive"  # or "active"
-        self.output_type = "file"    # or "stdout"
-        self.command_executed = None 
+        self.website_url = "https://github.com/DV64/Find-The-Admin-Panel"
+        self.scan_type = "active"
+        self.output_type = "file"
+        self.command_executed = None
+        
+        # Load plugin configuration values into instance variables
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """
+        Load configuration values from ConfigManager.
+        Sets instance variables for all configurable options.
+        """
+        # Detection settings
+        self.detection_mode = self.get_config("detection_mode", "stealth")
+        self.machine_learning = self.get_config("machine_learning", False)
+        self.fuzzing = self.get_config("fuzzing", False)
+        self.http3 = self.get_config("http3", False)
+        
+        # Wordlist settings
+        self.wordlist_path = self.get_config("wordlist_path", None)
+        self.update_wordlist = self.get_config("update_wordlist", False)
+        self.wordlist_source = self.get_config("wordlist_source", None)
+        
+        # Performance settings
+        self.concurrency = self.get_config("concurrency", None)
+        
+        # Output settings
+        self.export_format = self.get_config("export_format", "json")
+        self.interactive = self.get_config("interactive", False)
+        
+        # Debug log configuration
+        self.debug(f"FTAP configuration loaded:")
+        self.debug(f"  detection_mode: {self.detection_mode}")
+        self.debug(f"  machine_learning: {self.machine_learning}")
+        self.debug(f"  fuzzing: {self.fuzzing}")
+        self.debug(f"  http3: {self.http3}")
+        self.debug(f"  wordlist_path: {self.wordlist_path}")
+        self.debug(f"  update_wordlist: {self.update_wordlist}")
+        self.debug(f"  concurrency: {self.concurrency}")
+        self.debug(f"  export_format: {self.export_format}")
 
     def setup(self, target, output_dir):
         """
@@ -49,23 +158,66 @@ class FtapPlugin(KastPlugin):
     def run(self, target, output_dir, report_only):
         """
         Run the tool and return standardized result dict.
+        Builds command dynamically based on configuration.
         """
         self.setup(target, output_dir)
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
-        output_file = os.path.join(output_dir, f"{self.name}.json")
         
-        # Example command structure
-        cmd = [
-            "ftap",
-            "--url", target,
-            "--detection-mode", "stealth",
-            "-d", str(output_dir),
-            "-e", "json",
-            "-f", "ftap.json"
-        ]
+        # Determine output filename based on export format
+        if self.export_format == "json":
+            output_filename = "ftap.json"
+        elif self.export_format == "html":
+            output_filename = "ftap.html"
+        elif self.export_format == "csv":
+            output_filename = "ftap.csv"
+        else:  # txt
+            output_filename = "ftap.txt"
+        
+        output_file = os.path.join(output_dir, output_filename)
+        
+        # Build command dynamically based on configuration
+        cmd = ["ftap", "--url", target]
+        
+        # Add detection mode
+        cmd.extend(["--detection-mode", self.detection_mode])
+        
+        # Add output directory and format
+        cmd.extend(["-d", str(output_dir)])
+        cmd.extend(["-e", self.export_format])
+        cmd.extend(["-f", output_filename])
+        
+        # Add wordlist if specified
+        if self.wordlist_path:
+            cmd.extend(["-w", self.wordlist_path])
+        
+        # Add wordlist update if enabled
+        if self.update_wordlist:
+            cmd.append("--update-wordlist")
+            if self.wordlist_source:
+                cmd.extend(["--source", self.wordlist_source])
+        
+        # Add advanced features
+        if self.machine_learning:
+            cmd.append("--machine-learning")
+        
+        if self.fuzzing:
+            cmd.append("--fuzzing")
+        
+        if self.http3:
+            cmd.append("--http3")
+        
+        # Add concurrency if specified
+        if self.concurrency is not None:
+            cmd.extend(["--concurrency", str(self.concurrency)])
+        
+        # Add interactive mode if enabled
+        if self.interactive:
+            cmd.append("-i")
 
         # Store command for reporting
         self.command_executed = ' '.join(cmd)
+        
+        self.debug(f"Built FTAP command: {self.command_executed}")
 
         # Check if tool is available
         if not self.is_available():
@@ -77,12 +229,28 @@ class FtapPlugin(KastPlugin):
 
         try:
             if report_only:
-                self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
-                # In report-only mode, you might load existing results
-                # or return a placeholder
+                self.debug(f"[REPORT ONLY] Would run command: {self.command_executed}")
+                # In report-only mode, try to load existing results
+                if os.path.exists(output_file):
+                    with open(output_file, "r") as f:
+                        if self.export_format == "json":
+                            results = json.load(f)
+                        else:
+                            results = f.read()
+                    return self.get_result_dict(
+                        disposition="success",
+                        results=results,
+                        timestamp=timestamp
+                    )
+                else:
+                    return self.get_result_dict(
+                        disposition="fail",
+                        results="No existing results found for report-only mode.",
+                        timestamp=timestamp
+                    )
             else:
-                # Create empty ftap.json file first, so that kast-web knows we are running
-                in_progress_file = os.path.join(output_dir, "ftap.json")
+                # Create empty output file first, so that kast-web knows we are running
+                in_progress_file = os.path.join(output_dir, output_filename)
                 open(in_progress_file, 'a').close()
 
                 # Execute the command
@@ -96,7 +264,10 @@ class FtapPlugin(KastPlugin):
 
             # Load results from output file
             with open(output_file, "r") as f:
-                results = json.load(f)
+                if self.export_format == "json":
+                    results = json.load(f)
+                else:
+                    results = f.read()
 
             return self.get_result_dict(
                 disposition="success",
@@ -508,17 +679,73 @@ class FtapPlugin(KastPlugin):
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what this plugin would do in a real run.
+        Builds command using current configuration.
         """
-        cmd = [
-            "ftap",
-            "--url", target,
-            "--detection-mode", "stealth",
-            "-d", str(output_dir),
-            "-e", "json",
-            "-f", "ftap.json"
-        ]
+        # Determine output filename based on export format
+        if self.export_format == "json":
+            output_filename = "ftap.json"
+        elif self.export_format == "html":
+            output_filename = "ftap.html"
+        elif self.export_format == "csv":
+            output_filename = "ftap.csv"
+        else:  # txt
+            output_filename = "ftap.txt"
+        
+        # Build command dynamically based on configuration
+        cmd = ["ftap", "--url", target]
+        
+        # Add detection mode
+        cmd.extend(["--detection-mode", self.detection_mode])
+        
+        # Add output directory and format
+        cmd.extend(["-d", str(output_dir)])
+        cmd.extend(["-e", self.export_format])
+        cmd.extend(["-f", output_filename])
+        
+        # Add wordlist if specified
+        if self.wordlist_path:
+            cmd.extend(["-w", self.wordlist_path])
+        
+        # Add wordlist update if enabled
+        if self.update_wordlist:
+            cmd.append("--update-wordlist")
+            if self.wordlist_source:
+                cmd.extend(["--source", self.wordlist_source])
+        
+        # Add advanced features
+        if self.machine_learning:
+            cmd.append("--machine-learning")
+        
+        if self.fuzzing:
+            cmd.append("--fuzzing")
+        
+        if self.http3:
+            cmd.append("--http3")
+        
+        # Add concurrency if specified
+        if self.concurrency is not None:
+            cmd.extend(["--concurrency", str(self.concurrency)])
+        
+        # Add interactive mode if enabled
+        if self.interactive:
+            cmd.append("-i")
+        
+        # Build operations description
+        operations = f"Scan for admin panels using {self.detection_mode} mode"
+        
+        if self.machine_learning:
+            operations += " with machine learning detection"
+        if self.fuzzing:
+            operations += " and path fuzzing"
+        if self.http3:
+            operations += ", HTTP/3 support enabled"
+        if self.concurrency:
+            operations += f", concurrency: {self.concurrency}"
+        if self.wordlist_path:
+            operations += f", custom wordlist: {self.wordlist_path}"
         
         return {
             "commands": [' '.join(cmd)],
-            "description": self.description
+            "description": self.description,
+            "operations": operations
         }
