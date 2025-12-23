@@ -14,15 +14,124 @@ from pprint import pformat
 class SubfinderPlugin(KastPlugin):
     priority = 10  # Set plugin run order (lower runs earlier)
     
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "Subfinder Configuration",
+        "description": "Subdomain discovery configuration",
+        "properties": {
+            "sources": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+                "description": "Specific sources to use (e.g., crtsh, github). Empty = use defaults"
+            },
+            "exclude_sources": {
+                "type": "array",
+                "items": {"type": "string"},
+                "default": [],
+                "description": "Sources to exclude from enumeration"
+            },
+            "use_all_sources": {
+                "type": "boolean",
+                "default": False,
+                "description": "Use all available sources (slower but more comprehensive)"
+            },
+            "recursive_only": {
+                "type": "boolean",
+                "default": False,
+                "description": "Use only sources that can handle subdomains recursively"
+            },
+            "rate_limit": {
+                "type": "integer",
+                "default": 0,
+                "minimum": 0,
+                "description": "Maximum HTTP requests per second (0 = no limit)"
+            },
+            "timeout": {
+                "type": "integer",
+                "default": 30,
+                "minimum": 5,
+                "maximum": 300,
+                "description": "Seconds to wait before timing out"
+            },
+            "max_time": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 60,
+                "description": "Minutes to wait for enumeration results"
+            },
+            "concurrent_goroutines": {
+                "type": "integer",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Number of concurrent goroutines for resolving"
+            },
+            "proxy": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": "HTTP proxy URL (e.g., http://proxy:8080)"
+            },
+            "collect_sources": {
+                "type": "boolean",
+                "default": True,
+                "description": "Include source information in JSON output"
+            },
+            "active_only": {
+                "type": "boolean",
+                "default": False,
+                "description": "Display only active subdomains (requires DNS resolution)"
+            }
+        }
+    }
+    
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "subfinder"
         self.description = "Subdomain finder."
         self.display_name = "Subfinder"
         self.website_url = "https://github.com/projectdiscovery/subfinder"
         self.scan_type = "passive"  # or "active"
         self.output_type = "file"    # or "stdout"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
+        
         self.command_executed = None  # Store the command for reporting
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.sources = self.get_config('sources', [])
+        self.exclude_sources = self.get_config('exclude_sources', [])
+        self.use_all_sources = self.get_config('use_all_sources', False)
+        self.recursive_only = self.get_config('recursive_only', False)
+        self.rate_limit = self.get_config('rate_limit', 0)
+        self.timeout = self.get_config('timeout', 30)
+        self.max_time = self.get_config('max_time', 10)
+        self.concurrent_goroutines = self.get_config('concurrent_goroutines', 10)
+        self.proxy = self.get_config('proxy', None)
+        self.collect_sources = self.get_config('collect_sources', True)
+        self.active_only = self.get_config('active_only', False)
+        
+        self.debug(f"Subfinder config loaded: "
+                  f"sources={self.sources or '(default)'}, "
+                  f"exclude_sources={self.exclude_sources or '(none)'}, "
+                  f"use_all={self.use_all_sources}, "
+                  f"recursive_only={self.recursive_only}, "
+                  f"rate_limit={self.rate_limit}, "
+                  f"timeout={self.timeout}s, "
+                  f"max_time={self.max_time}m, "
+                  f"concurrent={self.concurrent_goroutines}, "
+                  f"proxy={'(set)' if self.proxy else '(none)'}, "
+                  f"collect_sources={self.collect_sources}, "
+                  f"active_only={self.active_only}")
 
     def is_available(self):
         """
@@ -36,12 +145,52 @@ class SubfinderPlugin(KastPlugin):
         """
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "subfinder_tmp.json")
-        cmd = [
-            "subfinder",
-            "-d", target,
-            "-o", output_file,
-            "-json"
-        ]
+        
+        # Build command dynamically based on configuration
+        cmd = ["subfinder", "-d", target]
+        
+        # Add source control options
+        if self.sources:
+            cmd.extend(["-s", ",".join(self.sources)])
+        
+        if self.exclude_sources:
+            cmd.extend(["-es", ",".join(self.exclude_sources)])
+        
+        if self.use_all_sources:
+            cmd.append("-all")
+        
+        if self.recursive_only:
+            cmd.append("-recursive")
+        
+        # Add rate limiting and performance options
+        if self.rate_limit > 0:
+            cmd.extend(["-rl", str(self.rate_limit)])
+        
+        if self.concurrent_goroutines != 10:  # Only add if different from default
+            cmd.extend(["-t", str(self.concurrent_goroutines)])
+        
+        # Add timeout options
+        if self.timeout != 30:  # Only add if different from default
+            cmd.extend(["-timeout", str(self.timeout)])
+        
+        if self.max_time != 10:  # Only add if different from default
+            cmd.extend(["-max-time", str(self.max_time)])
+        
+        # Add proxy if configured
+        if self.proxy:
+            cmd.extend(["-proxy", self.proxy])
+        
+        # Add output options
+        cmd.extend(["-o", output_file])
+        
+        if self.collect_sources:
+            cmd.append("-cs")
+        
+        if self.active_only:
+            cmd.append("-nW")
+        
+        # Always use JSON output
+        cmd.append("-oJ")
 
         if getattr(self.cli_args, "verbose", False):
             cmd.insert(1, "-v")
@@ -667,16 +816,74 @@ class SubfinderPlugin(KastPlugin):
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what this plugin would do in a real run.
+        Builds the actual command with current configuration.
         """
         output_file = os.path.join(output_dir, "subfinder_tmp.json")
-        cmd = [
-            "subfinder",
-            "-d", target,
-            "-o", output_file,
-            "-json"
-        ]
+        
+        # Build command with current configuration (same as run() method)
+        cmd = ["subfinder", "-d", target]
+        
+        # Add source control options
+        if self.sources:
+            cmd.extend(["-s", ",".join(self.sources)])
+        
+        if self.exclude_sources:
+            cmd.extend(["-es", ",".join(self.exclude_sources)])
+        
+        if self.use_all_sources:
+            cmd.append("-all")
+        
+        if self.recursive_only:
+            cmd.append("-recursive")
+        
+        # Add rate limiting and performance options
+        if self.rate_limit > 0:
+            cmd.extend(["-rl", str(self.rate_limit)])
+        
+        if self.concurrent_goroutines != 10:
+            cmd.extend(["-t", str(self.concurrent_goroutines)])
+        
+        # Add timeout options
+        if self.timeout != 30:
+            cmd.extend(["-timeout", str(self.timeout)])
+        
+        if self.max_time != 10:
+            cmd.extend(["-max-time", str(self.max_time)])
+        
+        # Add proxy if configured
+        if self.proxy:
+            cmd.extend(["-proxy", self.proxy])
+        
+        # Add output options
+        cmd.extend(["-o", output_file])
+        
+        if self.collect_sources:
+            cmd.append("-cs")
+        
+        if self.active_only:
+            cmd.append("-nW")
+        
+        cmd.append("-oJ")
+        
+        # Build operations description with config values
+        operations_parts = []
+        if self.sources:
+            operations_parts.append(f"sources: {', '.join(self.sources)}")
+        elif self.use_all_sources:
+            operations_parts.append("all sources")
+        else:
+            operations_parts.append("default sources")
+        
+        if self.rate_limit > 0:
+            operations_parts.append(f"rate limit: {self.rate_limit}/s")
+        
+        operations_parts.append(f"timeout: {self.timeout}s")
+        operations_parts.append(f"max time: {self.max_time}m")
+        
+        operations_desc = f"Subdomain enumeration ({', '.join(operations_parts)})"
         
         return {
             "commands": [' '.join(cmd)],
-            "description": self.description
+            "description": self.description,
+            "operations": operations_desc
         }
