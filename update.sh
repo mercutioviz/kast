@@ -539,9 +539,9 @@ validate_git_repository() {
         fi
     fi
     
-    # Get version from kast/main.py (single source of truth)
-    if [[ -f "$GIT_DIR/kast/main.py" ]]; then
-        NEW_VERSION=$(grep "^KAST_VERSION = " "$GIT_DIR/kast/main.py" | cut -d'"' -f2)
+    # Get version from VERSION file (single source of truth)
+    if [[ -f "$GIT_DIR/VERSION" ]]; then
+        NEW_VERSION=$(cat "$GIT_DIR/VERSION" | tr -d '[:space:]')
     else
         log_warning "Could not determine new version from git repository"
         NEW_VERSION="unknown"
