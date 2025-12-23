@@ -13,16 +13,84 @@ from pprint import pformat
 
 class Wafw00fPlugin(KastPlugin):
     priority = 10  # High priority (lower number = higher priority)
+    
+    # Configuration schema for kast-web integration
+    config_schema = {
+        "type": "object",
+        "title": "Wafw00f Configuration",
+        "description": "Web Application Firewall detection configuration",
+        "properties": {
+            "find_all": {
+                "type": "boolean",
+                "default": True,
+                "description": "Find all WAFs matching signatures (use -a flag)"
+            },
+            "verbosity": {
+                "type": "integer",
+                "default": 3,
+                "minimum": 0,
+                "maximum": 3,
+                "description": "Verbosity level (0=quiet, 3=maximum)"
+            },
+            "follow_redirects": {
+                "type": "boolean",
+                "default": True,
+                "description": "Follow HTTP redirections"
+            },
+            "timeout": {
+                "type": "integer",
+                "default": 30,
+                "minimum": 5,
+                "maximum": 120,
+                "description": "Request timeout in seconds"
+            },
+            "proxy": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": "HTTP/SOCKS proxy URL (e.g., http://hostname:8080)"
+            },
+            "test_specific_waf": {
+                "type": ["string", "null"],
+                "default": None,
+                "description": "Test for specific WAF only (e.g., 'Cloudflare')"
+            }
+        }
+    }
 
     def __init__(self, cli_args, config_manager=None):
-        super().__init__(cli_args, config_manager)
+        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
+        # so that schema registration uses the correct plugin name
         self.name = "wafw00f"
         self.display_name = "Wafw00f"
         self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
         self.website_url = "https://github.com/EnableSecurity/wafw00f"
         self.scan_type = "passive"
         self.output_type = "file"
+        
+        # Now call parent init (this will register our schema under correct name)
+        super().__init__(cli_args, config_manager)
+        
         self.command_executed = None  # Store the command for reporting
+        
+        # Load configuration values
+        self._load_plugin_config()
+    
+    def _load_plugin_config(self):
+        """Load configuration with defaults from schema."""
+        # Get config values (defaults from schema if not set)
+        self.find_all = self.get_config('find_all', True)
+        self.verbosity = self.get_config('verbosity', 3)
+        self.follow_redirects = self.get_config('follow_redirects', True)
+        self.timeout = self.get_config('timeout', 30)
+        self.proxy = self.get_config('proxy', None)
+        self.test_specific_waf = self.get_config('test_specific_waf', None)
+        
+        self.debug(f"Wafw00f config loaded: find_all={self.find_all}, "
+                  f"verbosity={self.verbosity}, "
+                  f"follow_redirects={self.follow_redirects}, "
+                  f"timeout={self.timeout}, "
+                  f"proxy={'(set)' if self.proxy else '(none)'}, "
+                  f"test_specific_waf={self.test_specific_waf or '(all)'}")
 
     def setup(self, target, output_dir):
         """
@@ -45,17 +113,38 @@ class Wafw00fPlugin(KastPlugin):
         self.setup(target, output_dir)
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "wafw00f.json")
-        cmd = [
-            "wafw00f",
-            target,
-            "-a",
-            "-vvv",
-            "-f", "json",
-            "-o", output_file
-        ]
+        
+        # Build command dynamically based on configuration
+        cmd = ["wafw00f", target]
+        
+        # Add find all flag if configured
+        if self.find_all:
+            cmd.append("-a")
+        
+        # Add verbosity flags
+        if self.verbosity > 0:
+            cmd.append("-" + "v" * self.verbosity)
+        
+        # Add no-redirect flag if redirects disabled
+        if not self.follow_redirects:
+            cmd.append("-r")
+        
+        # Add timeout if configured
+        if self.timeout:
+            cmd.extend(["-T", str(self.timeout)])
+        
+        # Add proxy if configured
+        if self.proxy:
+            cmd.extend(["-p", self.proxy])
+        
+        # Add specific WAF test if configured
+        if self.test_specific_waf:
+            cmd.extend(["-t", self.test_specific_waf])
+        
+        # Add output format and file
+        cmd.extend(["-f", "json", "-o", output_file])
 
         if getattr(self.cli_args, "verbose", False):
-            #cmd.insert(1, "-v")
             self.debug(f"Running command: {' '.join(cmd)}")
 
         # Store command for reporting
@@ -109,15 +198,28 @@ class Wafw00fPlugin(KastPlugin):
                     
                     self.debug(f"Retrying with HTTP target: {http_target}")
                     
-                    # Update command with HTTP target
-                    http_cmd = [
-                        "wafw00f",
-                        http_target,
-                        "-a",
-                        "-vvv",
-                        "-f", "json",
-                        "-o", output_file
-                    ]
+                    # Rebuild command with HTTP target using same config
+                    http_cmd = ["wafw00f", http_target]
+                    
+                    if self.find_all:
+                        http_cmd.append("-a")
+                    
+                    if self.verbosity > 0:
+                        http_cmd.append("-" + "v" * self.verbosity)
+                    
+                    if not self.follow_redirects:
+                        http_cmd.append("-r")
+                    
+                    if self.timeout:
+                        http_cmd.extend(["-T", str(self.timeout)])
+                    
+                    if self.proxy:
+                        http_cmd.extend(["-p", self.proxy])
+                    
+                    if self.test_specific_waf:
+                        http_cmd.extend(["-t", self.test_specific_waf])
+                    
+                    http_cmd.extend(["-f", "json", "-o", output_file])
                     
                     if getattr(self.cli_args, "verbose", False):
                         self.debug(f"Running HTTP command: {' '.join(http_cmd)}")
@@ -358,18 +460,45 @@ class Wafw00fPlugin(KastPlugin):
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what this plugin would do in a real run.
+        Builds the actual command with current configuration.
         """
         output_file = os.path.join(output_dir, "wafw00f.json")
-        cmd = [
-            "wafw00f",
-            target,
-            "-a",
-            "-vvv",
-            "-f", "json",
-            "-o", output_file
-        ]
+        
+        # Build command with current configuration (same as run() method)
+        cmd = ["wafw00f", target]
+        
+        if self.find_all:
+            cmd.append("-a")
+        
+        if self.verbosity > 0:
+            cmd.append("-" + "v" * self.verbosity)
+        
+        if not self.follow_redirects:
+            cmd.append("-r")
+        
+        if self.timeout:
+            cmd.extend(["-T", str(self.timeout)])
+        
+        if self.proxy:
+            cmd.extend(["-p", self.proxy])
+        
+        if self.test_specific_waf:
+            cmd.extend(["-t", self.test_specific_waf])
+        
+        cmd.extend(["-f", "json", "-o", output_file])
+        
+        # Build operations description with config values
+        operations_parts = []
+        if self.find_all:
+            operations_parts.append("test all WAF signatures")
+        if self.test_specific_waf:
+            operations_parts.append(f"test for {self.test_specific_waf}")
+        operations_parts.append(f"timeout {self.timeout}s")
+        
+        operations_desc = f"WAF detection ({', '.join(operations_parts)})"
         
         return {
             "commands": [' '.join(cmd)],
-            "description": self.description
+            "description": self.description,
+            "operations": operations_desc
         }
