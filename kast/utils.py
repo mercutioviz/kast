@@ -166,7 +166,8 @@ def show_dependency_tree(plugins, scan_mode, log, config_manager=None):
     
     if filtered_out:
         output_lines.append(f"  - Filtered out (mode):      {len(filtered_out)}")
-        output_lines.append(f"    ({', '.join([f'{p['name']} ({p['scan_type']})' for p in filtered_out])})")
+        plugins_str = ', '.join(f"{p['name']} ({p['scan_type']})" for p in filtered_out)
+        output_lines.append(f"    ({plugins_str})")
     
     output_lines.append("="*70)
     output_lines.append("")
