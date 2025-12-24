@@ -455,6 +455,10 @@ class RelatedSitesPlugin(KastPlugin):
                 timestamp
             )
         
+        # Create empty related_sites.json file first, so that kast-web knows we are running
+        in_progress_file = os.path.join(output_dir, "related_sites.json")
+        open(in_progress_file, 'a').close()
+        
         # Step 1: Extract apex domain
         apex_domain = self._extract_apex_domain(target)
         self.debug(f"Target: {target}, Apex: {apex_domain}")
