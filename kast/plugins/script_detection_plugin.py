@@ -145,6 +145,10 @@ class ScriptDetectionPlugin(KastPlugin):
                     results="No existing results found for report-only mode.",
                     timestamp=timestamp
                 )
+        
+        # Create empty script_detection.json file first, so that kast-web knows we are running
+        in_progress_file = os.path.join(output_dir, "script_detection.json")
+        open(in_progress_file, 'a').close()
 
         try:
             # Fetch the HTML
