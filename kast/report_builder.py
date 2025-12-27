@@ -143,6 +143,58 @@ env = Environment(
 template = env.get_template('report_template.html')
 template_pdf = env.get_template('report_template_pdf.html')
 
+def calculate_waf_statistics(all_issues):
+    """
+    Calculate statistics about WAF-addressable issues.
+    
+    Args:
+        all_issues (list): List of issue dictionaries with metadata
+        
+    Returns:
+        dict: Statistics about WAF addressability
+    """
+    total = len(all_issues)
+    if total == 0:
+        return {
+            'total_issues': 0,
+            'waf_addressable_count': 0,
+            'waf_addressable_percentage': 0,
+            'non_waf_count': 0,
+            'high_severity_waf': 0,
+            'medium_severity_waf': 0,
+            'low_severity_waf': 0
+        }
+    
+    waf_addressable = 0
+    high_severity_waf = 0
+    medium_severity_waf = 0
+    low_severity_waf = 0
+    
+    for issue in all_issues:
+        issue_id = issue.get('id')
+        if issue_id:
+            metadata = get_issue_metadata(issue_id)
+            if metadata and metadata.get('waf_addressable', False):
+                waf_addressable += 1
+                severity = issue.get('severity', 'Unknown')
+                if severity == 'High':
+                    high_severity_waf += 1
+                elif severity == 'Medium':
+                    medium_severity_waf += 1
+                elif severity == 'Low':
+                    low_severity_waf += 1
+    
+    return {
+        'total_issues': total,
+        'waf_addressable_count': waf_addressable,
+        'waf_addressable_percentage': round((waf_addressable / total * 100), 1) if total > 0 else 0,
+        'non_waf_count': total - waf_addressable,
+        'high_severity_waf': high_severity_waf,
+        'medium_severity_waf': medium_severity_waf,
+        'low_severity_waf': low_severity_waf
+    }
+
+
 def generate_html_report(plugin_results, output_path='kast_report.html', target=None, logo_path=None):
     """
     Generates an HTML report from plugin results using Jinja2.
@@ -263,12 +315,16 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         "Info": sum(1 for issue in all_issues if issue.get("severity") == "Info"),
     }
     
+    # Calculate WAF statistics
+    waf_stats = calculate_waf_statistics(all_issues)
+    
     # Prepare metadata for report header
     scan_metadata = {
         "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_issues": len(all_issues),
         "total_plugins": len(plugin_results),
-        "severity_counts": severity_counts
+        "severity_counts": severity_counts,
+        "waf_statistics": waf_stats
     }
 
     # Ensure stylesheet is copied into the output directory so the generated HTML can reference it
@@ -553,12 +609,16 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
         "Info": sum(1 for issue in all_issues if issue.get("severity") == "Info"),
     }
     
+    # Calculate WAF statistics
+    waf_stats = calculate_waf_statistics(all_issues)
+    
     # Prepare metadata
     scan_metadata = {
         "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_issues": len(all_issues),
         "total_plugins": len(plugin_results),
-        "severity_counts": severity_counts
+        "severity_counts": severity_counts,
+        "waf_statistics": waf_stats
     }
 
     # Convert images to base64 for embedding

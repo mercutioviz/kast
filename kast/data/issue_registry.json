@@ -4,560 +4,347 @@
     "description": "TLSv1.0 is a deprecated encryption protocol that lacks modern security features.",
     "remediation": "Upgrade to TLSv1.2 or TLSv1.3. A WAF can enforce secure protocols by terminating TLS connections and redirecting traffic through secure channels.",
     "severity": "High",
-    "category": "Encryption"
-  },  
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
   "TLSv1.1": {
     "display_name": "TLSv1.1",
     "description": "TLSv1.1 is a deprecated encryption protocol that lacks modern security features.",
     "remediation": "Upgrade to TLSv1.2 or TLSv1.3. A WAF can enforce secure protocols by terminating TLS connections and redirecting traffic through secure channels.",
     "severity": "Medium",
-    "category": "Encryption"
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "X-Powered-By": {
     "display_name": "X-Powered-By Header",
     "description": "The X-Powered-By header reveals server-side technologies, which can aid attackers in targeting known vulnerabilities.",
     "remediation": "Remove or obfuscate the X-Powered-By header. A WAF can help sanitize HTTP headers before they reach the client.",
     "severity": "Medium",
-    "category": "Information Disclosure"
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "Outdated Apache": {
     "display_name": "Outdated Apache web server",
     "description": "The target is running an outdated version of the Apache web server, which may contain known vulnerabilities.",
     "remediation": "Update to the latest stable version of Apache. A WAF can provide virtual patching to mitigate known exploits until updates are applied.",
     "severity": "High",
-    "category": "Software Version"
+    "category": "Software Version",
+    "waf_addressable": false,
+    "remediation_approach": "infrastructure",
+    "code_fix_timeframe": "N/A",
+    "infrastructure_fix_timeframe": "1-3 days"
   },
   "csp-implemented-with-unsafe-inline": {
     "display_name": "Content Security Policy with unsafe-inline",
     "description": "The Content Security Policy (CSP) allows 'unsafe-inline' scripts or styles, which can expose the application to cross-site scripting (XSS) attacks.",
     "remediation": "Refactor inline scripts and styles to use external resources with integrity checks. A WAF can help mitigate XSS risks by inspecting and filtering malicious payloads in HTTP requests.",
     "severity": "High",
-    "category": "Content Security"
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "4-6 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "sri-not-implemented-but-external-scripts-loaded-securely": {
     "display_name": "Subresource Integrity not implemented",
     "description": "External scripts are loaded over HTTPS but lack Subresource Integrity (SRI) attributes, which help ensure the integrity of third-party resources.",
     "remediation": "Add SRI attributes to all externally loaded scripts and styles. A WAF can monitor and block tampered resources or suspicious third-party requests.",
     "severity": "Medium",
-    "category": "Content Security"
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "3-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "x-frame-options-header-invalid": {
     "display_name": "Invalid X-Frame-Options header",
     "description": "The X-Frame-Options header is present but misconfigured, potentially allowing clickjacking attacks via iframe embedding.",
     "remediation": "Correct the X-Frame-Options header to 'DENY' or 'SAMEORIGIN'. A WAF can enforce proper header policies and block framing attempts from unauthorized sources.",
     "severity": "Medium",
-    "category": "Clickjacking Protection"
-  }
-  ,
+    "category": "Clickjacking Protection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
+  },
   "No WAF Detected": {
     "display_name": "No WAF Detected",
     "description": "No Web Application Firewall (WAF) was detected protecting the target. This may leave the application exposed to a wide range of attacks.",
     "remediation": "Deploy a WAF in front of the application to provide an additional layer of security against common web attacks.",
     "severity": "High",
-    "category": "WAF Detection"
+    "category": "WAF Detection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "WAF Check Inconclusive": {
     "display_name": "WAF Check Inconclusive",
     "description": "The presence of a Web Application Firewall (WAF) could not be reliably determined. This may be due to evasive WAF configurations or network issues.",
     "remediation": "Review network architecture and WAF configuration. Consider using multiple detection methods to confirm WAF presence.",
     "severity": "High",
-    "category": "WAF Detection"
+    "category": "WAF Detection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-session-without-secure-flag": {
     "display_name": "Session Cookie Without Secure Flag",
     "description": "A session cookie is set without the 'Secure' flag, allowing it to be transmitted over unencrypted connections.",
     "remediation": "Set the 'Secure' flag on all session cookies to ensure they are only sent over HTTPS. A WAF can enforce cookie security policies by rewriting cookie headers to include the Secure flag.",
     "severity": "High",
-    "category": "Cookie Security"
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2-3 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-without-secure-flag": {
     "display_name": "Cookie Without Secure Flag",
     "description": "One or more cookies are set without the 'Secure' flag, increasing the risk of interception over unencrypted connections.",
     "remediation": "Set the 'Secure' flag on all cookies to ensure they are only sent over HTTPS. A WAF can enforce cookie security policies by rewriting cookie headers to include the Secure flag.",
     "severity": "Medium",
-    "category": "Cookie Security"
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2-3 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "csp-not-implemented": {
     "display_name": "Content Security Policy Not Implemented",
     "description": "No Content Security Policy (CSP) is present, leaving the application more vulnerable to cross-site scripting (XSS) and other code injection attacks.",
     "remediation": "Implement a strong Content Security Policy header to restrict the sources of scripts, styles, and other resources. A WAF can inject a default Content Security Policy header to provide immediate protection against XSS attacks.",
     "severity": "High",
-    "category": "Content Security"
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "4-6 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "hsts-header-invalid": {
     "display_name": "Invalid HSTS Header",
     "description": "The HTTP Strict Transport Security (HSTS) header is present but misconfigured, which may prevent proper enforcement of HTTPS-only connections.",
     "remediation": "Correct the HSTS header to include a valid 'max-age' and consider adding 'includeSubDomains' and 'preload' directives. A WAF can correct or inject a properly configured HSTS header to enforce secure connections.",
     "severity": "Medium",
-    "category": "Transport Security"
+    "category": "Transport Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "hsts-implemented-max-age-less-than-six-months": {
     "display_name": "HSTS Max-Age Less Than Six Months",
     "description": "The HSTS header is implemented but the 'max-age' value is less than the recommended six months, reducing its effectiveness.",
     "remediation": "Set the HSTS 'max-age' directive to at least 15768000 seconds (six months) for better protection. A WAF can rewrite the HSTS header to enforce a longer max-age value.",
     "severity": "Low",
-    "category": "Transport Security"
+    "category": "Transport Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "hsts-invalid-cert": {
     "display_name": "HSTS with Invalid Certificate",
     "description": "HSTS is enabled but the SSL/TLS certificate is invalid, which can cause browsers to block access and reduce user trust.",
     "remediation": "Ensure a valid, trusted SSL/TLS certificate is installed when using HSTS. A WAF can terminate TLS connections with valid certificates while the backend certificate is being updated.",
     "severity": "High",
-    "category": "Transport Security"
+    "category": "Transport Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "hsts-not-implemented": {
     "display_name": "HSTS Not Implemented",
     "description": "The HTTP Strict Transport Security (HSTS) header is not present, allowing browsers to connect over insecure HTTP.",
     "remediation": "Implement the HSTS header to enforce HTTPS connections and protect against protocol downgrade attacks. A WAF can inject the HSTS header to enforce HTTPS connections and protect against protocol downgrade attacks.",
     "severity": "High",
-    "category": "Transport Security"
+    "category": "Transport Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "redirection-off-host-from-http": {
     "display_name": "Redirection Off-Host from HTTP",
     "description": "HTTP requests are redirected to a different host, which may expose users to phishing or man-in-the-middle attacks.",
     "remediation": "Review and restrict HTTP redirections to trusted hosts only. A WAF can help enforce safe redirection policies.",
     "severity": "Medium",
-    "category": "Redirection"
+    "category": "Redirection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "referrer-policy-unsafe": {
     "display_name": "Unsafe Referrer Policy",
     "description": "The Referrer-Policy header is missing or set to an unsafe value, potentially leaking sensitive information in HTTP requests.",
     "remediation": "Set a strict Referrer-Policy header such as 'no-referrer' or 'strict-origin-when-cross-origin'. A WAF can inject or override the Referrer-Policy header to prevent information leakage.",
     "severity": "Medium",
-    "category": "Information Disclosure"
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "sri-not-implemented-and-external-scripts-not-loaded-securely": {
     "display_name": "SRI Not Implemented and External Scripts Not Loaded Securely",
     "description": "External scripts are loaded without Subresource Integrity (SRI) and not all are loaded over secure (HTTPS) connections, increasing the risk of resource tampering.",
     "remediation": "Load all external scripts over HTTPS and add SRI attributes to ensure resource integrity. A WAF can monitor external script requests and block suspicious or tampered resources.",
     "severity": "High",
-    "category": "Content Security"
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "4-6 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "high-external-script-count": {
     "display_name": "High External Script Count",
     "description": "Website loads an excessive number of external JavaScript files (>10), increasing attack surface, dependency risk, and potential for supply chain attacks.",
     "remediation": "Review and minimize external script dependencies. Bundle scripts when possible, implement SRI for all external scripts, use CSP to restrict script sources, and regularly audit third-party dependencies. A WAF can monitor and enforce policies on external script loading.",
     "severity": "Medium",
-    "category": "Content Security"
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "4-8 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "x-content-type-options-not-implemented": {
     "display_name": "X-Content-Type-Options Not Implemented",
     "description": "The X-Content-Type-Options header is missing, which can allow browsers to perform MIME type sniffing and potentially execute malicious files.",
     "remediation": "Add the X-Content-Type-Options header with the value 'nosniff' to prevent MIME type sniffing. A WAF can inject the X-Content-Type-Options header to prevent MIME type sniffing attacks.",
     "severity": "Medium",
-    "category": "HTTP Headers"
+    "category": "HTTP Headers",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "x-frame-options-not-implemented": {
     "display_name": "X-Frame-Options Not Implemented",
     "description": "The X-Frame-Options header is missing, making the application vulnerable to clickjacking attacks via iframe embedding.",
     "remediation": "Add the X-Frame-Options header with the value 'DENY' or 'SAMEORIGIN' to protect against clickjacking. A WAF can inject the X-Frame-Options header to protect against clickjacking attacks.",
     "severity": "High",
-    "category": "Clickjacking Protection"
+    "category": "Clickjacking Protection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-anticsrf-without-samesite-flag": {
-      "display_name": "Session Cookie Without SameSite Flag",
-      "description": "A session cookie is set without the SameSite attribute, increasing the risk of CSRF attacks.",
-      "remediation": "Set the SameSite attribute to Strict or Lax to restrict cross-site cookie transmission. A WAF can enforce proper cookie attributes by adding the SameSite flag to cookies before they reach the client.",
-      "severity": "High",
-      "category": "Cookie Security"
+    "display_name": "Session Cookie Without SameSite Flag",
+    "description": "A session cookie is set without the SameSite attribute, increasing the risk of CSRF attacks.",
+    "remediation": "Set the SameSite attribute to Strict or Lax to restrict cross-site cookie transmission. A WAF can enforce proper cookie attributes by adding the SameSite flag to cookies before they reach the client.",
+    "severity": "High",
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2-3 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-samesite-flag-invalid": {
-      "display_name": "Invalid SameSite Attribute",
-      "description": "The SameSite attribute is present but misconfigured, which may not effectively prevent CSRF.",
-      "remediation": "Use valid values like Strict, Lax, or None with Secure for cross-site cookies. A WAF can correct invalid SameSite attributes and enforce proper cookie security policies.",
-      "severity": "Medium",
-      "category": "Cookie Security"
+    "display_name": "Invalid SameSite Attribute",
+    "description": "The SameSite attribute is present but misconfigured, which may not effectively prevent CSRF.",
+    "remediation": "Use valid values like Strict, Lax, or None with Secure for cross-site cookies. A WAF can correct invalid SameSite attributes and enforce proper cookie security policies.",
+    "severity": "Medium",
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-session-without-httponly-flag": {
-      "display_name": "Session Cookie Without HttpOnly Flag",
-      "description": "A session cookie is set without the HttpOnly flag, making it accessible via client-side scripts.",
-      "remediation": "Set the HttpOnly flag to prevent access from JavaScript and reduce XSS risks. A WAF can enforce the HttpOnly flag by rewriting cookie headers to prevent client-side script access.",
-      "severity": "High",
-      "category": "Cookie Security"
+    "display_name": "Session Cookie Without HttpOnly Flag",
+    "description": "A session cookie is set without the HttpOnly flag, making it accessible via client-side scripts.",
+    "remediation": "Set the HttpOnly flag to prevent access from JavaScript and reduce XSS risks. A WAF can enforce the HttpOnly flag by rewriting cookie headers to prevent client-side script access.",
+    "severity": "High",
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2-3 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-session-without-secure-flag-but-protected-by-hsts": {
-      "display_name": "Session Cookie Without Secure Flag but Protected by HSTS",
-      "description": "A session cookie lacks the Secure flag but is transmitted over HTTPS due to HSTS.",
-      "remediation": "Set the Secure flag explicitly to ensure cookie transmission only over HTTPS. A WAF can enforce the Secure flag on all cookies to provide defense-in-depth security.",
-      "severity": "Medium",
-      "category": "Cookie Security"
+    "display_name": "Session Cookie Without Secure Flag but Protected by HSTS",
+    "description": "A session cookie lacks the Secure flag but is transmitted over HTTPS due to HSTS.",
+    "remediation": "Set the Secure flag explicitly to ensure cookie transmission only over HTTPS. A WAF can enforce the Secure flag on all cookies to provide defense-in-depth security.",
+    "severity": "Medium",
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cookies-without-secure-flag-but-protected-by-hsts": {
-      "display_name": "Cookie Without Secure Flag but Protected by HSTS",
-      "description": "One or more cookies lack the Secure flag but are protected by HSTS.",
-      "remediation": "Add the Secure flag to all cookies to enforce HTTPS transmission. A WAF can enforce the Secure flag on all cookies to provide additional security assurance.",
-      "severity": "Low",
-      "category": "Cookie Security"
-  },
-  "csp-not-implemented-but-reporting-enabled": {
-      "display_name": "CSP Not Implemented but Reporting Enabled",
-      "description": "CSP reporting is enabled, but no actual policy is enforced, leaving the app vulnerable to XSS.",
-      "remediation": "Implement a strong CSP policy along with reporting to detect and block violations. A WAF can enforce a Content Security Policy while maintaining reporting capabilities to monitor violations.",
-      "severity": "Medium",
-      "category": "Content Security"
-  },
-  "hsts-not-implemented-no-https": {
-      "display_name": "HSTS Not Implemented and No HTTPS",
-      "description": "The site does not use HTTPS and lacks HSTS, exposing users to downgrade and MITM attacks.",
-      "remediation": "Enable HTTPS and implement HSTS to enforce secure connections. A WAF can provide TLS termination and inject HSTS headers to enforce secure connections.",
-      "severity": "High",
-      "category": "Transport Security"
-  },
-  "redirection-missing": {
-      "display_name": "Missing Redirection",
-      "description": "No redirection is configured from HTTP to HTTPS, allowing insecure access.",
-      "remediation": "Configure redirection from HTTP to HTTPS to enforce secure connections. A WAF can enforce automatic redirection from HTTP to HTTPS at the edge.",
-      "severity": "High",
-      "category": "Redirection"
-  },
-  "redirection-not-to-https": {
-      "display_name": "Redirection Not to HTTPS",
-      "description": "Redirection occurs but does not lead to an HTTPS endpoint, risking insecure transmission.",
-      "remediation": "Ensure all redirections lead to HTTPS URLs. A WAF can enforce redirection policies to ensure all traffic is directed to HTTPS endpoints.",
-      "severity": "Medium",
-      "category": "Redirection"
-  },
-  "redirection-not-to-https-on-initial-redirection": {
-      "display_name": "Initial Redirection Not to HTTPS",
-      "description": "The first redirection from HTTP does not lead to HTTPS, exposing initial requests.",
-      "remediation": "Configure initial redirection to point directly to HTTPS. A WAF can enforce initial redirections to HTTPS to protect all client connections from the start.",
-      "severity": "Medium",
-      "category": "Redirection"
-  },
-  "referrer-policy-header-invalid": {
-      "display_name": "Invalid Referrer Policy Header",
-      "description": "The Referrer-Policy header is present but misconfigured, potentially leaking sensitive data.",
-      "remediation": "Use secure values like no-referrer, strict-origin, or strict-origin-when-cross-origin. A WAF can correct invalid Referrer-Policy headers to ensure proper information protection.",
-      "severity": "Medium",
-      "category": "Information Disclosure"
-  },
-  "x-content-type-options-header-invalid": {
-      "display_name": "Invalid X-Content-Type-Options Header",
-      "description": "The X-Content-Type-Options header is present but incorrectly configured, allowing MIME sniffing.",
-      "remediation": "Set the header to nosniff to prevent MIME type sniffing. A WAF can correct the X-Content-Type-Options header to properly prevent MIME sniffing.",
-      "severity": "Medium",
-      "category": "HTTP Headers"
-  },
-  "BREACH": {
-      "display_name": "BREACH Attack Vulnerability",
-      "description": "The server is potentially vulnerable to BREACH attacks due to HTTP compression being enabled. BREACH can exploit compressed HTTPS responses to extract sensitive data.",
-      "remediation": "Disable HTTP compression for sensitive content, implement CSRF tokens with random per-request values, or use length-hiding techniques. A WAF can help mitigate BREACH by disabling compression for sensitive endpoints.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "LUCKY13": {
-      "display_name": "LUCKY13 Vulnerability",
-      "description": "The server uses obsolete TLS CBC ciphers that are potentially vulnerable to LUCKY13 timing attacks.",
-      "remediation": "Disable CBC mode ciphers and prefer AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF with TLS termination can enforce modern cipher suites.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "SWEET32": {
-      "display_name": "SWEET32 Vulnerability",
-      "description": "The server uses 64-bit block ciphers (like 3DES) that are vulnerable to birthday attacks when large amounts of data are encrypted.",
-      "remediation": "Disable 64-bit block ciphers (3DES, Blowfish) and use 128-bit block ciphers or better. A WAF can enforce strong cipher configurations.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "LOGJAM": {
-      "display_name": "LOGJAM Vulnerability",
-      "description": "The server may be vulnerable to LOGJAM attacks due to weak Diffie-Hellman key exchange parameters.",
-      "remediation": "Disable export-grade cipher suites, use DH parameters of at least 2048 bits, or prefer ECDHE over DHE. A WAF can terminate TLS with strong DH parameters.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "LOGJAM-common_primes": {
-      "display_name": "LOGJAM Common Primes",
-      "description": "The server uses common Diffie-Hellman primes that may be vulnerable to pre-computation attacks.",
-      "remediation": "Generate unique DH parameters or use ECDHE key exchange. A WAF can provide TLS termination with strong, unique DH parameters.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "BEAST": {
-      "display_name": "BEAST Attack Vulnerability",
-      "description": "The server supports SSL 3.0 or TLS 1.0 with CBC ciphers, making it vulnerable to BEAST attacks.",
-      "remediation": "Disable SSL 3.0 and TLS 1.0, or at minimum disable CBC ciphers on these protocols. Upgrade to TLS 1.2 or higher. A WAF can enforce modern protocol versions.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "DROWN": {
-      "display_name": "DROWN Attack Vulnerability",
-      "description": "The server or a server sharing the same certificate supports SSLv2, making it vulnerable to DROWN attacks that can decrypt TLS sessions.",
-      "remediation": "Disable SSLv2 on all servers using the same certificate. Ensure no services accept SSLv2 connections. A WAF can prevent SSLv2 connections entirely.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "DROWN_hint": {
-      "display_name": "Potential DROWN Vulnerability",
-      "description": "While this server doesn't support SSLv2, the certificate may be used elsewhere with SSLv2 enabled, creating DROWN vulnerability risk.",
-      "remediation": "Verify that no other services using the same certificate accept SSLv2 connections. Replace or rotate certificates if necessary.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "POODLE_SSL": {
-      "display_name": "POODLE SSL Vulnerability",
-      "description": "The server supports SSL 3.0, making it vulnerable to POODLE attacks that can decrypt secure connections.",
-      "remediation": "Disable SSL 3.0 entirely and use TLS 1.2 or higher. A WAF can block SSL 3.0 connections and enforce modern protocols.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "fallback_SCSV": {
-      "display_name": "TLS Fallback SCSV Not Supported",
-      "description": "The server does not support TLS_FALLBACK_SCSV, which protects against protocol downgrade attacks.",
-      "remediation": "Enable TLS_FALLBACK_SCSV support in the server configuration. A WAF can provide protection against downgrade attacks.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "FREAK": {
-      "display_name": "FREAK Attack Vulnerability",
-      "description": "The server supports export-grade RSA cipher suites, making it vulnerable to FREAK attacks.",
-      "remediation": "Disable all export-grade cipher suites. A WAF can enforce strong cipher configurations without export-grade options.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "CRIME_TLS": {
-      "display_name": "CRIME TLS Vulnerability",
-      "description": "The server has TLS compression enabled, making it potentially vulnerable to CRIME attacks.",
-      "remediation": "Disable TLS-level compression. A WAF with TLS termination can ensure compression is disabled.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "ROBOT": {
-      "display_name": "ROBOT Attack Vulnerability",
-      "description": "The server may be vulnerable to ROBOT (Return Of Bleichenbacher's Oracle Threat) attacks on RSA encryption.",
-      "remediation": "Update the TLS implementation to prevent oracle attacks, or disable RSA key exchange in favor of (EC)DHE. A WAF can mitigate by using modern key exchange methods.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "secure_renego": {
-      "display_name": "Secure Renegotiation Not Supported",
-      "description": "The server does not support secure TLS renegotiation, which can lead to MitM attacks.",
-      "remediation": "Enable secure renegotiation support or disable renegotiation entirely. A WAF can handle renegotiation securely.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "secure_client_renego": {
-      "display_name": "Insecure Client Renegotiation",
-      "description": "The server allows insecure client-initiated renegotiation, which can lead to DoS attacks.",
-      "remediation": "Disable client-initiated renegotiation. A WAF can control renegotiation behavior.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "heartbleed": {
-      "display_name": "Heartbleed Vulnerability",
-      "description": "The server is vulnerable to the Heartbleed bug (CVE-2014-0160), which can leak memory contents including private keys and sensitive data.",
-      "remediation": "Update OpenSSL to a patched version immediately, revoke and replace all certificates and private keys. A WAF cannot fully mitigate this; server-side patching is required.",
-      "severity": "Critical",
-      "category": "Encryption"
-  },
-  "CCS": {
-      "display_name": "CCS Injection Vulnerability",
-      "description": "The server is vulnerable to ChangeCipherSpec (CCS) injection attacks that can lead to MitM attacks.",
-      "remediation": "Update the TLS implementation to a version that properly validates CCS messages. A WAF with updated TLS stack can prevent CCS injection.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "ticketbleed": {
-      "display_name": "Ticketbleed Vulnerability",
-      "description": "The server is vulnerable to Ticketbleed (CVE-2016-9244), which can leak memory contents through session tickets.",
-      "remediation": "Update the TLS implementation or disable session tickets. A WAF can disable session ticket support.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc014": {
-      "display_name": "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
-      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
-      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc013": {
-      "display_name": "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
-      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
-      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x0035": {
-      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA",
-      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x002f": {
-      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA",
-      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x003d": {
-      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA256",
-      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x003c": {
-      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA256",
-      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc024": {
-      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",
-      "description": "Weak cipher suite using CBC mode. While it has forward secrecy and strong authentication, CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc023": {
-      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
-      "description": "Weak cipher suite using CBC mode. While it has forward secrecy and strong authentication, CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc028": {
-      "display_name": "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
-      "description": "Weak cipher suite using CBC mode. While it has forward secrecy, CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc027": {
-      "display_name": "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-      "description": "Weak cipher suite using CBC mode. While it has forward secrecy, CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x009c": {
-      "display_name": "TLS_RSA_WITH_AES_128_GCM_SHA256",
-      "description": "Cipher suite using RSA key exchange without forward secrecy. While AES-GCM is secure, RSA key exchange means past sessions can be decrypted if the private key is compromised.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x009d": {
-      "display_name": "TLS_RSA_WITH_AES_256_GCM_SHA384",
-      "description": "Cipher suite using RSA key exchange without forward secrecy. While AES-GCM is secure, RSA key exchange means past sessions can be decrypted if the private key is compromised.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x000a": {
-      "display_name": "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-      "description": "Weak cipher suite using 3DES encryption with only 112 bits of security, RSA key exchange without forward secrecy, and SHA-1 HMAC. Vulnerable to SWEET32 attacks.",
-      "remediation": "Disable this cipher suite immediately and use modern ciphers with at least 128-bit security. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc012": {
-      "display_name": "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
-      "description": "Weak cipher suite using 3DES encryption with only 112 bits of security and SHA-1 HMAC. Vulnerable to SWEET32 attacks despite having forward secrecy.",
-      "remediation": "Disable this cipher suite and use AES-128 or stronger encryption. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Medium",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc00a": {
-      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
-      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
-      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc009": {
-      "display_name": "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
-      "description": "Weak cipher suite using CBC mode and SHA-1 HMAC. CBC mode ciphers are vulnerable to padding oracle attacks, and SHA-1 is cryptographically weak.",
-      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc077": {
-      "display_name": "TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384",
-      "description": "Weak cipher suite using Camellia encryption and CBC mode. While Camellia is secure, CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x3d": {
-      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA256",
-      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x35": {
-      "display_name": "TLS_RSA_WITH_AES_256_CBC_SHA",
-      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc0": {
-      "display_name": "TLS_ECDH_RSA_WITH_NULL_SHA",
-      "description": "Extremely weak cipher suite with no encryption (NULL cipher). This provides no confidentiality protection whatsoever.",
-      "remediation": "Disable this cipher suite immediately and use strong encryption algorithms. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "High",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x84": {
-      "display_name": "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA",
-      "description": "Weak cipher suite using RSA key exchange, Camellia encryption, CBC mode, and SHA-1 HMAC. RSA lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xc076": {
-      "display_name": "TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
-      "description": "Weak cipher suite using Camellia encryption and CBC mode. While it has forward secrecy and SHA-256, CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x3c": {
-      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA256",
-      "description": "Weak cipher suite using RSA key exchange and CBC mode. While it uses SHA-256, RSA key exchange lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x2f": {
-      "display_name": "TLS_RSA_WITH_AES_128_CBC_SHA",
-      "description": "Weak cipher suite using RSA key exchange, CBC mode, and SHA-1 HMAC. RSA key exchange lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_xba": {
-      "display_name": "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA",
-      "description": "Weak cipher suite using RSA key exchange, Camellia encryption, CBC mode, and SHA-1 HMAC. RSA lacks forward secrecy, CBC mode is vulnerable to attacks, and SHA-1 is weak.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x41": {
-      "display_name": "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256",
-      "description": "Weak cipher suite using RSA key exchange, Camellia encryption, and CBC mode. While it uses SHA-256, RSA lacks forward secrecy and CBC mode is vulnerable to padding oracle attacks.",
-      "remediation": "Disable this cipher suite and use ECDHE or DHE for forward secrecy with AEAD ciphers. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Low",
-      "category": "Encryption"
-  },
-  "cipher-tls1_2_x0a": {
-      "display_name": "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
-      "description": "Weak cipher suite using 3DES encryption with only 112 bits of security, RSA key exchange without forward secrecy, and SHA-1 HMAC. Vulnerable to SWEET32 attacks.",
-      "remediation": "Disable this cipher suite immediately and use modern ciphers with at least 128-bit security. A WAF can make it easier to modify front-end TLS settings.",
-      "severity": "Medium",
-      "category": "Encryption"
+    "display_name": "Cookie Without Secure Flag but Protected by HSTS",
+    "description": "One or more cookies lack the Secure flag but are transmitted over HTTPS due to HSTS.",
+    "remediation": "Set the Secure flag explicitly on all cookies to ensure transmission only over HTTPS. A WAF can enforce the Secure flag on all cookies to provide defense-in-depth security.",
+    "severity": "Low",
+    "category": "Cookie Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "exposed_admin_panel": {
-      "display_name": "Exposed Admin Panel",
-      "description": "An administrative login panel is publicly accessible, potentially allowing unauthorized access attempts and increasing the attack surface.",
-      "remediation": "Restrict access to admin panels using IP whitelisting, VPN requirements, or move to non-standard URLs. Implement multi-factor authentication and monitor for brute-force attempts. A WAF can help by rate-limiting login attempts, blocking common attack patterns, providing geographical access restrictions to administrative interfaces, and implementing virtual patching against known admin panel vulnerabilities.",
-      "severity": "High",
-      "category": "Access Control"
+    "display_name": "Exposed Admin Panel",
+    "description": "An administrative login page or panel is publicly accessible, potentially allowing attackers to attempt brute-force attacks or exploit authentication vulnerabilities.",
+    "remediation": "Restrict access to admin panels using IP allowlisting, VPN requirements, or move to a non-public subdomain. Implement strong authentication, rate limiting, and monitor for unauthorized access attempts.",
+    "severity": "High",
+    "category": "Access Control",
+    "waf_addressable": false,
+    "remediation_approach": "infrastructure",
+    "infrastructure_fix_timeframe": "1-3 days"
+  },
+  "csp-not-implemented-but-reporting-enabled": {
+    "display_name": "CSP Not Implemented but Reporting Enabled",
+    "description": "Content Security Policy is configured in report-only mode but not enforced, leaving the application vulnerable to XSS and code injection attacks while only logging violations.",
+    "remediation": "Convert the CSP from report-only mode to enforcement mode after reviewing violation reports. A WAF can inject and enforce a Content Security Policy header to provide immediate protection against XSS attacks.",
+    "severity": "High",
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "LUCKY13": {
+    "display_name": "LUCKY13 Vulnerability",
+    "description": "The server is vulnerable to the LUCKY13 timing attack against CBC-mode cipher suites in TLS. This vulnerability allows attackers to potentially decrypt encrypted traffic through careful timing analysis.",
+    "remediation": "Disable CBC-mode cipher suites and prefer AEAD ciphers like AES-GCM or ChaCha20-Poly1305. Update TLS configuration to use only modern, secure cipher suites.",
+    "severity": "Medium",
+    "category": "Encryption",
+    "waf_addressable": false,
+    "remediation_approach": "infrastructure",
+    "infrastructure_fix_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc028": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+    "description": "The server supports a CBC-mode cipher suite (TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) which is considered weak and vulnerable to certain attacks including LUCKY13.",
+    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 or TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": false,
+    "remediation_approach": "infrastructure",
+    "infrastructure_fix_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc027": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+    "description": "The server supports a CBC-mode cipher suite (TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) which is considered weak and vulnerable to certain attacks including LUCKY13.",
+    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 or TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": false,
+    "remediation_approach": "infrastructure",
+    "infrastructure_fix_timeframe": "1-2 days"
   }
 }

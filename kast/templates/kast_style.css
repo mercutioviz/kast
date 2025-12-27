@@ -848,6 +848,181 @@ code {
   background: #93c5fd;
 }
 
+/* WAF Impact Analysis Styles */
+.waf-impact-section {
+  margin: 2em;
+  padding: 2em;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12px;
+  border: 2px solid #bae6fd;
+  box-shadow: 0 4px 12px rgba(7, 89, 133, 0.1);
+}
+
+.waf-impact-section h2 {
+  color: #075985;
+  border-bottom: 3px solid #0284c7;
+  padding-bottom: 0.5em;
+  margin-bottom: 1.5em;
+}
+
+.waf-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5em;
+  margin-bottom: 2em;
+}
+
+.waf-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  padding: 1.5em;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  border: 2px solid #e6eef6;
+}
+
+.waf-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.waf-stat-card.waf-addressable {
+  border-color: #22c55e;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.waf-stat-card.waf-high {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+.waf-stat-card.waf-deployment {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.waf-stat-card.waf-coverage {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.stat-icon {
+  font-size: 2.5em;
+  min-width: 50px;
+  text-align: center;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 2.5em;
+  font-weight: 800;
+  line-height: 1;
+  color: #075985;
+  margin-bottom: 0.2em;
+}
+
+.stat-label {
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #083344;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-percentage {
+  font-size: 0.85em;
+  color: #6b7280;
+  margin-top: 0.3em;
+}
+
+.stat-sublabel {
+  font-size: 0.8em;
+  color: #6b7280;
+  margin-top: 0.3em;
+  font-style: italic;
+}
+
+/* WAF Benefits Callout */
+.waf-benefits-callout {
+  background: white;
+  border-radius: 10px;
+  padding: 2em;
+  border: 2px solid #0284c7;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+}
+
+.waf-benefits-callout h3 {
+  color: #075985;
+  margin-top: 0;
+  margin-bottom: 1.5em;
+  font-size: 1.4em;
+  text-align: center;
+}
+
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5em;
+  margin-bottom: 2em;
+}
+
+.benefit-card {
+  background: linear-gradient(135deg, #f8fbfd 0%, #ffffff 100%);
+  border: 2px solid #e6eef6;
+  border-radius: 8px;
+  padding: 1.5em;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.benefit-card:hover {
+  border-color: #0284c7;
+  box-shadow: 0 6px 12px rgba(2, 132, 199, 0.2);
+  transform: translateY(-2px);
+}
+
+.benefit-icon {
+  font-size: 2em;
+  margin-bottom: 0.5em;
+}
+
+.benefit-card h4 {
+  color: #075985;
+  margin: 0.5em 0 0.8em 0;
+  font-size: 1.1em;
+}
+
+.benefit-card p {
+  color: #475569;
+  margin: 0;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.recommendation-box {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px solid #60a5fa;
+  border-radius: 8px;
+  padding: 1.5em;
+  text-align: center;
+  font-size: 1.05em;
+  line-height: 1.6;
+  color: #0c4a6e;
+}
+
+.recommendation-box strong {
+  color: #075985;
+  font-size: 1.1em;
+}
+
 /* PDF-specific print styles */
 @media print {
   /* Page setup */

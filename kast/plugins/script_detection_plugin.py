@@ -200,13 +200,13 @@ class ScriptDetectionPlugin(KastPlugin):
                   f"verify_ssl={self.verify_ssl}, follow_redirects={self.follow_redirects}")
         
         # Make request with configured parameters
+        # Note: requests library has a built-in max of 30 redirects
         response = requests.get(
             target, 
             headers=headers,
             timeout=self.request_timeout,
             verify=self.verify_ssl,
-            allow_redirects=self.follow_redirects,
-            max_redirects=self.max_redirects if self.follow_redirects else 0
+            allow_redirects=self.follow_redirects
         )
         response.raise_for_status()
         return response.text
