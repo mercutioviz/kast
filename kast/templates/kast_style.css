@@ -989,15 +989,28 @@ code {
   transform: translateY(-2px);
 }
 
+.benefit-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: 0.8em;
+}
+
 .benefit-icon {
   font-size: 2em;
-  margin-bottom: 0.5em;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .benefit-card h4 {
   color: #075985;
-  margin: 0.5em 0 0.8em 0;
+  margin: 0;
   font-size: 1.1em;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
 }
 
 .benefit-card p {

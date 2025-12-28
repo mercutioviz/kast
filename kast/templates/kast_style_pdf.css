@@ -771,10 +771,28 @@ h1, h2, h3, h4, h5, h6 {
     page-break-inside: avoid;
 }
 
+.benefit-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    flex-wrap: wrap;
+    margin-bottom: 0.5em;
+}
+
 .benefit-icon {
     font-size: 15pt;
-    margin-bottom: 0.2em;
-    display: block;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.benefit-card h4 {
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #083344;
+    margin: 0;
+    line-height: 1.2;
+    flex: 1;
+    min-width: 0;
 }
 
 .benefit-title {
@@ -783,6 +801,12 @@ h1, h2, h3, h4, h5, h6 {
     color: #083344;
     margin: 0.3em 0;
     line-height: 1.2;
+}
+
+.benefit-header .benefit-title {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .benefit-text {
