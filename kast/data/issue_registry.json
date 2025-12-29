@@ -7,7 +7,7 @@
     "category": "Encryption",
     "waf_addressable": true,
     "remediation_approach": "waf",
-    "code_fix_timeframe": "1-2 weeks",
+    "code_fix_timeframe": "1-2 days",
     "waf_deployment_timeframe": "1-2 days"
   },
   "TLSv1.1": {
@@ -18,7 +18,7 @@
     "category": "Encryption",
     "waf_addressable": true,
     "remediation_approach": "waf",
-    "code_fix_timeframe": "1-2 weeks",
+    "code_fix_timeframe": "1-2 days",
     "waf_deployment_timeframe": "1-2 days"
   },
   "X-Powered-By": {
@@ -299,12 +299,13 @@
   "exposed_admin_panel": {
     "display_name": "Exposed Admin Panel",
     "description": "An administrative login page or panel is publicly accessible, potentially allowing attackers to attempt brute-force attacks or exploit authentication vulnerabilities.",
-    "remediation": "Restrict access to admin panels using IP allowlisting, VPN requirements, or move to a non-public subdomain. Implement strong authentication, rate limiting, and monitor for unauthorized access attempts.",
+    "remediation": "Restrict access to admin panels using IP allowlisting, VPN requirements, or move to a non-public subdomain. Implement strong authentication, rate limiting, and monitor for unauthorized access attempts. A WAF can restrict access to admin panels using IP allow-listing and other access control policies to provide immediate protection.",
     "severity": "High",
     "category": "Access Control",
-    "waf_addressable": false,
-    "remediation_approach": "infrastructure",
-    "infrastructure_fix_timeframe": "1-3 days"
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "csp-not-implemented-but-reporting-enabled": {
     "display_name": "CSP Not Implemented but Reporting Enabled",
@@ -320,31 +321,34 @@
   "LUCKY13": {
     "display_name": "LUCKY13 Vulnerability",
     "description": "The server is vulnerable to the LUCKY13 timing attack against CBC-mode cipher suites in TLS. This vulnerability allows attackers to potentially decrypt encrypted traffic through careful timing analysis.",
-    "remediation": "Disable CBC-mode cipher suites and prefer AEAD ciphers like AES-GCM or ChaCha20-Poly1305. Update TLS configuration to use only modern, secure cipher suites.",
+    "remediation": "Disable CBC-mode cipher suites and prefer AEAD ciphers like AES-GCM or ChaCha20-Poly1305. Update TLS configuration to use only modern, secure cipher suites. A WAF can terminate TLS connections and disable weak CBC-mode cipher suites, providing immediate protection.",
     "severity": "Medium",
     "category": "Encryption",
-    "waf_addressable": false,
-    "remediation_approach": "infrastructure",
-    "infrastructure_fix_timeframe": "1-2 days"
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cipher-tls1_2_xc028": {
     "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
     "description": "The server supports a CBC-mode cipher suite (TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) which is considered weak and vulnerable to certain attacks including LUCKY13.",
-    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 or TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256.",
+    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 or TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256. A WAF can terminate TLS connections and disable this weak cipher suite.",
     "severity": "Low",
     "category": "Encryption",
-    "waf_addressable": false,
-    "remediation_approach": "infrastructure",
-    "infrastructure_fix_timeframe": "1-2 days"
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   },
   "cipher-tls1_2_xc027": {
     "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
     "description": "The server supports a CBC-mode cipher suite (TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) which is considered weak and vulnerable to certain attacks including LUCKY13.",
-    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 or TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256.",
+    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 or TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256. A WAF can terminate TLS connections and disable this weak cipher suite.",
     "severity": "Low",
     "category": "Encryption",
-    "waf_addressable": false,
-    "remediation_approach": "infrastructure",
-    "infrastructure_fix_timeframe": "1-2 days"
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }
