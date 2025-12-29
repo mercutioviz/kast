@@ -1,7 +1,7 @@
 # KAST - Kali Automated Scan Tool
 
 <p align="center">
-  <img src="assets/kast-logo.png" alt="KAST Logo" width="400"/>
+  <img src="assets/kast-logo-pro-label.png" alt="KAST Logo" width="400"/>
 </p>
 
 **KAST** (Kali Automated Scan Tool) is a modular, extensible Python framework for automating web application security scanning tools. It orchestrates multiple security tools, aggregates their findings, and generates comprehensive HTML reports with executive summaries.
