@@ -66,6 +66,15 @@
             {% if scan_metadata.severity_counts.Info > 0 %}
             </a>
             {% endif %}
+            
+            {% if scan_metadata.severity_counts.Unknown and scan_metadata.severity_counts.Unknown > 0 %}
+            <a href="#issues-unknown" class="severity-box-link">
+                <div class="severity-box unknown">
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Unknown }}</div>
+                    <div class="severity-label">Unknown</div>
+                </div>
+            </a>
+            {% endif %}
         </div>
     </div>
 
@@ -219,6 +228,8 @@
         {% set medium_issues = issues|selectattr("severity", "equalto", "Medium")|list %}
         {% set low_issues = issues|selectattr("severity", "equalto", "Low")|list %}
         {% set info_issues = issues|selectattr("severity", "equalto", "Info")|list %}
+        {% set unknown_issues = issues|selectattr("severity", "equalto", "Unknown")|list %}
+        {% set missing_issues = issues|selectattr("severity", "equalto", "Issue ID not found.")|list %}
         
         {% if high_issues %}
         <div class="severity-section" id="issues-high">
@@ -320,6 +331,58 @@
                 <div class="issue-remediation">
                     <strong>Remediation:</strong> {{ issue.remediation }}
                 </div>
+            </div>
+            {% endfor %}
+            <div class="section-nav">
+                <a href="#home" class="back-link">↑ Home</a>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if unknown_issues or missing_issues %}
+        <div class="severity-section" id="issues-unknown">
+            <h2 class="severity-heading unknown">Unknown Severity Issues</h2>
+            <div class="warning-box">
+                ⚠️ The following issues are not properly defined in the issue registry and require attention. Please report these issue IDs to add proper metadata.
+            </div>
+            {% for issue in unknown_issues %}
+            <div class="issue unknown">
+                <div class="issue-title">
+                    {{ issue.display_name if issue.display_name else issue.id }}
+                    <span class="issue-category">{{ issue.category }}</span>
+                </div>
+                <div class="issue-meta">
+                    <strong>Reported by:</strong> {{ issue.reported_by }}
+                    <strong>Issue ID:</strong> {{ issue.id }}
+                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                </div>
+                {% if issue.description and issue.description != issue.id %}
+                <div class="issue-description">{{ issue.description }}</div>
+                {% endif %}
+                <div class="issue-remediation">
+                    <strong>Remediation:</strong> {{ issue.remediation }}
+                </div>
+                <div class="warning-note">⚠️ This issue needs to be added to the issue registry for proper tracking and display.</div>
+            </div>
+            {% endfor %}
+            {% for issue in missing_issues %}
+            <div class="issue unknown">
+                <div class="issue-title">
+                    {{ issue.display_name if issue.display_name else issue.id }}
+                    <span class="issue-category">{{ issue.category }}</span>
+                </div>
+                <div class="issue-meta">
+                    <strong>Reported by:</strong> {{ issue.reported_by }}
+                    <strong>Issue ID:</strong> {{ issue.id }}
+                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                </div>
+                {% if issue.description and issue.description != issue.id %}
+                <div class="issue-description">{{ issue.description }}</div>
+                {% endif %}
+                <div class="issue-remediation">
+                    <strong>Remediation:</strong> {{ issue.remediation }}
+                </div>
+                <div class="warning-note">⚠️ This issue ID was not found in the registry and needs to be added for proper tracking and display.</div>
             </div>
             {% endfor %}
             <div class="section-nav">

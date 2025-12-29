@@ -350,5 +350,181 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-2 weeks",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "BREACH": {
+    "display_name": "BREACH Vulnerability",
+    "description": "The server is potentially vulnerable to BREACH (Browser Reconnaissance and Exfiltration via Adaptive Compression of Hypertext) attack. HTTP compression (gzip, deflate, compress, br) is enabled, which can allow attackers to extract sensitive information from encrypted connections through compression-based side-channel attacks.",
+    "remediation": "Disable HTTP compression for sensitive data, implement CSRF tokens, add random padding to responses, or use length-hiding techniques. A WAF can help mitigate BREACH risks by implementing countermeasures such as disabling compression for sensitive endpoints or adding random padding to responses.",
+    "severity": "Medium",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "SWEET32": {
+    "display_name": "SWEET32 Vulnerability",
+    "description": "The server uses 64-bit block ciphers (such as 3DES) which are vulnerable to SWEET32 birthday attacks. Attackers can potentially recover plaintext from encrypted traffic after observing sufficient encrypted data.",
+    "remediation": "Disable 64-bit block ciphers (3DES, Blowfish) and use only modern ciphers with 128-bit or larger block sizes (AES, ChaCha20). A WAF can terminate TLS connections and disable vulnerable 64-bit block ciphers.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc014": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+    "description": "The server supports a CBC-mode cipher suite (TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA) which is considered weak and vulnerable to attacks including LUCKY13 and BEAST.",
+    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc077": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384",
+    "description": "The server supports a CBC-mode cipher suite using Camellia encryption (TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384) which is considered weak and vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode cipher suites and Camellia ciphers in favor of modern AEAD ciphers (AES-GCM, ChaCha20-Poly1305). A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x3d": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_AES_256_CBC_SHA256",
+    "description": "The server supports a CBC-mode cipher suite (TLS_RSA_WITH_AES_256_CBC_SHA256) using RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode and RSA key exchange cipher suites. Use ECDHE key exchange with AEAD ciphers for forward secrecy. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x35": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_AES_256_CBC_SHA",
+    "description": "The server supports a CBC-mode cipher suite (TLS_RSA_WITH_AES_256_CBC_SHA) using RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode and RSA key exchange cipher suites. Use ECDHE key exchange with AEAD ciphers for forward secrecy. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc0": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256",
+    "description": "The server supports a CBC-mode cipher suite using Camellia encryption (TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256) with RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode, Camellia, and RSA key exchange cipher suites. Use ECDHE key exchange with modern AEAD ciphers. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x84": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA",
+    "description": "The server supports a CBC-mode cipher suite using Camellia encryption (TLS_RSA_WITH_CAMELLIA_256_CBC_SHA) with RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode, Camellia, and RSA key exchange cipher suites. Use ECDHE key exchange with modern AEAD ciphers. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc013": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+    "description": "The server supports a CBC-mode cipher suite (TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) which is considered weak and vulnerable to attacks including LUCKY13 and BEAST.",
+    "remediation": "Disable CBC-mode cipher suites in favor of AEAD ciphers. Configure the server to use only strong cipher suites like TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc076": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+    "description": "The server supports a CBC-mode cipher suite using Camellia encryption (TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256) which is considered weak and vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode cipher suites and Camellia ciphers in favor of modern AEAD ciphers (AES-GCM, ChaCha20-Poly1305). A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x3c": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_AES_128_CBC_SHA256",
+    "description": "The server supports a CBC-mode cipher suite (TLS_RSA_WITH_AES_128_CBC_SHA256) using RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode and RSA key exchange cipher suites. Use ECDHE key exchange with AEAD ciphers for forward secrecy. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x2f": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_AES_128_CBC_SHA",
+    "description": "The server supports a CBC-mode cipher suite (TLS_RSA_WITH_AES_128_CBC_SHA) using RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode and RSA key exchange cipher suites. Use ECDHE key exchange with AEAD ciphers for forward secrecy. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xba": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+    "description": "The server supports a CBC-mode cipher suite using Camellia encryption (TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256) with RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode, Camellia, and RSA key exchange cipher suites. Use ECDHE key exchange with modern AEAD ciphers. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x41": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA",
+    "description": "The server supports a CBC-mode cipher suite using Camellia encryption (TLS_RSA_WITH_CAMELLIA_128_CBC_SHA) with RSA key exchange, which lacks forward secrecy and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable CBC-mode, Camellia, and RSA key exchange cipher suites. Use ECDHE key exchange with modern AEAD ciphers. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_xc012": {
+    "display_name": "Weak Cipher: TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
+    "description": "The server supports 3DES (Triple DES) cipher suite (TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA) which uses 64-bit block ciphers vulnerable to SWEET32 birthday attacks and CBC-mode vulnerabilities.",
+    "remediation": "Disable 3DES and all CBC-mode cipher suites. Use modern AEAD ciphers (AES-GCM, ChaCha20-Poly1305) with 128-bit or larger block sizes. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Medium",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cipher-tls1_2_x0a": {
+    "display_name": "Weak Cipher: TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+    "description": "The server supports 3DES (Triple DES) cipher suite (TLS_RSA_WITH_3DES_EDE_CBC_SHA) using RSA key exchange, which uses 64-bit block ciphers vulnerable to SWEET32 attacks, lacks forward secrecy, and is vulnerable to CBC-mode attacks.",
+    "remediation": "Disable 3DES, CBC-mode, and RSA key exchange cipher suites. Use ECDHE key exchange with modern AEAD ciphers for forward secrecy and strong encryption. A WAF can terminate TLS connections and disable this weak cipher suite.",
+    "severity": "Medium",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

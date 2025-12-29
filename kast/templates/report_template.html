@@ -199,19 +199,36 @@
                     <span class="badge-label">Info</span>
                 </div>
             </a>
+            {% if scan_metadata.severity_counts.Unknown and scan_metadata.severity_counts.Unknown > 0 %}
+            <a href="#unknown-issues" class="severity-badge severity-badge-unknown" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">⚪</span>
+                <div class="badge-content">
+                    <span class="badge-count">{{ scan_metadata.severity_counts.Unknown }}</span>
+                    <span class="badge-label">Unknown</span>
+                </div>
+            </a>
+            {% endif %}
         </div>
     </div>
 
-    {% set severity_levels = ['High', 'Medium', 'Low', 'Info'] %}
+    {% set severity_levels = ['High', 'Medium', 'Low', 'Info', 'Unknown', 'Issue ID not found.'] %}
     {% for severity in severity_levels %}
         {% set severity_issues = issues | selectattr('severity', 'equalto', severity) | list %}
         {% if severity_issues %}
-        <h3 id="{{ severity|lower }}-issues" style="margin-top: 1.5em; color: #1e40af;">{{ severity }} Severity Issues</h3>
+        <h3 id="{{ severity|lower|replace(' ', '-')|replace('.', '') }}-issues" style="margin-top: 1.5em; color: #1e40af;">
+            {{ severity }} Severity Issues
+            {% if severity == 'Unknown' or severity == 'Issue ID not found.' %}
+            <span style="font-size: 0.85em; color: #dc2626; font-weight: normal;">⚠️ Missing registry entries - please report these issue IDs</span>
+            {% endif %}
+        </h3>
         {% for issue in severity_issues %}
-        <div class="issue severity-{{ issue.severity|lower }}">
+        <div class="issue severity-{{ issue.severity|lower|replace(' ', '-')|replace('.', '') }}">
             <strong>{{ issue.display_name if issue.display_name else issue.id }}</strong> ({{ issue.severity }}, {{ issue.category }})<br>
         <em>Reported by: {{ issue.reported_by }} (issue id: {{ issue.id }})</em><br>
         <span>Remediation: {{ issue.remediation }}</span>
+        {% if severity == 'Unknown' or severity == 'Issue ID not found.' %}
+        <br><span style="color: #dc2626; font-size: 0.9em;">⚠️ This issue is not in the issue registry and needs to be added for proper tracking and display.</span>
+        {% endif %}
         </div>
         {% endfor %}
         {% endif %}

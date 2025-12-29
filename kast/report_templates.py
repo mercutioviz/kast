@@ -82,7 +82,7 @@ def generate_executive_summary(issues):
         return "No critical issues were found during the scan."
 
     categories = set()
-    severities = {"Low": 0, "Medium": 0, "High": 0}
+    severities = {"Low": 0, "Medium": 0, "High": 0, "Info": 0, "Unknown": 0}
 
     for issue in issues:
         issue_id = issue.get("id")
@@ -91,10 +91,21 @@ def generate_executive_summary(issues):
         categories.add(category)
         if severity in severities:
             severities[severity] += 1
+        else:
+            # Count any severity not in our standard list as "Unknown"
+            severities["Unknown"] += 1
+
+    # Build severity breakdown, excluding counts of 0
+    severity_parts = []
+    for sev in ["High", "Medium", "Low", "Info", "Unknown"]:
+        if severities[sev] > 0:
+            severity_parts.append(f"{sev}={severities[sev]}")
+    
+    severity_breakdown = ", ".join(severity_parts) if severity_parts else "None"
 
     summary = (
         f"{len(issues)} potential issues were identified.\n"
-        f"Categories involved: {', '.join(categories)}.\n"
-        f"Severity breakdown: High={severities['High']}, Medium={severities['Medium']}, Low={severities['Low']}."
+        f"Categories involved: {', '.join(sorted(categories))}.\n"
+        f"Severity breakdown: {severity_breakdown}."
     )
     return summary
