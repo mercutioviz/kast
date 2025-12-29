@@ -23,6 +23,145 @@ logging.getLogger('fontTools.ttLib.ttFont').setLevel(logging.WARNING)
 # Logger for warnings when registry entries are missing
 logger = logging.getLogger(__name__)
 
+def infer_issue_metadata(issue_id, plugin_name, description=""):
+    """
+    Infer metadata for a missing issue based on patterns in the issue ID and plugin name.
+    
+    Args:
+        issue_id (str): The issue ID
+        plugin_name (str): Name of the plugin that reported it
+        description (str): Optional description from the plugin
+        
+    Returns:
+        dict: Suggested metadata with display_name, category, severity, waf_addressable, and remediation
+    """
+    issue_lower = issue_id.lower() if issue_id else ""
+    
+    # Infer category based on plugin and issue patterns
+    category = "Uncategorized"
+    if plugin_name.lower() in ["testssl", "testssl.sh"]:
+        category = "Encryption"
+    elif plugin_name.lower() in ["wafw00f", "waf"]:
+        category = "Security Misconfiguration"
+    elif plugin_name.lower() in ["observatory", "mozilla observatory"]:
+        category = "Security Headers"
+    elif plugin_name.lower() in ["script_detection", "script detection"]:
+        category = "Third-Party Risk"
+    elif "xss" in issue_lower or "injection" in issue_lower:
+        category = "Injection"
+    elif "header" in issue_lower or "hsts" in issue_lower or "csp" in issue_lower:
+        category = "Security Headers"
+    elif "ssl" in issue_lower or "tls" in issue_lower or "cipher" in issue_lower or "certificate" in issue_lower:
+        category = "Encryption"
+    
+    # Infer severity based on patterns
+    severity = "Medium"  # Default
+    if any(word in issue_lower for word in ["critical", "severe", "rce", "remote code"]):
+        severity = "High"
+    elif any(word in issue_lower for word in ["xss", "injection", "sql", "command", "broken", "vulnerable"]):
+        severity = "High"
+    elif any(word in issue_lower for word in ["export", "weak", "insecure", "deprecated", "md5", "sha1", "rc4"]):
+        severity = "Medium"
+    elif any(word in issue_lower for word in ["info", "information", "disclosure", "detected"]):
+        severity = "Low"
+    elif any(word in issue_lower for word in ["missing", "absent", "not found"]):
+        severity = "Low"
+    
+    # Infer WAF addressability
+    waf_addressable = False
+    if category in ["Security Headers", "Injection"]:
+        waf_addressable = True
+    elif any(word in issue_lower for word in ["xss", "injection", "sql"]):
+        waf_addressable = True
+    
+    # Generate display name (convert underscores to spaces, title case)
+    display_name = issue_id.replace("_", " ").replace("-", " ").title()
+    
+    # Generate remediation
+    remediation = f"Review and address the {issue_id} issue"
+    if "cipher" in issue_lower or "tls" in issue_lower or "ssl" in issue_lower:
+        remediation = f"Disable weak cipher suite or protocol: {issue_id}. Update server TLS/SSL configuration to use only strong, modern cipher suites."
+    elif "header" in issue_lower:
+        remediation = f"Implement the {display_name} security header in server configuration."
+    elif category == "Third-Party Risk":
+        remediation = f"Review third-party script {issue_id} for security implications and consider alternatives if necessary."
+    
+    return {
+        "display_name": display_name,
+        "category": category,
+        "severity": severity,
+        "waf_addressable": waf_addressable,
+        "remediation": remediation
+    }
+
+def generate_registry_template(issue_id, metadata):
+    """
+    Generate a ready-to-use registry entry template.
+    
+    Args:
+        issue_id (str): The issue ID
+        metadata (dict): Suggested metadata
+        
+    Returns:
+        dict: Complete registry entry
+    """
+    return {
+        issue_id: {
+            "display_name": metadata["display_name"],
+            "category": metadata["category"],
+            "severity": metadata["severity"],
+            "waf_addressable": metadata["waf_addressable"],
+            "remediation": metadata["remediation"]
+        }
+    }
+
+def write_missing_issues_report(missing_issues, output_dir, target=None):
+    """
+    Write a JSON file documenting missing issue IDs.
+    
+    Args:
+        missing_issues (dict): Dictionary of missing issue information
+        output_dir (str): Directory to write the file
+        target (str): Scan target (optional)
+    """
+    if not missing_issues:
+        return
+    
+    # Prepare the report structure
+    report = {
+        "scan_metadata": {
+            "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "target": target or "Unknown",
+            "total_missing_issues": len(missing_issues),
+            "total_occurrences": sum(item["occurrence_count"] for item in missing_issues.values())
+        },
+        "missing_issues": []
+    }
+    
+    # Convert dictionary to sorted list
+    for issue_id, info in sorted(missing_issues.items()):
+        issue_entry = {
+            "issue_id": issue_id,
+            "plugin_name": info["plugin_name"],
+            "plugin_display_name": info["plugin_display_name"],
+            "occurrence_count": info["occurrence_count"],
+            "first_seen": info["first_seen"],
+            "descriptions": list(info["descriptions"]),
+            "suggested_metadata": info["suggested_metadata"],
+            "registry_template": info["registry_template"]
+        }
+        report["missing_issues"].append(issue_entry)
+    
+    # Write to file
+    output_path = os.path.join(output_dir, "missing_issue_ids.json")
+    try:
+        with open(output_path, 'w') as f:
+            json.dump(report, f, indent=2)
+        logger.info(f"Missing issue IDs documented in {output_path}")
+        print(f"Missing issue IDs documented in {output_path}")
+    except Exception as e:
+        logger.error(f"Failed to write missing issues report: {e}")
+
 def add_word_break_opportunities(text):
     """
     Add word-break opportunities (<wbr> tags) to long strings, especially URLs.
@@ -208,6 +347,7 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
     all_issues = []
     detailed_results = {}
     plugin_executive_summaries = []
+    missing_issues = {}  # Track missing issue IDs
 
     for plugin in plugin_results:
         # Normalize plugin name from various possible fields
@@ -286,6 +426,31 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
                 category = "Uncategorized"
                 if issue_id:
                     logger.warning(f"Issue ID '{issue_id}' not found in issue registry")
+                    
+                    # Track missing issue for documentation
+                    if issue_id not in missing_issues:
+                        # Get inferred metadata
+                        inferred_metadata = infer_issue_metadata(
+                            issue_id, 
+                            tool_name, 
+                            issue_dict.get("description", "")
+                        )
+                        
+                        missing_issues[issue_id] = {
+                            "plugin_name": tool_name,
+                            "plugin_display_name": reported_by,
+                            "occurrence_count": 1,
+                            "first_seen": datetime.now().isoformat(),
+                            "descriptions": {issue_dict.get("description", issue_id)},
+                            "suggested_metadata": inferred_metadata,
+                            "registry_template": generate_registry_template(issue_id, inferred_metadata)
+                        }
+                    else:
+                        # Update occurrence count and add description if new
+                        missing_issues[issue_id]["occurrence_count"] += 1
+                        desc = issue_dict.get("description", issue_id)
+                        if desc:
+                            missing_issues[issue_id]["descriptions"].add(desc)
 
             all_issues.append({
                 "id": issue_id,
@@ -369,6 +534,10 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
         f.write(html_content)
 
     print(f"Report saved to {output_path}")
+    
+    # Write missing issues report if any were found
+    if missing_issues:
+        write_missing_issues_report(missing_issues, output_dir, target)
 
 
 def image_to_base64(image_path):
@@ -501,6 +670,7 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
     all_issues = []
     detailed_results = {}
     plugin_executive_summaries = []
+    missing_issues = {}  # Track missing issue IDs
 
     for plugin in plugin_results:
         # Normalize plugin name from various possible fields
@@ -582,6 +752,31 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
                 category = "Uncategorized"
                 if issue_id:
                     logger.warning(f"Issue ID '{issue_id}' not found in issue registry")
+                    
+                    # Track missing issue for documentation
+                    if issue_id not in missing_issues:
+                        # Get inferred metadata
+                        inferred_metadata = infer_issue_metadata(
+                            issue_id, 
+                            tool_name, 
+                            issue_dict.get("description", "")
+                        )
+                        
+                        missing_issues[issue_id] = {
+                            "plugin_name": tool_name,
+                            "plugin_display_name": reported_by,
+                            "occurrence_count": 1,
+                            "first_seen": datetime.now().isoformat(),
+                            "descriptions": {issue_dict.get("description", issue_id)},
+                            "suggested_metadata": inferred_metadata,
+                            "registry_template": generate_registry_template(issue_id, inferred_metadata)
+                        }
+                    else:
+                        # Update occurrence count and add description if new
+                        missing_issues[issue_id]["occurrence_count"] += 1
+                        desc = issue_dict.get("description", issue_id)
+                        if desc:
+                            missing_issues[issue_id]["descriptions"].add(desc)
 
             all_issues.append({
                 "id": issue_id,
@@ -668,6 +863,11 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
         
         print(f"PDF report saved to {output_path}")
         logger.info(f"PDF report generated successfully with {len(all_issues)} issues")
+        
+        # Write missing issues report if any were found
+        output_dir = os.path.dirname(output_path) or os.getcwd()
+        if missing_issues:
+            write_missing_issues_report(missing_issues, output_dir, target)
     except Exception as e:
         print(f"Error generating PDF: {e}")
         logger.error(f"PDF generation failed: {e}", exc_info=True)
