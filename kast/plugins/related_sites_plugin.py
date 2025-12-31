@@ -120,6 +120,35 @@ class RelatedSitesPlugin(KastPlugin):
         # Both required for full functionality
         return has_subfinder and has_httpx
 
+    def _normalize_hostname(self, hostname):
+        """
+        Normalize a hostname for comparison by removing protocols, ports, and converting to lowercase.
+        
+        Examples:
+          www.example.com -> www.example.com
+          WWW.EXAMPLE.COM -> www.example.com
+          http://www.example.com -> www.example.com
+          www.example.com:8080 -> www.example.com
+        
+        :param hostname: The hostname to normalize
+        :return: Normalized hostname (lowercase, no protocol/port)
+        """
+        # Remove protocol if present
+        if '://' in hostname:
+            hostname = hostname.split('://', 1)[1]
+        
+        # Remove port if present
+        if ':' in hostname:
+            hostname = hostname.split(':', 1)[0]
+        
+        # Remove trailing slash if present
+        hostname = hostname.rstrip('/')
+        
+        # Convert to lowercase for case-insensitive comparison
+        hostname = hostname.lower()
+        
+        return hostname
+
     def _extract_apex_domain(self, fqdn):
         """
         Extract apex domain from FQDN using tldextract.
@@ -485,9 +514,34 @@ class RelatedSitesPlugin(KastPlugin):
         
         self.debug(f"Discovered {len(subdomains)} subdomain(s)")
         
-        # Step 3: Probe with httpx
-        self.debug(f"Probing {len(subdomains)} subdomain(s) with httpx")
-        probe_results = self._probe_subdomains_with_httpx(subdomains, output_dir)
+        # Step 2.5: Filter out the original target to avoid duplication
+        original_target_normalized = self._normalize_hostname(target)
+        filtered_subdomains = []
+        filtered_count = 0
+        
+        for subdomain in subdomains:
+            subdomain_normalized = self._normalize_hostname(subdomain)
+            if subdomain_normalized != original_target_normalized:
+                filtered_subdomains.append(subdomain)
+            else:
+                filtered_count += 1
+                self.debug(f"Filtered out target domain: {subdomain}")
+        
+        if filtered_count > 0:
+            self.debug(f"Filtered out {filtered_count} duplicate target domain(s) from subdomain list")
+        
+        if not filtered_subdomains:
+            self.debug("No subdomains remaining after filtering target, scan failed")
+            return self.get_result_dict(
+                "fail",
+                f"No related subdomains found for {scan_target} (only target itself discovered)",
+                timestamp
+            )
+        
+        self.debug(f"Probing {len(filtered_subdomains)} related subdomain(s) with httpx")
+        
+        # Step 3: Probe with httpx (using filtered list)
+        probe_results = self._probe_subdomains_with_httpx(filtered_subdomains, output_dir)
         
         # Step 4: Calculate statistics from host-centric data
         live_hosts = probe_results["live_hosts"]
@@ -511,13 +565,17 @@ class RelatedSitesPlugin(KastPlugin):
             "scanned_domain": scan_target,
             "total_subdomains": len(subdomains),
             "subdomains": subdomains,
+            "filtered_target_duplicates": filtered_count,
+            "related_subdomains": filtered_subdomains,
             "live_hosts": live_hosts,
             "dead_hosts": dead_hosts,
             "statistics": {
                 "total_discovered": len(subdomains),
+                "filtered_duplicates": filtered_count,
+                "total_related": len(filtered_subdomains),
                 "total_live": len(live_hosts),
                 "total_dead": len(dead_hosts),
-                "response_rate": (len(live_hosts) / len(subdomains) * 100) if len(subdomains) > 0 else 0,
+                "response_rate": (len(live_hosts) / len(filtered_subdomains) * 100) if len(filtered_subdomains) > 0 else 0,
                 "unique_technologies": len(all_technologies),
                 "cdn_protected": cdn_count,
                 "websocket_enabled": websocket_count
@@ -545,6 +603,36 @@ class RelatedSitesPlugin(KastPlugin):
         # raw_output has structure: {"name": ..., "disposition": ..., "results": {...}}
         # We need to pass the "results" dict to our helper methods
         findings = raw_output.get("results", {}) if isinstance(raw_output, dict) else {}
+        
+        # Handle failure case where findings is an error message string instead of dict
+        if isinstance(findings, str):
+            error_message = findings
+            self.debug(f"{self.name} plugin failed, creating minimal processed output")
+            
+            processed = {
+                "plugin-name": self.name,
+                "plugin-description": self.description,
+                "plugin-display-name": self.display_name,
+                "plugin-website-url": self.website_url,
+                "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "findings": {},
+                "findings_count": 0,
+                "summary": f"Plugin failed: {error_message}",
+                "details": error_message,
+                "issues": [],
+                "executive_summary": [f"Plugin execution failed: {error_message}"],
+                "custom_html": f"<div class='plugin-error'><p><strong>Plugin failed:</strong> {error_message}</p></div>",
+                "custom_html_pdf": f"<p><strong>Plugin failed:</strong> {error_message}</p>",
+                "commands_executed": self.command_executed,
+                "results_message": error_message
+            }
+            
+            processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
+            with open(processed_path, 'w') as f:
+                json.dump(processed, f, indent=2)
+            
+            self.debug(f"Minimal processed output saved to {processed_path}")
+            return processed_path
         
         self.debug(f"{self.name} processing findings")
         
