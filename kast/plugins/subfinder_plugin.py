@@ -295,6 +295,9 @@ class SubfinderPlugin(KastPlugin):
         summary = self._generate_summary(findings)
         executive_summary = self._generate_executive_summary(findings)
         
+        # Calculate findings_count - count of subdomains found
+        findings_count = len(subdomains)
+        
         # Generate both HTML and PDF versions of subdomain display
         custom_html = self._generate_subdomain_display_html(subdomains)
         custom_html_pdf = self._generate_pdf_subdomain_list(subdomains)
@@ -302,6 +305,7 @@ class SubfinderPlugin(KastPlugin):
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         # Format command for report notes
         report_notes = self._format_command_for_report()
@@ -313,6 +317,7 @@ class SubfinderPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,

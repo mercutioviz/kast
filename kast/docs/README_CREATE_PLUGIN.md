@@ -130,6 +130,7 @@ After creation, the script displays a checklist of sections to customize:
 - [ ] Implement command flags and options for your tool
 - [ ] Handle tool-specific error conditions
 - [ ] Implement output parsing in `post_process()`
+- [ ] Calculate `findings_count` based on plugin's primary output (see below)
 - [ ] Define issue extraction logic (map to `issue_registry.json` if applicable)
 - [ ] Create meaningful executive summary
 - [ ] Update `_generate_summary()` with tool-specific logic
@@ -137,6 +138,79 @@ After creation, the script displays a checklist of sections to customize:
 - [ ] Write unit tests in test file
 - [ ] Test plugin with real tool output
 - [ ] Update plugin documentation in docstrings
+
+## Understanding findings_count
+
+The `findings_count` field is a required integer in the processed output that reflects the count of the "primary things" your plugin discovers. This provides a quick metric for understanding plugin output at a glance.
+
+### What to Count by Plugin Type
+
+Each plugin should count its primary output - the main thing it was designed to find:
+
+| Plugin Type | Count | Example |
+|-------------|-------|---------|
+| URL Discovery | Number of URLs found | `len(urls_list)` |
+| Subdomain Discovery | Number of subdomains found | `len(subdomains_list)` |
+| Vulnerability Scanner | Number of issues/vulnerabilities | `len(issues)` |
+| WAF Detection | Number of WAFs detected | `1` if detected, `0` if not |
+| Technology Detection | Number of technologies identified | `len(technologies)` |
+| Port Scanner | Number of open ports | `len(open_ports)` |
+| Information Gathering | Number of findings/detections | `len(findings)` |
+
+### Implementation Examples
+
+**URL Discovery (like Katana):**
+```python
+# Count unique URLs found
+findings_count = len(parsed_urls)
+```
+
+**Subdomain Discovery (like Subfinder):**
+```python
+# Count unique subdomains
+findings_count = len(subdomains)
+```
+
+**Vulnerability Scanner (like TestSSL):**
+```python
+# Count total issues (vulnerabilities + cipher issues)
+findings_count = len(issues)
+```
+
+**Information Gathering (generic):**
+```python
+# Count findings based on data structure
+findings_count = len(findings) if isinstance(findings, list) else len(findings.keys()) if isinstance(findings, dict) else 0
+```
+
+### Best Practices
+
+1. **Always return an integer**, even if 0 (never null/undefined)
+2. **Count the primary output** - what users expect from this plugin
+3. **Be consistent** - same counting logic across similar plugins
+4. **Document your counting** - add a comment explaining what you're counting
+5. **Test edge cases** - ensure count is 0 when nothing is found
+
+### Adding findings_count to post_process()
+
+In your plugin's `post_process()` method, calculate `findings_count` before building the processed dictionary:
+
+```python
+def post_process(self, raw_output, output_dir):
+    # ... load and process findings ...
+    
+    # Calculate findings_count based on your plugin's primary output
+    findings_count = len(parsed_urls)  # Customize this line
+    
+    processed = {
+        "plugin-name": self.name,
+        # ... other fields ...
+        "findings_count": findings_count,  # Add this field
+        # ... remaining fields ...
+    }
+    
+    # ... save processed output ...
+```
 
 ## Examples
 

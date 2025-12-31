@@ -387,10 +387,14 @@ class Wafw00fPlugin(KastPlugin):
 
             executive_summary = f"Detected WAF: {firewall}."
 
+        # Calculate findings_count - count of WAFs detected
+        findings_count = len([r for r in results if r.get("detected", False) and r.get("firewall", "None") != "None"])
+        
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         # Format command for report notes
         report_notes = self._format_command_for_report()
@@ -402,6 +406,7 @@ class Wafw00fPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,

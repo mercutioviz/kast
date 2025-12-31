@@ -190,10 +190,19 @@ class KastPlugin(ABC):
         - plugin-display-name: Human-readable name (self.display_name)
         - timestamp: ISO format timestamp
         - findings: The raw or normalized findings data
+        - findings_count: Integer count of primary findings (URLs, subdomains, issues, etc.)
         - summary: Human-readable summary of findings (use _generate_summary())
         - details: Formatted multi-line string with key details
         - issues: List of identified issues (empty list if none)
         - executive_summary: High-level summary for executive reports
+        
+        Note on findings_count:
+        Each plugin should count its "primary output" - the main thing it was designed to find:
+        - URL discovery plugins: Count of URLs found
+        - Subdomain discovery: Count of subdomains found
+        - Vulnerability scanners: Count of issues/vulnerabilities
+        - Information gathering: Count of detections/findings
+        Always use an integer value, even if 0 (never null/undefined).
         
         :param raw_output: Raw output (string, dict, or file path)
         :param output_dir: Directory to write processed JSON

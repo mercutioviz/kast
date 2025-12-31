@@ -556,6 +556,12 @@ class RelatedSitesPlugin(KastPlugin):
         custom_html = self._generate_custom_html(findings)
         custom_html_pdf = self._generate_pdf_html(findings)
         
+        # Calculate findings_count - number of live hosts (subdomains responding to HTTP requests)
+        stats = findings.get("statistics", {})
+        findings_count = stats.get("total_live", 0)
+        
+        self.debug(f"{self.name} findings_count: {findings_count}")
+        
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
@@ -563,6 +569,7 @@ class RelatedSitesPlugin(KastPlugin):
             "plugin-website-url": self.website_url,
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary,
             "details": details,
             "issues": issues,

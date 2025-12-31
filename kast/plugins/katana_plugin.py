@@ -380,6 +380,9 @@ class KatanaPlugin(KastPlugin):
         summary = self._generate_summary(parsed_urls)
         executive_summary = self._generate_executive_summary(parsed_urls)
         
+        # Calculate findings_count - count of URLs found
+        findings_count = len(parsed_urls)
+        
         # Generate both HTML and PDF versions of URL display
         custom_html = self._generate_url_display_html(parsed_urls)
         custom_html_pdf = self._generate_pdf_url_list(parsed_urls)
@@ -387,6 +390,7 @@ class KatanaPlugin(KastPlugin):
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         # Format command for report notes
         report_notes = self._format_command_for_report()
@@ -398,6 +402,7 @@ class KatanaPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": {"urls": parsed_urls},
+            "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,

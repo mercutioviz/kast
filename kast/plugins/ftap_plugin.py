@@ -333,11 +333,15 @@ class FtapPlugin(KastPlugin):
         # Build executive summary with panel information
         executive_summary = self._build_executive_summary(findings)
 
+        # Calculate findings_count - count of exposed admin panels (confidence >= 0.86)
+        findings_count = len(issues)  # issues already filtered for confidence >= 0.86
+
         # Generate summary using helper method
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         # Format command for report notes
         report_notes = self._format_command_for_report()
@@ -353,6 +357,7 @@ class FtapPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,  # Always present, even if empty

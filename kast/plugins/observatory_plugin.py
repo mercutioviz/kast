@@ -261,8 +261,13 @@ class ObservatoryPlugin(KastPlugin):
             issues = self._find_issues(findings)
             self.debug(f"{self.name} issues: {issues}")
 
+        # Calculate findings_count - count of failed tests (security issues)
+        findings_count = len(issues) if isinstance(issues, list) else 0
+
         # Format command for report notes
         report_notes = self._format_command_for_report()
+
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         processed = {
             "plugin-name": self.name,
@@ -271,6 +276,7 @@ class ObservatoryPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,

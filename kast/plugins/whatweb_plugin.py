@@ -233,6 +233,9 @@ class WhatWebPlugin(KastPlugin):
         if redirect_recommendations:
             executive_summary = "\n".join(redirect_recommendations)
 
+        # Calculate findings_count - count of unique technologies detected
+        findings_count = self._count_technologies(findings)
+
         # Format command for report notes
         report_notes = self._format_command_for_report()
 
@@ -242,6 +245,8 @@ class WhatWebPlugin(KastPlugin):
             "results": findings
         }
 
+        self.debug(f"{self.name} findings_count: {findings_count}")
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
@@ -249,6 +254,7 @@ class WhatWebPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": structured_findings,
+            "findings_count": findings_count,
             "summary": self._generate_summary(findings),
             "details": details,
             "issues": issues,
@@ -327,6 +333,28 @@ class WhatWebPlugin(KastPlugin):
                 continue
         
         return recommendations
+
+    def _count_technologies(self, findings):
+        """
+        Count the number of unique technologies detected across all entries.
+        """
+        # Handle both list and dict formats
+        if isinstance(findings, list):
+            results = findings
+        elif isinstance(findings, dict):
+            results = findings.get("results", [])
+        else:
+            return 0
+        
+        # Track unique technologies
+        technologies = set()
+        
+        for entry in results:
+            plugins = entry.get("plugins", {})
+            for plugin_name in plugins.keys():
+                technologies.add(plugin_name)
+        
+        return len(technologies)
 
     def _format_command_for_report(self):
         """

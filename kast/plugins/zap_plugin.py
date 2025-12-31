@@ -542,14 +542,18 @@ class ZapPlugin(KastPlugin):
             risk_counts[risk] = risk_counts.get(risk, 0) + 1
             issues.append(f"{alert.get('name', 'Unknown')} [{risk}]")
         
+        # Calculate findings_count - total number of security alerts/vulnerabilities
+        findings_count = total = sum(risk_counts.values())
+        
         # Build summary
-        total = sum(risk_counts.values())
         if total == 0:
             summary = "No vulnerabilities detected"
             executive_summary = f"ZAP scan completed using {provider_mode} mode. No security issues found."
         else:
             summary = f"Found {total} issues: {risk_counts['High']} High, {risk_counts['Medium']} Medium, {risk_counts['Low']} Low"
             executive_summary = f"ZAP scan ({provider_mode} mode) identified {total} security findings requiring attention."
+        
+        self.debug(f"{self.name} findings_count: {findings_count}")
         
         # Build details
         details = f"Execution Mode: {provider_mode}\n"
@@ -565,6 +569,7 @@ class ZapPlugin(KastPlugin):
             "plugin-website-url": self.website_url,
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary,
             "details": details,
             "issues": issues[:50],  # Limit to 50 issues

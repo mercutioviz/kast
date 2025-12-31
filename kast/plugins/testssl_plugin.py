@@ -328,11 +328,15 @@ class TestsslPlugin(KastPlugin):
             
             executive_summary = f"SSL/TLS scan identified {' and '.join(summary_parts)}. Review recommended."
 
+        # Calculate findings_count - count of total issues (vulnerabilities + cipher issues)
+        findings_count = len(issues)
+        
         # Generate summary based on actual vulnerability and cipher issue counts
         summary = self._generate_summary(findings, vuln_count=len(vuln_issues), cipher_count=len(cipher_issues))
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         # Format command for report notes
         report_notes = self._format_command_for_report()
@@ -350,6 +354,7 @@ class TestsslPlugin(KastPlugin):
             "plugin-website-url": getattr(self, 'website_url', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,

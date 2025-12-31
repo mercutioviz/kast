@@ -139,11 +139,20 @@ class TemplatePlugin(KastPlugin):
         # ... logic to update executive_summary ...
         # Example: executive_summary = f"Found {len(issues)} issues."
 
+        # Calculate findings_count - customize based on what your plugin "finds"
+        # Examples:
+        # - URL discovery: len(urls_list)
+        # - Subdomain discovery: len(subdomains_list)
+        # - Vulnerability scanner: len(issues)
+        # - Info gathering: number of detections/findings
+        findings_count = len(findings) if isinstance(findings, list) else len(findings.keys()) if isinstance(findings, dict) else 0
+        
         # Generate summary using helper method
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
+        self.debug(f"{self.name} findings_count: {findings_count}")
 
         processed = {
             "plugin-name": self.name,
@@ -151,6 +160,7 @@ class TemplatePlugin(KastPlugin):
             "plugin-display-name": getattr(self, 'display_name', None),
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
             "findings": findings,
+            "findings_count": findings_count,  # Count of primary findings
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,  # Always present, even if empty

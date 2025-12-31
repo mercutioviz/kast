@@ -396,6 +396,11 @@ class ScriptDetectionPlugin(KastPlugin):
             # Generate details
             details = self._generate_details(findings)
             
+            # Calculate findings_count - total number of external scripts detected
+            findings_count = findings.get('total_scripts', 0)
+            
+            self.debug(f"{self.name} findings_count: {findings_count}")
+            
             processed = {
                 "plugin-name": self.name,
                 "plugin-description": self.description,
@@ -403,6 +408,7 @@ class ScriptDetectionPlugin(KastPlugin):
                 "plugin-website-url": self.website_url,
                 "timestamp": raw_output.get('timestamp'),
                 "findings": raw_output,
+                "findings_count": findings_count,
                 "summary": summary,
                 "details": details,
                 "issues": issues,
