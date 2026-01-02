@@ -278,6 +278,17 @@ def provision_infrastructure(provider):
         print_info(f"Public IP: {outputs.get('public_ip', 'N/A')}")
         print_info(f"SSH User: {outputs.get('ssh_user', 'N/A')}")
         print_info(f"ZAP API URL: {outputs.get('zap_api_url', 'N/A')}")
+        
+        # Display ready-to-use SSH command
+        public_ip = outputs.get('public_ip', 'N/A')
+        ssh_user = outputs.get('ssh_user', 'N/A')
+        if public_ip != 'N/A' and ssh_user != 'N/A':
+            ssh_command = f"ssh -i {ssh_key_path} {ssh_user}@{public_ip}"
+            print("\n" + "-" * 70)
+            print("  SSH Command (copy and paste):")
+            print(f"  {ssh_command}")
+            print("-" * 70)
+        
         print("\n" + "=" * 70)
         print("  IMPORTANT: Remember to run the teardown script to cleanup!")
         print(f"  python test_infrastructure_teardown.py {state_info_path}")

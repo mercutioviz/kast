@@ -159,50 +159,50 @@ data "aws_availability_zones" "available" {
 
 # User data script to install Docker and run ZAP
 locals {
-  user_data = <<-EOF
-    #!/bin/bash
-    set -e
-    
-    # Log all output
-    exec > >(tee -a /var/log/zap-setup.log)
-    exec 2>&1
-    
-    echo "Starting ZAP cloud setup at $(date)"
-    
-    # Update system
-    echo "Updating system packages..."
-    apt-get update
-    apt-get upgrade -y
-    
-    # Install Docker using official installation script (more reliable)
-    echo "Installing Docker using official script..."
-    curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
-    sh /tmp/get-docker.sh
-    rm /tmp/get-docker.sh
-    
-    # Verify Docker installation
-    if ! command -v docker &> /dev/null; then
-        echo "ERROR: Docker installation failed"
-        exit 1
-    fi
-    
-    echo "Docker version: $(docker --version)"
-    
-    # Start Docker service
-    echo "Starting Docker service..."
-    systemctl start docker
-    systemctl enable docker
-    
-    # Add ubuntu user to docker group for non-root access
-    usermod -aG docker ubuntu
-    
-    # Install nginx for reverse proxy
-    echo "Installing nginx..."
-    apt-get install -y nginx
-    
-    # Create nginx configuration for ZAP reverse proxy
-    echo "Configuring nginx reverse proxy..."
-    cat > /etc/nginx/sites-available/zap-proxy << 'NGINX_EOF'
+  user_data = <<EOF
+#!/bin/bash
+set -e
+
+# Log all output
+exec > >(tee -a /var/log/zap-setup.log)
+exec 2>&1
+
+echo "Starting ZAP cloud setup at $(date)"
+
+# Update system
+echo "Updating system packages..."
+apt-get update
+apt-get upgrade -y
+
+# Install Docker using official installation script (more reliable)
+echo "Installing Docker using official script..."
+curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+sh /tmp/get-docker.sh
+rm /tmp/get-docker.sh
+
+# Verify Docker installation
+if ! command -v docker &> /dev/null; then
+    echo "ERROR: Docker installation failed"
+    exit 1
+fi
+
+echo "Docker version: $(docker --version)"
+
+# Start Docker service
+echo "Starting Docker service..."
+systemctl start docker
+systemctl enable docker
+
+# Add ubuntu user to docker group for non-root access
+usermod -aG docker ubuntu
+
+# Install nginx for reverse proxy
+echo "Installing nginx..."
+apt-get install -y nginx
+
+# Create nginx configuration for ZAP reverse proxy
+echo "Configuring nginx reverse proxy..."
+cat > /etc/nginx/sites-available/zap-proxy << 'NGINX_EOF'
 server {
     listen 8080;
     server_name _;
@@ -236,80 +236,80 @@ server {
     }
 }
 NGINX_EOF
-    
-    # Enable the site
-    ln -sf /etc/nginx/sites-available/zap-proxy /etc/nginx/sites-enabled/
-    rm -f /etc/nginx/sites-enabled/default
-    
-    # Test nginx configuration
-    nginx -t
-    
-    # Start and enable nginx
-    systemctl start nginx
-    systemctl enable nginx
-    
-    echo "Nginx configured and started"
-    
-    # Create directories for ZAP
-    echo "Creating ZAP directories..."
-    mkdir -p /opt/zap/{config,reports}
-    chmod -R 777 /opt/zap
-    
-    # Pull ZAP Docker image
-    echo "Pulling ZAP Docker image: ${var.zap_docker_image}"
-    docker pull ${var.zap_docker_image}
-    
-    # Start ZAP container on internal port 8081 (nginx will proxy to it)
-    echo "Starting ZAP container on internal port 8081..."
-    docker run -d \
-      --name kast-zap \
-      --restart unless-stopped \
-      -u zap \
-      -p 127.0.0.1:8081:8081 \
-      -v /opt/zap/reports:/zap/reports:rw \
-      -e TZ=UTC \
-      --health-cmd="curl -f http://localhost:8081/JSON/core/view/version/?apikey=${var.zap_api_key} || exit 1" \
-      --health-interval=30s \
-      --health-timeout=10s \
-      --health-retries=3 \
-      --health-start-period=60s \
-      ${var.zap_docker_image} \
-      zap.sh -daemon \
-      -host 0.0.0.0 \
-      -port 8081 \
-      -config api.key=${var.zap_api_key} \
-      -config api.addrs.addr.name=.* \
-      -config api.addrs.addr.regex=true \
-      -config api.disablekey=false
-    
-    # Wait for ZAP to be ready
-    echo "Waiting for ZAP to start..."
-    for i in {1..30}; do
-      if docker exec kast-zap curl -f http://localhost:8081/JSON/core/view/version/?apikey=${var.zap_api_key} >/dev/null 2>&1; then
-        echo "ZAP is ready!"
-        break
-      fi
-      echo "Waiting for ZAP... ($i/30)"
-      sleep 10
-    done
-    
-    # Verify container is running
-    if docker ps | grep -q kast-zap; then
-      echo "ZAP container is running successfully"
-      docker ps --filter name=kast-zap --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-    else
-      echo "ERROR: ZAP container failed to start"
-      docker logs kast-zap
-      exit 1
-    fi
-    
-    # Create ready flag
-    touch /tmp/zap-ready
-    
-    echo "ZAP cloud setup completed at $(date)"
-    echo "ZAP API URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8080"
-    echo "ZAP API Key: ${var.zap_api_key}"
-  EOF
+
+# Enable the site
+ln -sf /etc/nginx/sites-available/zap-proxy /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Test nginx configuration
+nginx -t
+
+# Start and enable nginx
+systemctl start nginx
+systemctl enable nginx
+
+echo "Nginx configured and started"
+
+# Create directories for ZAP
+echo "Creating ZAP directories..."
+mkdir -p /opt/zap/{config,reports}
+chmod -R 777 /opt/zap
+
+# Pull ZAP Docker image
+echo "Pulling ZAP Docker image: ${var.zap_docker_image}"
+docker pull ${var.zap_docker_image}
+
+# Start ZAP container on internal port 8081 (nginx will proxy to it)
+echo "Starting ZAP container on internal port 8081..."
+docker run -d \
+  --name kast-zap \
+  --restart unless-stopped \
+  -u zap \
+  -p 127.0.0.1:8081:8081 \
+  -v /opt/zap/reports:/zap/reports:rw \
+  -e TZ=UTC \
+  --health-cmd="curl -f http://localhost:8081/JSON/core/view/version/?apikey=${var.zap_api_key} || exit 1" \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  --health-start-period=60s \
+  ${var.zap_docker_image} \
+  zap.sh -daemon \
+  -host 0.0.0.0 \
+  -port 8081 \
+  -config api.key=${var.zap_api_key} \
+  -config api.addrs.addr.name=.* \
+  -config api.addrs.addr.regex=true \
+  -config api.disablekey=false
+
+# Wait for ZAP to be ready
+echo "Waiting for ZAP to start..."
+for i in {1..30}; do
+  if docker exec kast-zap curl -f http://localhost:8081/JSON/core/view/version/?apikey=${var.zap_api_key} >/dev/null 2>&1; then
+    echo "ZAP is ready!"
+    break
+  fi
+  echo "Waiting for ZAP... ($i/30)"
+  sleep 10
+done
+
+# Verify container is running
+if docker ps | grep -q kast-zap; then
+  echo "ZAP container is running successfully"
+  docker ps --filter name=kast-zap --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+else
+  echo "ERROR: ZAP container failed to start"
+  docker logs kast-zap
+  exit 1
+fi
+
+# Create ready flag
+touch /tmp/zap-ready
+
+echo "ZAP cloud setup completed at $(date)"
+echo "ZAP API URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8080"
+echo "ZAP API Key: ${var.zap_api_key}"
+EOF
 }
 
 # EC2 Spot Instance Request

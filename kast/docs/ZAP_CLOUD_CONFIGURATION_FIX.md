@@ -396,6 +396,46 @@ systemctl status nginx
 curl -I http://localhost:8080/JSON/core/view/version/?apikey=kast01
 ```
 
+## Cloud-Init Shebang Fix (Jan 2, 2026)
+
+### Issue
+Cloud-init failed to execute the user_data script with error:
+```
+Exec format error. Missing #! in script?
+RuntimeError: Runparts: 1 failures (part-001) in 1 attempted commands
+```
+
+**Root Cause**: The heredoc used `<<-EOF` which strips leading whitespace. When combined with indented script content, Terraform was creating a script where the shebang (`#!/bin/bash`) wasn't at byte position 0 of the file. Cloud-init requires the shebang to be at the very first position with no preceding characters or whitespace.
+
+### Solution
+Changed heredoc from indented (`<<-EOF`) to unindented (`<<EOF`) format:
+
+```hcl
+# Before (causes error):
+locals {
+  user_data = <<-EOF
+    #!/bin/bash
+    # ... indented content ...
+  EOF
+}
+
+# After (works correctly):
+locals {
+  user_data = <<EOF
+#!/bin/bash
+# ... content at column 0 ...
+EOF
+}
+```
+
+**Key points:**
+- Remove hyphen: `<<EOF` instead of `<<-EOF`
+- Start all script content at column 0 (no indentation)
+- The shebang `#!/bin/bash` must be at byte position 0
+- Close with `EOF` at column 0
+
+This is the standard pattern for Terraform user_data scripts and ensures cloud-init can properly execute the script.
+
 ## Future Improvements
 
 1. Add Terraform output for ZAP API URL
