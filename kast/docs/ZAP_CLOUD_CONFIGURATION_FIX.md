@@ -264,6 +264,138 @@ if ! command -v docker &> /dev/null; then
 fi
 ```
 
+## Nginx Reverse Proxy Implementation (Jan 2, 2026)
+
+### Issue with Direct ZAP Access
+When accessing ZAP directly via its public IP, ZAP was treating external API requests as proxy traffic, causing a proxy loop and timeouts:
+
+```
+curl -X GET "http://35.87.12.103:8080/JSON/core/view/version/?apikey=kast01"
+Failed to read http://35.87.12.103:8080/... within 20 seconds
+```
+
+**Root Cause**: ZAP saw the public IP in the request URL and attempted to proxy the request to that IP, creating an infinite loop back to itself.
+
+### Solution: Nginx Reverse Proxy
+Implemented nginx as a reverse proxy in front of ZAP to rewrite the Host header and isolate ZAP on an internal port.
+
+**Architecture:**
+```
+External Client → EC2:8080 (nginx) → Host: localhost → 127.0.0.1:8081 (ZAP)
+     ↓                                      ↓
+Sees public IP                    Rewrites to localhost
+     ↓                                      ↓
+nginx receives request              ZAP sees localhost request
+     ↓                                      ↓
+Rewrites headers                   No proxy loop!
+```
+
+### Implementation Details
+
+#### 1. Nginx Configuration
+```nginx
+server {
+    listen 8080;
+    server_name _;
+    
+    location / {
+        # Proxy to ZAP on internal port
+        proxy_pass http://localhost:8081;
+        
+        # Critical: Rewrite Host header to localhost
+        proxy_set_header Host localhost;
+        
+        # Pass along real client information
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Increase timeouts for long-running ZAP operations
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        
+        # Allow large request bodies (for scan configurations)
+        client_max_body_size 10M;
+        
+        # Disable buffering for streaming responses
+        proxy_buffering off;
+    }
+}
+```
+
+#### 2. ZAP Configuration Changes
+- ZAP now listens on **internal port 8081** (bound to 127.0.0.1 only)
+- Port binding: `-p 127.0.0.1:8081:8081` (not exposed externally)
+- Removed all proxy-specific configuration parameters (no longer needed)
+- Simplified ZAP startup command
+
+#### 3. Cloud-Init Script Updates
+```bash
+# Install nginx
+apt-get install -y nginx
+
+# Create nginx config
+cat > /etc/nginx/sites-available/zap-proxy << 'EOF'
+# ... nginx config ...
+EOF
+
+# Enable site
+ln -sf /etc/nginx/sites-available/zap-proxy /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# Start nginx
+systemctl start nginx
+systemctl enable nginx
+
+# Start ZAP on internal port
+docker run -d \
+  --name kast-zap \
+  -p 127.0.0.1:8081:8081 \
+  # ... other params ...
+  zap.sh -daemon -host 0.0.0.0 -port 8081 \
+  -config api.key=kast01
+```
+
+### Benefits
+
+✅ **Eliminates proxy loop**: ZAP only sees localhost requests  
+✅ **Clean architecture**: Separation of concerns (nginx for routing, ZAP for scanning)  
+✅ **Better security**: ZAP not directly exposed, nginx handles external access  
+✅ **Flexible**: Can add SSL/TLS termination, authentication, rate limiting at nginx layer  
+✅ **Standard solution**: Well-understood reverse proxy pattern  
+✅ **Better logging**: Nginx provides detailed access logs  
+✅ **Production-ready**: Nginx handles timeouts and buffering properly  
+
+### Testing the New Architecture
+
+After deploying:
+
+```bash
+# Test external access (should work now!)
+curl -X GET "http://<PUBLIC_IP>:8080/JSON/core/view/version/?apikey=kast01"
+
+# Expected response:
+{"version":"2.17.0"}
+
+# From inside EC2 instance:
+# Test nginx
+curl -X GET "http://localhost:8080/JSON/core/view/version/?apikey=kast01"
+
+# Test ZAP directly (internal)
+curl -X GET "http://localhost:8081/JSON/core/view/version/?apikey=kast01"
+
+# Check nginx logs
+tail -f /var/log/nginx/zap-access.log
+tail -f /var/log/nginx/zap-error.log
+
+# Check nginx status
+systemctl status nginx
+
+# Verify nginx is proxying correctly
+curl -I http://localhost:8080/JSON/core/view/version/?apikey=kast01
+```
+
 ## Future Improvements
 
 1. Add Terraform output for ZAP API URL

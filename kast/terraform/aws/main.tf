@@ -196,6 +196,60 @@ locals {
     # Add ubuntu user to docker group for non-root access
     usermod -aG docker ubuntu
     
+    # Install nginx for reverse proxy
+    echo "Installing nginx..."
+    apt-get install -y nginx
+    
+    # Create nginx configuration for ZAP reverse proxy
+    echo "Configuring nginx reverse proxy..."
+    cat > /etc/nginx/sites-available/zap-proxy << 'NGINX_EOF'
+server {
+    listen 8080;
+    server_name _;
+    
+    # Disable access log for health checks (optional)
+    access_log /var/log/nginx/zap-access.log;
+    error_log /var/log/nginx/zap-error.log;
+    
+    location / {
+        # Proxy to ZAP on internal port
+        proxy_pass http://localhost:8081;
+        
+        # Critical: Rewrite Host header to localhost to avoid ZAP proxy loop
+        proxy_set_header Host localhost;
+        
+        # Pass along real client information
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Increase timeouts for long-running ZAP operations
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+        
+        # Allow large request bodies (for scan configurations)
+        client_max_body_size 10M;
+        
+        # Disable buffering for streaming responses
+        proxy_buffering off;
+    }
+}
+NGINX_EOF
+    
+    # Enable the site
+    ln -sf /etc/nginx/sites-available/zap-proxy /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+    
+    # Test nginx configuration
+    nginx -t
+    
+    # Start and enable nginx
+    systemctl start nginx
+    systemctl enable nginx
+    
+    echo "Nginx configured and started"
+    
     # Create directories for ZAP
     echo "Creating ZAP directories..."
     mkdir -p /opt/zap/{config,reports}
@@ -205,16 +259,16 @@ locals {
     echo "Pulling ZAP Docker image: ${var.zap_docker_image}"
     docker pull ${var.zap_docker_image}
     
-    # Start ZAP container with API-only configuration
-    echo "Starting ZAP container..."
+    # Start ZAP container on internal port 8081 (nginx will proxy to it)
+    echo "Starting ZAP container on internal port 8081..."
     docker run -d \
       --name kast-zap \
       --restart unless-stopped \
       -u zap \
-      -p 8080:8080 \
+      -p 127.0.0.1:8081:8081 \
       -v /opt/zap/reports:/zap/reports:rw \
       -e TZ=UTC \
-      --health-cmd="curl -f http://localhost:8080/JSON/core/view/version/?apikey=${var.zap_api_key} || exit 1" \
+      --health-cmd="curl -f http://localhost:8081/JSON/core/view/version/?apikey=${var.zap_api_key} || exit 1" \
       --health-interval=30s \
       --health-timeout=10s \
       --health-retries=3 \
@@ -222,18 +276,16 @@ locals {
       ${var.zap_docker_image} \
       zap.sh -daemon \
       -host 0.0.0.0 \
-      -port 8080 \
+      -port 8081 \
       -config api.key=${var.zap_api_key} \
       -config api.addrs.addr.name=.* \
       -config api.addrs.addr.regex=true \
-      -config api.disablekey=false \
-      -config proxy.ip=127.0.0.1 \
-      -config proxy.port=8081
+      -config api.disablekey=false
     
     # Wait for ZAP to be ready
     echo "Waiting for ZAP to start..."
     for i in {1..30}; do
-      if docker exec kast-zap curl -f http://localhost:8080/JSON/core/view/version/?apikey=${var.zap_api_key} >/dev/null 2>&1; then
+      if docker exec kast-zap curl -f http://localhost:8081/JSON/core/view/version/?apikey=${var.zap_api_key} >/dev/null 2>&1; then
         echo "ZAP is ready!"
         break
       fi
