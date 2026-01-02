@@ -39,6 +39,13 @@ variable "zap_docker_image" {
   default     = "ghcr.io/zaproxy/zaproxy:stable"
 }
 
+variable "zap_api_key" {
+  description = "ZAP API key for authentication"
+  type        = string
+  default     = "kast01"
+  sensitive   = true
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
