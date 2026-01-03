@@ -215,8 +215,9 @@ server {
         # Proxy to ZAP on internal port
         proxy_pass http://localhost:8081;
         
-        # Critical: Rewrite Host header to localhost to avoid ZAP proxy loop
-        proxy_set_header Host localhost;
+        # Critical: Rewrite Host header with port to avoid ZAP proxy loop
+        # ZAP requires the port to distinguish API requests from proxy requests
+        proxy_set_header Host localhost:8081;
         
         # Pass along real client information
         proxy_set_header X-Real-IP $remote_addr;

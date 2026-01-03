@@ -302,8 +302,10 @@ server {
         # Proxy to ZAP on internal port
         proxy_pass http://localhost:8081;
         
-        # Critical: Rewrite Host header to localhost
-        proxy_set_header Host localhost;
+        # Critical: Rewrite Host header with port to avoid ZAP proxy loop
+        # ZAP requires the port to distinguish API requests from proxy requests
+        # Without the port, ZAP treats requests as proxy traffic to localhost:80
+        proxy_set_header Host localhost:8081;
         
         # Pass along real client information
         proxy_set_header X-Real-IP $remote_addr;
@@ -323,6 +325,15 @@ server {
     }
 }
 ```
+
+**Important Note on Host Header:**
+The Host header **must include the port number** (`localhost:8081`). If you only use `localhost` without the port, ZAP will:
+1. Interpret the request as proxy traffic (not an API request)
+2. Try to proxy the request to `localhost:80`
+3. Fail with a connection refused error
+4. Return HTTP 502 Bad Gateway
+
+This is because ZAP runs both an API server and a proxy server, and uses the Host header (including port) to distinguish between API requests and proxy requests.
 
 #### 2. ZAP Configuration Changes
 - ZAP now listens on **internal port 8081** (bound to 127.0.0.1 only)
