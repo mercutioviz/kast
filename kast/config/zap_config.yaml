@@ -34,12 +34,13 @@ remote:
   api_key: "${KAST_ZAP_API_KEY}"  # Optional, use "" if no key required
   timeout_seconds: 30
   verify_ssl: true  # Set to false for self-signed certificates
-  use_automation_framework: false  # Remote instances use direct API calls
+  use_automation_framework: true  # Use automation framework (default for all modes)
 
 # Cloud Provider Configuration (Ephemeral Infrastructure)
 cloud:
   # Cloud provider: aws, azure, gcp
   cloud_provider: aws
+  use_automation_framework: true  # Use automation framework (default for all modes)
   
   # AWS Configuration
   aws:
@@ -73,6 +74,9 @@ zap_config:
   docker_image: "ghcr.io/zaproxy/zaproxy:stable"
   api_port: 8080
   api_key: "kast01"
+  # Automation plan - Use profile shortcuts or specify full path
+  # Available profiles: quick, standard, thorough, api, passive
+  # Default: standard (symlinked to zap_automation_plan.yaml for backward compat)
   automation_plan: "kast/config/zap_automation_plan.yaml"
   report_name: "zap_report.json"
   timeout_minutes: 60

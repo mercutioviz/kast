@@ -124,12 +124,18 @@ def parse_args():
         default=10,
         help="(DEPRECATED: use --set related_sites.httpx_rate_limit=N) Rate limit for httpx requests per second (default: 10, used by related_sites plugin)"
     )
+    parser.add_argument(
+        "--zap-profile",
+        type=str,
+        choices=["quick", "standard", "thorough", "api", "passive"],
+        help="ZAP scan profile shortcut: quick (~20min), standard (~45min), thorough (~90min), api (~30min), passive (~15min, safe for production)"
+    )
     
     # Configuration management arguments
     parser.add_argument(
         "--config",
         type=str,
-        help="Path to configuration file (default: ~/.config/kast/config.yaml)"
+        help="Path to configuration file. If not specified, searches in order: ./kast_config.yaml (project), ~/.config/kast/config.yaml (user), /etc/kast/config.yaml (system)"
     )
     parser.add_argument(
         "--config-init",
@@ -261,6 +267,17 @@ def main():
     
     # Initialize configuration manager
     config_manager = ConfigManager(cli_args=args, logger=log)
+    
+    # Handle --zap-profile shortcut
+    if args.zap_profile:
+        profile_path = f"kast/config/zap_automation_{args.zap_profile}.yaml"
+        log.info(f"Using ZAP profile: {args.zap_profile} ({profile_path})")
+        console.print(f"[cyan]Using ZAP profile:[/cyan] {args.zap_profile} ({profile_path})")
+        
+        # Add to CLI overrides (will be processed when config is loaded)
+        if not args.set:
+            args.set = []
+        args.set.append(f"zap.zap_config.automation_plan={profile_path}")
     
     # Handle config-only commands (exit after execution, no target required)
     if args.config_schema:

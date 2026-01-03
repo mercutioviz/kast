@@ -1,0 +1,76 @@
+# OWASP ZAP Automation Framework Plan - API Profile
+# API-focused scan for REST APIs and microservices
+# Estimated duration: ~30 minutes
+# Note: For best results, provide an OpenAPI/Swagger spec
+
+env:
+  contexts:
+    - name: "api-context"
+      urls:
+        - "${TARGET_URL}"
+      includePaths:
+        - ".*/api/.*"
+        - ".*/v[0-9]+/.*"  # Match versioned API paths
+      excludePaths:
+        - ".*logout.*"
+        - ".*signout.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  # Minimal spider - APIs usually don't need heavy spidering
+  - type: "spiderClient"
+    parameters:
+      maxDuration: 3  # 3 minutes only
+      maxDepth: 2     # Shallow - APIs are usually flat
+      maxChildren: 0
+      acceptCookies: true
+      handleODataParametersVisited: true
+      parseComments: false
+      parseGit: false
+      parseRobotsTxt: true
+      parseSitemapXml: true
+      parseSVNEntries: false
+      postForm: false  # APIs don't use HTML forms
+      processForm: false
+      requestWaitTime: 100
+      sendRefererHeader: false  # APIs often don't care about referer
+      threadCount: 2
+
+  # Passive scan configuration
+  - type: "passiveScan-config"
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+      enableTags: false
+
+  - type: "passiveScan-wait"
+    parameters:
+      maxDuration: 5
+
+  # Active scan focused on API vulnerabilities
+  - type: "activeScan"
+    parameters:
+      context: "api-context"
+      policy: "Default Policy"
+      maxRuleDurationInMins: 5
+      maxScanDurationInMins: 25  # 25 minutes
+      addQueryParam: true  # Important for API testing
+      defaultPolicy: ""
+      delayInMs: 0
+      handleAntiCSRFTokens: false  # APIs use tokens, not CSRF tokens typically
+      injectPluginIdInHeader: false
+      scanHeadersAllRequests: true  # Important for APIs (auth headers, etc.)
+      threadPerHost: 3
+
+  # Generate report
+  - type: "report"
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+      reportTitle: "KAST ZAP API Scan"
+      reportDescription: "API-focused security scan for REST endpoints"
+      displayReport: false

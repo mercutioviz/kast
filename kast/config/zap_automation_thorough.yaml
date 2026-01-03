@@ -1,6 +1,6 @@
-# OWASP ZAP Automation Framework Plan - STANDARD Profile
-# Balanced scan for regular development security testing
-# Estimated duration: ~45 minutes
+# OWASP ZAP Automation Framework Plan - THOROUGH Profile
+# Comprehensive deep scan for pre-production and major releases
+# Estimated duration: ~90 minutes
 
 env:
   contexts:
@@ -18,14 +18,14 @@ env:
     progressToStdout: true
 
 jobs:
-  # Standard spider scan
+  # Deep spider scan
   - type: "spiderClient"
     parameters:
-      maxDuration: 10  # 10 minutes
-      maxDepth: 5      # Medium depth
+      maxDuration: 20  # 20 minutes
+      maxDepth: 10     # Deep crawl
       maxChildren: 0
       acceptCookies: true
-      handleODataParametersVisited: false
+      handleODataParametersVisited: true
       parseComments: true
       parseGit: true
       parseRobotsTxt: true
@@ -35,33 +35,33 @@ jobs:
       processForm: true
       requestWaitTime: 200
       sendRefererHeader: true
-      threadCount: 2
+      threadCount: 4  # More threads
 
-  # Passive scan
+  # Comprehensive passive scan
   - type: "passiveScan-config"
     parameters:
-      maxAlertsPerRule: 10
+      maxAlertsPerRule: 20  # More alerts per rule
       scanOnlyInScope: true
-      enableTags: false
+      enableTags: true
 
   - type: "passiveScan-wait"
     parameters:
-      maxDuration: 10
+      maxDuration: 15
 
-  # Standard active scan
+  # Thorough active scan
   - type: "activeScan"
     parameters:
       context: "target-context"
       policy: "Default Policy"
-      maxRuleDurationInMins: 5
-      maxScanDurationInMins: 30  # 30 minutes
+      maxRuleDurationInMins: 10
+      maxScanDurationInMins: 60  # 60 minutes
       addQueryParam: false
       defaultPolicy: ""
       delayInMs: 0
       handleAntiCSRFTokens: true
       injectPluginIdInHeader: false
       scanHeadersAllRequests: true
-      threadPerHost: 2
+      threadPerHost: 4  # More threads for thorough testing
 
   # Generate report
   - type: "report"
@@ -69,6 +69,6 @@ jobs:
       template: "traditional-json"
       reportDir: "/zap/reports"
       reportFile: "zap_report.json"
-      reportTitle: "KAST ZAP Standard Scan"
-      reportDescription: "Balanced security scan for development testing"
+      reportTitle: "KAST ZAP Thorough Scan"
+      reportDescription: "Comprehensive deep security scan for pre-production"
       displayReport: false

@@ -32,7 +32,7 @@ This implementation makes the plugin significantly more practical for developmen
 
 - `RemoteZapProvider`
   - Connects to existing ZAP instances
-  - Uses API-based scanning (no automation framework dependency)
+  - Uses ZAP automation framework with YAML config (default)
   - Environment variable support for credentials
   - No provisioning/cleanup overhead
 
@@ -61,10 +61,12 @@ This implementation makes the plugin significantly more practical for developmen
 **Sections**:
 - `execution_mode`: auto/local/remote/cloud
 - `auto_discovery`: Priority and checks
-- `local`: Docker container configuration
-- `remote`: Remote instance configuration
-- `cloud`: Cloud provider settings (migrated from old config)
-- `zap_config`: Common scanning parameters
+- `local`: Docker container configuration (includes `use_automation_framework: true`)
+- `remote`: Remote instance configuration (includes `use_automation_framework: true`)
+- `cloud`: Cloud provider settings (includes `use_automation_framework: true`)
+- `zap_config`: Common scanning parameters (includes `automation_plan` path)
+
+**Key Feature**: All modes now default to using ZAP Automation Framework with YAML config
 
 #### 4. `kast/docs/ZAP_MULTI_MODE_GUIDE.md`
 **Purpose**: Comprehensive user documentation
@@ -104,10 +106,13 @@ This implementation makes the plugin significantly more practical for developmen
 **Key Changes**:
 - Removed direct Terraform/SSH/cloud dependencies
 - Added `ZapProviderFactory` usage
-- Implemented `_load_config()` with legacy support
-- Added `_run_api_scan()` for direct API scanning
+- Implemented `_load_config()` with legacy support and CLI overrides
+- Added `_validate_automation_plan()` for YAML validation
+- Refactored to use automation framework by default (all modes)
+- Added `_run_api_scan()` as fallback for when automation is disabled
 - Provider-agnostic result handling
 - Mode information in reports
+- CLI override support for automation plan path and framework toggle
 
 ## Architecture
 
@@ -145,12 +150,14 @@ ZapPlugin
 - **Zero Cost**: No cloud charges during development
 - **Container Reuse**: Subsequent scans even faster
 - **Offline Capable**: Works without cloud credentials
+- **Consistent Scanning**: Same automation framework across all modes
 
 ### CI/CD Integration
 - **Remote Mode**: Share ZAP instance across builds
 - **Fast Execution**: ~10s provisioning overhead
 - **Consistent Environment**: Same ZAP version for all builds
 - **Easy Configuration**: Environment variables only
+- **Repeatable Results**: YAML-based automation ensures consistency
 
 ### Production Use
 - **Cloud Mode**: Complete isolation when needed
@@ -163,8 +170,37 @@ ZapPlugin
 - **Explicit Control**: Can force specific mode when needed
 - **Gradual Adoption**: Migrate mode by mode
 - **Environment-Specific**: Different modes per environment
+- **Customizable Scans**: Edit automation plan YAML without code changes
+- **CLI Overrides**: Override any config parameter via command line
 
 ## Implementation Details
+
+### Automation Framework Integration
+
+**All modes now default to using the ZAP Automation Framework**:
+
+1. **YAML Validation**: Plans are validated before execution
+   - Checks for required sections (`env`, `jobs`)
+   - Validates job structure
+   - Fails fast with clear error messages
+
+2. **Upload Mechanism**: Mode-specific implementation
+   - **Local**: Writes plan to mounted volume
+   - **Remote**: Uses `/JSON/automation/action/runPlan/` API endpoint
+   - **Cloud**: Uploads via SSH, executes via ZAP CLI
+
+3. **Failure Handling**: Failed automation framework attempts fail the scan
+   - No fallback to API scanning (by design)
+   - Ensures consistent behavior across environments
+
+4. **CLI Overrides**: Users can customize via command line
+   ```bash
+   # Override automation plan path
+   --config zap.zap_config.automation_plan=/path/to/plan.yaml
+   
+   # Disable automation framework (use API instead)
+   --config zap.remote.use_automation_framework=false
+   ```
 
 ### Provider Interface
 
@@ -178,7 +214,8 @@ class ZapInstanceProvider(ABC):
         
     @abstractmethod
     def upload_automation_plan(self, plan_content, target_url):
-        """Returns: success boolean"""
+        """Returns: success boolean
+        Now fully implemented in all providers"""
         
     @abstractmethod
     def download_results(self, output_dir, report_name):
@@ -320,23 +357,25 @@ execution_mode: auto  # Recommended
 ## Known Limitations
 
 1. **Manual Testing Pending**: Cloud mode implementation complete but needs end-to-end testing
-2. **Automation Framework**: Limited support - needs testing across all modes
+2. **Automation Framework Remote Mode**: Needs end-to-end validation with actual remote ZAP instances
 3. **No Native ZAP**: Only Docker-based modes (not native ZAP installation)
 4. **Single Target**: No parallel scanning yet
 5. **Error Recovery**: Failed runs may leave containers (local) or resources (cloud) in some edge cases
+6. **Automation Plan Parameterization**: Limited environment variable substitution (only `${TARGET_URL}`)
 
 ## File Changes Summary
 
 ```
 New Files:
-  kast/scripts/zap_providers.py           (350 lines)
+  kast/scripts/zap_providers.py           (400 lines)
   kast/scripts/zap_provider_factory.py    (150 lines)
-  kast/config/zap_config.yaml             (70 lines)
-  kast/docs/ZAP_MULTI_MODE_GUIDE.md       (450 lines)
+  kast/config/zap_config.yaml             (75 lines)
+  kast/docs/ZAP_MULTI_MODE_GUIDE.md       (550 lines)
   kast/docs/ZAP_MULTI_MODE_IMPLEMENTATION.md (this file)
 
 Modified Files:
-  kast/plugins/zap_plugin.py              (refactored, -150 lines)
+  kast/plugins/zap_plugin.py              (refactored, added validation, +50 lines)
+  kast/config/zap_automation_plan.yaml    (enhanced with documentation)
 
 Preserved Files:
   kast/config/zap_cloud_config.yaml       (backward compatibility)
@@ -382,18 +421,62 @@ The result is a significantly more practical and efficient tool that adapts to d
 - Developers can scan locally without cloud costs
 - CI/CD pipelines can use shared ZAP instances
 - Production scans remain isolated in cloud
+- **Consistent scanning via automation framework across all environments**
 
 ### Strategic Value
 - Foundation for future providers (Kubernetes, etc.)
 - Pattern for other KAST plugins
 - Better developer experience drives adoption
 - Cost optimization for organizations
+- **YAML-based configuration enables non-developer customization**
 
-**Phase 1 Status: ✅ COMPLETE**
+## Implementation Status
 
+### ✅ COMPLETE - Phase 1: Multi-Mode Support
 All three provider modes are now fully implemented:
 - ✅ LocalZapProvider - Production ready
 - ✅ RemoteZapProvider - Production ready  
 - ✅ CloudZapProvider - Implementation complete, pending end-to-end testing
 
-Next step: Manual testing of cloud mode to validate the refactored implementation.
+### ✅ COMPLETE - Phase 2: Automation Framework Integration
+All modes now use ZAP Automation Framework by default:
+- ✅ YAML validation added
+- ✅ Automation framework support in all providers
+- ✅ CLI override system for automation plan path
+- ✅ Fail-fast behavior on validation/upload errors
+- ✅ Documentation updated comprehensively
+
+### 📋 PENDING - Phase 3: Testing & Validation
+- ⚠️ End-to-end testing of cloud mode with automation framework
+- ⚠️ End-to-end testing of remote mode with automation framework
+- ⚠️ Integration testing across all modes
+- ⚠️ Performance benchmarking with automation framework
+
+### Key Changes in Phase 2
+1. **Configuration Updates**:
+   - `local.use_automation_framework: true` (default)
+   - `remote.use_automation_framework: true` (changed from false)
+   - `cloud.use_automation_framework: true` (new explicit option)
+
+2. **Plugin Enhancements**:
+   - Added `_validate_automation_plan()` method
+   - Enhanced `_load_automation_plan()` with validation
+   - Refactored scan logic to prioritize automation framework
+   - Fail-fast on invalid/missing automation plans
+
+3. **Provider Updates**:
+   - `RemoteZapProvider.upload_automation_plan()` now uses `/JSON/automation/action/runPlan/`
+   - All providers handle automation framework consistently
+   - Clear error messages on automation framework failures
+
+4. **Documentation**:
+   - Comprehensive automation framework section in user guide
+   - CLI override examples
+   - Customization patterns
+   - Troubleshooting guidance
+
+Next steps: 
+1. Manual testing of automation framework in remote mode
+2. Manual testing of cloud mode end-to-end
+3. Performance benchmarking
+4. User acceptance testing

@@ -84,7 +84,7 @@ python kast/main.py --target https://example.com --plugins zap --debug
 
 **Behavior**:
 - Connects to existing ZAP instance
-- Uses direct API calls (not automation framework)
+- **Uses automation framework with YAML config** (default)
 - No provisioning/cleanup needed
 
 **Advantages**:
@@ -92,6 +92,7 @@ python kast/main.py --target https://example.com --plugins zap --debug
 - ✅ Share ZAP instance across team
 - ✅ Centralized management
 - ✅ Good for CI/CD pipelines
+- ✅ Consistent scanning via automation framework
 
 ### 3. Cloud Mode (Production Scans)
 
@@ -122,9 +123,251 @@ python kast/main.py --target https://example.com --plugins zap --debug
 - ✅ No local dependencies
 - ✅ Cost-optimized (spot instances)
 
+## Automation Framework (All Modes)
+
+### Overview
+
+**All ZAP plugin modes now default to using the ZAP Automation Framework**, which provides:
+
+- ✅ **Consistent scan configuration** via YAML
+- ✅ **Repeatable results** across environments
+- ✅ **Advanced scan customization** without code changes
+- ✅ **Industry best practices** built-in
+
+### Predefined Test Plan Profiles
+
+KAST provides **5 predefined test plans** optimized for different scenarios:
+
+| Profile | Duration | Spider Depth | Active Scan | Use Case |
+|---------|----------|--------------|-------------|----------|
+| **quick** | ~20 min | 3 (shallow) | 15 min | CI/CD pipelines, quick checks |
+| **standard** | ~45 min | 5 (medium) | 30 min | Regular development testing (default) |
+| **thorough** | ~90 min | 10 (deep) | 60 min | Pre-production, major releases |
+| **api** | ~30 min | 2 (minimal) | 25 min | REST APIs, microservices |
+| **passive** | ~15 min | 5 (medium) | None | Production monitoring (safe) |
+
+#### Profile Details
+
+**Quick Profile** (`zap_automation_quick.yaml`)
+- **Best for**: CI/CD pipelines, rapid feedback
+- **Spider**: 5 minutes, depth 3
+- **Active Scan**: 15 minutes
+- **Trade-offs**: May miss deeper vulnerabilities, faster feedback
+
+**Standard Profile** (`zap_automation_standard.yaml`) - DEFAULT
+- **Best for**: Regular development security testing
+- **Spider**: 10 minutes, depth 5
+- **Active Scan**: 30 minutes
+- **Trade-offs**: Balanced coverage and speed
+
+**Thorough Profile** (`zap_automation_thorough.yaml`)
+- **Best for**: Pre-production assessments, major releases
+- **Spider**: 20 minutes, depth 10, 4 threads
+- **Active Scan**: 60 minutes, 4 threads per host
+- **Trade-offs**: Comprehensive but time-consuming
+
+**API Profile** (`zap_automation_api.yaml`)
+- **Best for**: REST APIs, microservices, headless apps
+- **Spider**: 3 minutes, depth 2 (APIs are flat)
+- **Active Scan**: 25 minutes, API-focused checks
+- **Special**: Optimized for JSON/REST patterns, no HTML form processing
+
+**Passive Profile** (`zap_automation_passive.yaml`)
+- **Best for**: Production monitoring, safe scanning
+- **Spider**: 10 minutes, depth 5, single thread
+- **Active Scan**: **NONE** (passive only)
+- **Safety**: No injection attacks, safe for production
+
+### Using Test Plan Profiles
+
+**Option 1: CLI Shortcut** (Easiest)
+```bash
+# Quick scan (CI/CD)
+python kast/main.py --target https://example.com --plugins zap --zap-profile quick
+
+# Standard scan (default)
+python kast/main.py --target https://example.com --plugins zap --zap-profile standard
+
+# Thorough scan (pre-prod)
+python kast/main.py --target https://example.com --plugins zap --zap-profile thorough
+
+# API scan
+python kast/main.py --target https://api.example.com --plugins zap --zap-profile api
+
+# Passive scan (production)
+python kast/main.py --target https://prod.example.com --plugins zap --zap-profile passive
+```
+
+**Option 2: Direct Path Override**
+```bash
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=kast/config/zap_automation_quick.yaml
+```
+
+**Option 3: Config File**
+```yaml
+# In kast_config.yaml or ~/.config/kast/config.yaml
+plugins:
+  zap:
+    zap_config:
+      automation_plan: "kast/config/zap_automation_thorough.yaml"
+```
+
+**Option 4: Environment-Based Selection**
+```yaml
+# In zap_config.yaml
+zap_config:
+  automation_plan: "kast/config/zap_automation_${SCAN_PROFILE}.yaml"
+```
+Then: `export SCAN_PROFILE=quick`
+
+### Automation Plan Location
+
+Default: `kast/config/zap_automation_plan.yaml` (symlink to `zap_automation_standard.yaml`)
+
+Available profiles:
+- `kast/config/zap_automation_quick.yaml`
+- `kast/config/zap_automation_standard.yaml` (default)
+- `kast/config/zap_automation_thorough.yaml`
+- `kast/config/zap_automation_api.yaml`
+- `kast/config/zap_automation_passive.yaml`
+
+Each YAML file defines:
+- Spider scan parameters (depth, duration, etc.)
+- Passive scan configuration
+- Active scan settings (if applicable)
+- Report generation templates
+
+### Automation Framework per Mode
+
+| Mode | Uses Automation Framework | Config Option |
+|------|--------------------------|---------------|
+| **Local** | ✅ Yes (default) | `local.use_automation_framework: true` |
+| **Remote** | ✅ Yes (default) | `remote.use_automation_framework: true` |
+| **Cloud** | ✅ Yes (default) | `cloud.use_automation_framework: true` |
+
+### Disabling Automation Framework
+
+If you need to use direct API calls instead (legacy behavior):
+
+```bash
+# Via CLI override
+python kast/main.py --target https://example.com --plugins zap \
+  --config zap.remote.use_automation_framework=false
+
+# Or edit zap_config.yaml
+remote:
+  use_automation_framework: false
+```
+
+**Note**: If automation framework is enabled but the plan is invalid or missing, the scan will fail (not fall back to API).
+
+### Customizing the Automation Plan
+
+#### Option 1: Edit Default Plan
+
+```bash
+# Edit the default plan
+nano kast/config/zap_automation_plan.yaml
+```
+
+#### Option 2: Use Custom Plan
+
+```bash
+# Via CLI override
+python kast/main.py --target https://example.com --plugins zap \
+  --config zap.zap_config.automation_plan=/path/to/custom_plan.yaml
+```
+
+#### Option 3: Create Per-Environment Plans
+
+```yaml
+# zap_config.yaml
+zap_config:
+  automation_plan: "kast/config/zap_automation_${ENVIRONMENT}.yaml"
+```
+
+### Automation Plan Validation
+
+The plugin automatically validates automation plans before use:
+
+- ✅ Valid YAML syntax
+- ✅ Required sections present (`env`, `jobs`)
+- ✅ Each job has a `type` field
+- ❌ Invalid plans cause scan failure with clear error messages
+
+### Example Automation Plan Customizations
+
+#### Increase Scan Depth
+
+```yaml
+jobs:
+  - type: "spiderClient"
+    parameters:
+      maxDuration: 20  # Default: 10
+      maxDepth: 10     # Default: 5
+```
+
+#### Adjust Active Scan Duration
+
+```yaml
+jobs:
+  - type: "activeScan"
+    parameters:
+      maxScanDurationInMins: 60  # Default: 30
+      threadPerHost: 4            # Default: 2
+```
+
+#### Exclude URLs from Scan
+
+```yaml
+env:
+  contexts:
+    - name: "target-context"
+      excludePaths:
+        - ".*logout.*"
+        - ".*signout.*"
+        - ".*admin.*"  # Add custom exclusions
+```
+
 ## Configuration
 
-### New Configuration File: `zap_config.yaml`
+### Unified Configuration System
+
+The ZAP plugin now uses the **same configuration search paths** as the main KAST config system:
+
+**Search Order** (highest to lowest priority):
+1. `./kast_config.yaml` (project-specific) - `plugins.zap` section
+2. `~/.config/kast/config.yaml` (user config) - `plugins.zap` section  
+3. `/etc/kast/config.yaml` (system-wide) - `plugins.zap` section
+4. `kast/config/zap_config.yaml` (installation directory - backward compatibility)
+5. `kast/config/zap_cloud_config.yaml` (legacy format - backward compatibility)
+
+**Two Configuration Formats Supported:**
+
+**Format 1: Unified Config** (Recommended - consistent with other plugins)
+```yaml
+# In ./kast_config.yaml, ~/.config/kast/config.yaml, or /etc/kast/config.yaml
+plugins:
+  zap:
+    execution_mode: auto
+    local:
+      docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+      # ... other settings
+```
+
+**Format 2: Standalone Config** (Backward compatibility)
+```yaml
+# In kast/config/zap_config.yaml
+execution_mode: auto
+local:
+  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+  # ... other settings
+```
+
+Both formats work, with unified format taking precedence based on the search order above.
+
+### Configuration File: `zap_config.yaml`
 
 ```yaml
 # Execution mode: auto, local, remote, cloud

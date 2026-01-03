@@ -1,6 +1,5 @@
-# OWASP ZAP Automation Framework Plan - STANDARD Profile
-# Balanced scan for regular development security testing
-# Estimated duration: ~45 minutes
+# OWASP ZAP Automation Framework Plan
+# This file defines the scan configuration for ZAP
 
 env:
   contexts:
@@ -18,11 +17,11 @@ env:
     progressToStdout: true
 
 jobs:
-  # Standard spider scan
+  # Spider scan to discover application structure
   - type: "spiderClient"
     parameters:
-      maxDuration: 10  # 10 minutes
-      maxDepth: 5      # Medium depth
+      maxDuration: 10
+      maxDepth: 5
       maxChildren: 0
       acceptCookies: true
       handleODataParametersVisited: false
@@ -37,24 +36,25 @@ jobs:
       sendRefererHeader: true
       threadCount: 2
 
-  # Passive scan
+  # Passive scan - analyze responses
   - type: "passiveScan-config"
     parameters:
       maxAlertsPerRule: 10
       scanOnlyInScope: true
       enableTags: false
 
+  # Wait for passive scan to complete
   - type: "passiveScan-wait"
     parameters:
       maxDuration: 10
 
-  # Standard active scan
+  # Active scan - test for vulnerabilities
   - type: "activeScan"
     parameters:
       context: "target-context"
       policy: "Default Policy"
       maxRuleDurationInMins: 5
-      maxScanDurationInMins: 30  # 30 minutes
+      maxScanDurationInMins: 30
       addQueryParam: false
       defaultPolicy: ""
       delayInMs: 0
@@ -69,6 +69,6 @@ jobs:
       template: "traditional-json"
       reportDir: "/zap/reports"
       reportFile: "zap_report.json"
-      reportTitle: "KAST ZAP Standard Scan"
-      reportDescription: "Balanced security scan for development testing"
+      reportTitle: "KAST ZAP Security Scan"
+      reportDescription: "Automated security scan performed by KAST"
       displayReport: false

@@ -10,12 +10,26 @@ The OWASP ZAP Cloud Plugin for KAST provides automated web application security 
 4. Collecting and processing scan results
 5. Tearing down infrastructure automatically
 
+> **Note**: This guide focuses on Cloud Mode. The ZAP plugin now supports multiple execution modes (local, remote, cloud). See [ZAP Multi-Mode Guide](ZAP_MULTI_MODE_GUIDE.md) for a comprehensive overview of all modes.
+
+## Multi-Mode Support
+
+The ZAP plugin has evolved from a cloud-only solution to support three execution modes:
+
+- **Local Mode**: Fast Docker-based scanning for development (no cloud costs)
+- **Remote Mode**: Connect to existing ZAP instances for CI/CD
+- **Cloud Mode**: This guide - isolated ephemeral infrastructure
+
+All modes use the **ZAP Automation Framework** by default for consistent, repeatable scans.
+
 ## Features
 
 - **Multi-cloud Support**: Deploy to AWS, Azure, or GCP
 - **Cost Optimization**: Uses spot/preemptible instances for reduced costs
 - **Ephemeral Infrastructure**: Automatically provisions and tears down resources
-- **ZAP Automation Framework**: Uses YAML-based automation plans for reproducible scans
+- **ZAP Automation Framework**: Uses YAML-based automation plans for reproducible scans (default for all modes)
+- **YAML Validation**: Automation plans are validated before execution
+- **CLI Overrides**: Customize scans via command line without editing config files
 - **CI/CD Ready**: Designed for integration into automated security pipelines
 - **Secure**: SSH key-based authentication, isolated VPC/VNet
 - **Comprehensive Reporting**: Integrates with KAST's HTML/PDF reporting system
@@ -156,12 +170,16 @@ zap_config:
   docker_image: ghcr.io/zaproxy/zaproxy:stable
   api_port: 8080
   api_key: null  # Set if ZAP requires API key
-  automation_plan: kast/config/zap_automation_plan.yaml
+  automation_plan: kast/config/zap_automation_plan.yaml  # Path to automation plan
   report_name: zap_report.json
   timeout_minutes: 60
   poll_interval_seconds: 30
   ssh_timeout_seconds: 300
   ssh_retry_attempts: 5
+
+# Cloud mode automation framework (default: true)
+cloud:
+  use_automation_framework: true  # Use YAML-based automation (recommended)
 
 # Resource Tags/Labels
 tags:
@@ -236,6 +254,11 @@ export GCP_PROJECT_ID="your_project_id"
 ### Basic Scan
 
 ```bash
+# Cloud mode (if configured as default)
+python kast/main.py --target https://example.com --plugins zap
+
+# Explicitly force cloud mode
+# Edit zap_config.yaml: execution_mode: cloud
 python kast/main.py --target https://example.com --plugins zap
 ```
 
@@ -243,6 +266,22 @@ python kast/main.py --target https://example.com --plugins zap
 
 ```bash
 python kast/main.py --target https://example.com --plugins zap --debug
+```
+
+### Custom Automation Plan
+
+```bash
+# Override automation plan path via CLI
+python kast/main.py --target https://example.com --plugins zap \
+  --config zap.zap_config.automation_plan=/path/to/custom_plan.yaml
+```
+
+### Disable Automation Framework
+
+```bash
+# Use direct API calls instead of automation framework
+python kast/main.py --target https://example.com --plugins zap \
+  --config zap.cloud.use_automation_framework=false
 ```
 
 ### Report Only Mode
@@ -288,10 +327,12 @@ python kast/main.py --target https://example.com --plugins whatweb,testssl,zap
    - Verifies instance readiness flag
 
 5. **ZAP Container Deployment**
-   - Uploads customized automation plan
+   - Uploads customized automation plan via SSH
+   - Validates automation plan YAML structure
    - Starts ZAP Docker container
    - Mounts volumes for config and reports
-   - Runs ZAP Automation Framework
+   - Executes ZAP Automation Framework
+   - **Note**: If automation plan is invalid or missing, scan fails (no fallback to API)
 
 6. **Scan Monitoring**
    - Connects to ZAP API
@@ -443,7 +484,11 @@ terraform destroy -auto-approve
 
 ## Advanced Configuration
 
-### Custom Automation Plans
+### Automation Framework Customization
+
+All ZAP modes now use the automation framework by default. Customize your scans by editing the automation plan:
+
+#### Custom Automation Plans
 
 Create custom automation plans for specific scenarios:
 
@@ -460,6 +505,44 @@ env:
           loginUrl: "${TARGET_URL}/login"
           loginRequestData: "username={%username%}&password={%password%}"
 ```
+
+#### Deeper Scans
+
+```yaml
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 20  # Increased from default 10
+      maxDepth: 10     # Increased from default 5
+      
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 60  # Increased from default 30
+      threadPerHost: 4            # Increased from default 2
+```
+
+#### Exclude Sensitive Paths
+
+```yaml
+env:
+  contexts:
+    - name: "Production Scan"
+      excludePaths:
+        - ".*logout.*"
+        - ".*admin.*"
+        - ".*delete.*"  # Protect against destructive actions
+```
+
+### Automation Plan Validation
+
+The plugin validates automation plans before execution:
+
+- ✅ Valid YAML syntax
+- ✅ Required sections present (`env`, `jobs`)
+- ✅ Each job has required fields
+- ❌ Invalid plans cause scan to fail immediately
+
+This ensures consistent, reliable scans across all environments.
 
 ### Multiple Scan Profiles
 
@@ -528,14 +611,21 @@ jobs:
           path: output/
 ```
 
+## Related Documentation
+
+- **[ZAP Multi-Mode Guide](ZAP_MULTI_MODE_GUIDE.md)**: Comprehensive guide to all ZAP modes (local, remote, cloud)
+- **[ZAP Multi-Mode Implementation](ZAP_MULTI_MODE_IMPLEMENTATION.md)**: Technical implementation details
+- **KAST Main Documentation**: General KAST usage and configuration
+
 ## Support
 
 For issues and questions:
-- Review this documentation
+- Review this documentation and related guides
 - Check KAST main documentation
 - Enable debug mode for detailed logs
 - Review cloud provider documentation
 - Check ZAP documentation: https://www.zaproxy.org/docs/
+- Check ZAP Automation Framework docs: https://www.zaproxy.org/docs/automate/automation-framework/
 
 ## License
 

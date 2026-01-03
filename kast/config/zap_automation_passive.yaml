@@ -1,6 +1,7 @@
-# OWASP ZAP Automation Framework Plan - STANDARD Profile
-# Balanced scan for regular development security testing
-# Estimated duration: ~45 minutes
+# OWASP ZAP Automation Framework Plan - PASSIVE Profile
+# Passive-only scan for production monitoring (no active testing)
+# Estimated duration: ~15 minutes
+# Safe for production - only observes traffic, does not inject payloads
 
 env:
   contexts:
@@ -18,11 +19,11 @@ env:
     progressToStdout: true
 
 jobs:
-  # Standard spider scan
+  # Spider to discover pages (passive, no testing)
   - type: "spiderClient"
     parameters:
       maxDuration: 10  # 10 minutes
-      maxDepth: 5      # Medium depth
+      maxDepth: 5
       maxChildren: 0
       acceptCookies: true
       handleODataParametersVisited: false
@@ -33,11 +34,11 @@ jobs:
       parseSVNEntries: true
       postForm: true
       processForm: true
-      requestWaitTime: 200
+      requestWaitTime: 300  # Slower to be gentle on production
       sendRefererHeader: true
-      threadCount: 2
+      threadCount: 1  # Single thread for production
 
-  # Passive scan
+  # Passive scan only - analyze responses without sending attack payloads
   - type: "passiveScan-config"
     parameters:
       maxAlertsPerRule: 10
@@ -48,20 +49,7 @@ jobs:
     parameters:
       maxDuration: 10
 
-  # Standard active scan
-  - type: "activeScan"
-    parameters:
-      context: "target-context"
-      policy: "Default Policy"
-      maxRuleDurationInMins: 5
-      maxScanDurationInMins: 30  # 30 minutes
-      addQueryParam: false
-      defaultPolicy: ""
-      delayInMs: 0
-      handleAntiCSRFTokens: true
-      injectPluginIdInHeader: false
-      scanHeadersAllRequests: true
-      threadPerHost: 2
+  # NO ACTIVE SCAN - This is the key difference for production safety
 
   # Generate report
   - type: "report"
@@ -69,6 +57,6 @@ jobs:
       template: "traditional-json"
       reportDir: "/zap/reports"
       reportFile: "zap_report.json"
-      reportTitle: "KAST ZAP Standard Scan"
-      reportDescription: "Balanced security scan for development testing"
+      reportTitle: "KAST ZAP Passive Scan"
+      reportDescription: "Passive-only security scan safe for production"
       displayReport: false

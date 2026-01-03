@@ -116,8 +116,8 @@ class ZapPlugin(KastPlugin):
                     },
                     "use_automation_framework": {
                         "type": "boolean",
-                        "default": False,
-                        "description": "Use automation framework (remote typically uses direct API)"
+                        "default": True,
+                        "description": "Use ZAP automation framework with YAML config (default for all modes)"
                     }
                 }
             },
@@ -130,6 +130,11 @@ class ZapPlugin(KastPlugin):
                         "enum": ["aws", "azure", "gcp"],
                         "default": "aws",
                         "description": "Cloud provider for ephemeral infrastructure"
+                    },
+                    "use_automation_framework": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Use ZAP automation framework with YAML config (default for all modes)"
                     }
                     # Note: Full cloud config remains in YAML file due to complexity
                     # (AWS/Azure/GCP specific settings, credentials, Terraform state)
@@ -217,28 +222,82 @@ class ZapPlugin(KastPlugin):
         """
         Load ZAP configuration from YAML file with ConfigManager CLI overrides
         
-        Supports both new unified config (zap_config.yaml) and legacy cloud config
+        Search order (consistent with ConfigManager):
+        1. ./kast_config.yaml (project) - plugins.zap section
+        2. ~/.config/kast/config.yaml (user) - plugins.zap section
+        3. /etc/kast/config.yaml (system) - plugins.zap section
+        4. kast/config/zap_config.yaml (installation - backward compat)
+        5. kast/config/zap_cloud_config.yaml (legacy - backward compat)
         
         :return: Configuration dictionary
         """
-        # Try new unified config first
-        config_path = Path(__file__).parent.parent / "config" / "zap_config.yaml"
+        # Define search paths (same as ConfigManager)
+        unified_config_paths = [
+            Path("./kast_config.yaml"),  # Project-specific
+            Path.home() / ".config" / "kast" / "config.yaml",  # User config (XDG)
+            Path("/etc/kast/config.yaml"),  # System-wide
+        ]
         
-        # Fall back to legacy cloud config for backward compatibility
-        if not config_path.exists():
-            config_path = Path(__file__).parent.parent / "config" / "zap_cloud_config.yaml"
+        config = None
+        config_source = None
+        
+        # First, try unified config files (look for plugins.zap section)
+        for config_path in unified_config_paths:
+            config_path = config_path.expanduser()
             if config_path.exists():
-                self.debug("Using legacy cloud config (consider migrating to zap_config.yaml)")
-                # Load and adapt legacy config
-                with open(config_path, 'r') as f:
-                    legacy_config = yaml.safe_load(f)
-                # Convert to new format with cloud mode
-                config = self._adapt_legacy_config(legacy_config)
-            else:
-                raise FileNotFoundError(f"ZAP config not found: {config_path}")
-        else:
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
+                try:
+                    self.debug(f"Checking for ZAP config in {config_path}")
+                    with open(config_path, 'r') as f:
+                        unified_config = yaml.safe_load(f)
+                    
+                    # Check if this file has a plugins.zap section
+                    if isinstance(unified_config, dict) and \
+                       'plugins' in unified_config and \
+                       'zap' in unified_config['plugins']:
+                        config = unified_config['plugins']['zap']
+                        config_source = str(config_path)
+                        self.debug(f"Found ZAP config in unified format: {config_path}")
+                        break
+                except Exception as e:
+                    self.debug(f"Error reading {config_path}: {e}")
+                    continue
+        
+        # If not found in unified configs, try standalone ZAP config files
+        if config is None:
+            standalone_paths = [
+                Path(__file__).parent.parent / "config" / "zap_config.yaml",
+                Path(__file__).parent.parent / "config" / "zap_cloud_config.yaml"
+            ]
+            
+            for config_path in standalone_paths:
+                if config_path.exists():
+                    try:
+                        self.debug(f"Checking standalone ZAP config: {config_path}")
+                        with open(config_path, 'r') as f:
+                            standalone_config = yaml.safe_load(f)
+                        
+                        # Check if this is legacy cloud config format
+                        if 'cloud_provider' in standalone_config and 'execution_mode' not in standalone_config:
+                            self.debug("Using legacy cloud config format")
+                            config = self._adapt_legacy_config(standalone_config)
+                        else:
+                            config = standalone_config
+                        
+                        config_source = str(config_path)
+                        self.debug(f"Found ZAP config in standalone format: {config_path}")
+                        break
+                    except Exception as e:
+                        self.debug(f"Error reading {config_path}: {e}")
+                        continue
+        
+        # If still no config found, raise error
+        if config is None:
+            searched_paths = [str(p) for p in unified_config_paths] + \
+                           [str(p) for p in standalone_paths]
+            raise FileNotFoundError(
+                f"ZAP config not found. Searched:\n" + 
+                "\n".join(f"  - {p}" for p in searched_paths)
+            )
         
         # Expand environment variables
         config = self._expand_env_vars(config)
@@ -247,7 +306,7 @@ class ZapPlugin(KastPlugin):
         if self.config_manager:
             config = self._apply_cli_overrides(config)
         
-        self.debug(f"Loaded ZAP config (mode: {config.get('execution_mode', 'auto')})")
+        self.debug(f"Loaded ZAP config from {config_source} (mode: {config.get('execution_mode', 'auto')})")
         return config
     
     def _apply_cli_overrides(self, config):
@@ -271,14 +330,18 @@ class ZapPlugin(KastPlugin):
             'local.api_port',
             'local.container_name',
             'local.cleanup_on_completion',
+            'local.use_automation_framework',
             'remote.api_url',
             'remote.api_key',
             'remote.timeout_seconds',
             'remote.verify_ssl',
+            'remote.use_automation_framework',
             'cloud.cloud_provider',
+            'cloud.use_automation_framework',
             'zap_config.timeout_minutes',
             'zap_config.poll_interval_seconds',
-            'zap_config.report_name'
+            'zap_config.report_name',
+            'zap_config.automation_plan'
         ]
         
         for param_path in overrideable_params:
@@ -351,11 +414,61 @@ class ZapPlugin(KastPlugin):
             return os.environ.get(env_var, obj)
         return obj
 
+    def _validate_automation_plan(self, plan_content):
+        """
+        Validate ZAP automation plan YAML
+        
+        :param plan_content: YAML content as string
+        :return: Tuple of (is_valid: bool, error_message: str or None)
+        """
+        try:
+            # Parse YAML
+            plan = yaml.safe_load(plan_content)
+            
+            # Basic structure validation
+            if not isinstance(plan, dict):
+                return False, "Automation plan must be a YAML dictionary"
+            
+            # Check for required top-level keys
+            if 'env' not in plan:
+                return False, "Automation plan missing required 'env' section"
+            
+            if 'jobs' not in plan:
+                return False, "Automation plan missing required 'jobs' section"
+            
+            # Validate env section
+            env = plan.get('env', {})
+            if not isinstance(env, dict):
+                return False, "'env' section must be a dictionary"
+            
+            # Validate jobs section
+            jobs = plan.get('jobs', [])
+            if not isinstance(jobs, list):
+                return False, "'jobs' section must be a list"
+            
+            if len(jobs) == 0:
+                return False, "'jobs' section cannot be empty"
+            
+            # Validate each job has a type
+            for idx, job in enumerate(jobs):
+                if not isinstance(job, dict):
+                    return False, f"Job at index {idx} must be a dictionary"
+                if 'type' not in job:
+                    return False, f"Job at index {idx} missing required 'type' field"
+            
+            self.debug("Automation plan validation passed")
+            return True, None
+            
+        except yaml.YAMLError as e:
+            return False, f"YAML parsing error: {str(e)}"
+        except Exception as e:
+            return False, f"Validation error: {str(e)}"
+
     def _load_automation_plan(self):
         """
-        Load ZAP automation plan content
+        Load and validate ZAP automation plan content
         
-        :return: YAML content as string
+        :return: YAML content as string, or None if not found/invalid
         """
         zap_config = self.config.get('zap_config', {})
         automation_plan_path = Path(zap_config.get('automation_plan', 
@@ -366,11 +479,25 @@ class ZapPlugin(KastPlugin):
             automation_plan_path = Path(__file__).parent.parent / "config" / "zap_automation_plan.yaml"
         
         if not automation_plan_path.exists():
-            self.debug("Warning: Automation plan not found, will use API-based scanning")
+            self.debug("Warning: Automation plan not found")
             return None
         
-        with open(automation_plan_path, 'r') as f:
-            return f.read()
+        try:
+            with open(automation_plan_path, 'r') as f:
+                plan_content = f.read()
+            
+            # Validate the plan
+            is_valid, error_msg = self._validate_automation_plan(plan_content)
+            if not is_valid:
+                self.debug(f"Automation plan validation failed: {error_msg}")
+                return None
+            
+            self.debug(f"Loaded automation plan from {automation_plan_path}")
+            return plan_content
+            
+        except Exception as e:
+            self.debug(f"Error loading automation plan: {e}")
+            return None
 
     def run(self, target, output_dir, report_only):
         """Run ZAP scan using appropriate provider"""
@@ -409,19 +536,34 @@ class ZapPlugin(KastPlugin):
             
             self.debug(f"ZAP instance ready: {self.instance_info}")
             
-            # Load and upload automation plan (if supported)
-            automation_plan = self._load_automation_plan()
-            if automation_plan:
-                self.debug("Uploading automation plan...")
+            # Determine if using automation framework based on mode config
+            mode_config = self.config.get(provider_mode, {})
+            use_automation = mode_config.get('use_automation_framework', True)
+            
+            if use_automation:
+                # Load and validate automation plan
+                automation_plan = self._load_automation_plan()
+                
+                if not automation_plan:
+                    # Automation framework enabled but plan is missing/invalid - FAIL
+                    error_msg = "Automation framework enabled but automation plan is missing or invalid"
+                    self.debug(f"ERROR: {error_msg}")
+                    self._cleanup_on_failure()
+                    return self.get_result_dict("fail", error_msg, timestamp)
+                
+                # Upload and execute automation plan
+                self.debug("Uploading and executing automation plan...")
                 if not self.provider.upload_automation_plan(automation_plan, target):
-                    self.debug("Warning: Failed to upload automation plan, will use API scanning")
-            
-            # For remote/local modes without automation framework, use direct API scanning
-            use_api_scanning = (provider_mode in ['remote'] or 
-                               (provider_mode == 'local' and not automation_plan))
-            
-            if use_api_scanning:
-                self.debug("Using direct API scanning...")
+                    # Upload failed - FAIL (per requirement: failed AF attempts should fail the scan)
+                    error_msg = "Failed to upload/execute automation plan"
+                    self.debug(f"ERROR: {error_msg}")
+                    self._cleanup_on_failure()
+                    return self.get_result_dict("fail", error_msg, timestamp)
+                
+                self.debug("Automation framework initiated successfully")
+            else:
+                # Automation framework explicitly disabled - use direct API
+                self.debug("Automation framework disabled, using direct API scanning...")
                 if not self._run_api_scan(target):
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", "API scan failed", timestamp)

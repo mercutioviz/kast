@@ -1,6 +1,6 @@
-# OWASP ZAP Automation Framework Plan - STANDARD Profile
-# Balanced scan for regular development security testing
-# Estimated duration: ~45 minutes
+# OWASP ZAP Automation Framework Plan - QUICK Profile
+# Fast scan for CI/CD pipelines and quick security checks
+# Estimated duration: ~20 minutes
 
 env:
   contexts:
@@ -18,19 +18,19 @@ env:
     progressToStdout: true
 
 jobs:
-  # Standard spider scan
+  # Quick spider scan - limited depth
   - type: "spiderClient"
     parameters:
-      maxDuration: 10  # 10 minutes
-      maxDepth: 5      # Medium depth
+      maxDuration: 5  # 5 minutes
+      maxDepth: 3     # Shallow depth
       maxChildren: 0
       acceptCookies: true
       handleODataParametersVisited: false
       parseComments: true
-      parseGit: true
+      parseGit: false
       parseRobotsTxt: true
       parseSitemapXml: true
-      parseSVNEntries: true
+      parseSVNEntries: false
       postForm: true
       processForm: true
       requestWaitTime: 200
@@ -40,21 +40,21 @@ jobs:
   # Passive scan
   - type: "passiveScan-config"
     parameters:
-      maxAlertsPerRule: 10
+      maxAlertsPerRule: 5  # Fewer alerts per rule
       scanOnlyInScope: true
       enableTags: false
 
   - type: "passiveScan-wait"
     parameters:
-      maxDuration: 10
+      maxDuration: 5
 
-  # Standard active scan
+  # Quick active scan - shorter duration
   - type: "activeScan"
     parameters:
       context: "target-context"
       policy: "Default Policy"
-      maxRuleDurationInMins: 5
-      maxScanDurationInMins: 30  # 30 minutes
+      maxRuleDurationInMins: 3
+      maxScanDurationInMins: 15  # 15 minutes
       addQueryParam: false
       defaultPolicy: ""
       delayInMs: 0
@@ -69,6 +69,6 @@ jobs:
       template: "traditional-json"
       reportDir: "/zap/reports"
       reportFile: "zap_report.json"
-      reportTitle: "KAST ZAP Standard Scan"
-      reportDescription: "Balanced security scan for development testing"
+      reportTitle: "KAST ZAP Quick Scan"
+      reportDescription: "Fast security scan for CI/CD pipelines"
       displayReport: false

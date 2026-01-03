@@ -324,12 +324,37 @@ class RemoteZapProvider(ZapInstanceProvider):
     
     def upload_automation_plan(self, plan_content, target_url):
         """
-        For remote instances, we'll use direct API calls instead of automation plans
-        since we don't have filesystem access
+        Upload and execute automation plan via ZAP automation framework API
+        
+        :param plan_content: YAML content of automation plan
+        :param target_url: Target URL to scan
+        :return: True if successful
         """
-        self.debug("Remote mode: Will use API-based scanning instead of automation plan")
-        # The actual scanning will be done via API calls in the plugin
-        return True
+        try:
+            # Substitute target URL in the plan
+            plan_content = plan_content.replace('${TARGET_URL}', target_url)
+            
+            self.debug("Uploading automation plan to remote ZAP instance...")
+            
+            # Use ZAP's automation framework API to run the plan
+            # Note: ZAP automation framework supports running plans via API
+            response = self.zap_client._make_request(
+                '/JSON/automation/action/runPlan/',
+                method='POST',
+                data={'plan': plan_content}
+            )
+            
+            if response and response.get('Result') == 'OK':
+                self.debug("Automation plan uploaded and initiated successfully")
+                return True
+            else:
+                error = response.get('message', 'Unknown error') if response else 'No response'
+                self.debug(f"Failed to run automation plan: {error}")
+                return False
+                
+        except Exception as e:
+            self.debug(f"Error uploading automation plan: {e}")
+            return False
     
     def download_results(self, output_dir, report_name):
         """Download results via API"""
