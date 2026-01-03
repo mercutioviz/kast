@@ -35,7 +35,13 @@ class ZapProviderFactory:
         """
         execution_mode = self.config.get('execution_mode', 'auto')
         
-        self.debug(f"ZAP execution mode: {execution_mode}")
+        # Check if mode was explicitly set (not auto)
+        is_explicit = execution_mode != 'auto'
+        
+        if is_explicit:
+            self.debug(f"ZAP execution mode: {execution_mode} (explicit - skipping auto-discovery)")
+        else:
+            self.debug(f"ZAP execution mode: {execution_mode}")
         
         if execution_mode == 'auto':
             return self._auto_discover_provider()

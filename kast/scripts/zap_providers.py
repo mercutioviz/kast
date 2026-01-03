@@ -297,27 +297,50 @@ class RemoteZapProvider(ZapInstanceProvider):
         api_key = remote_config.get('api_key')
         timeout = remote_config.get('timeout_seconds', 30)
         
+        # Check for required configuration
         if not api_url:
-            return False, None, {"error": "No api_url configured for remote mode"}
+            # Check environment variable as fallback
+            api_url = os.environ.get('KAST_ZAP_URL')
+            if not api_url:
+                error_msg = "Remote mode selected but no api_url configured\n"
+                error_msg += "Solutions:\n"
+                error_msg += "  1. Set environment variable: export KAST_ZAP_URL='http://your-zap:8080'\n"
+                error_msg += "  2. Use CLI override: --set zap.remote.api_url=http://your-zap:8080\n"
+                error_msg += "  3. Edit config file: remote.api_url in zap_config.yaml"
+                self.debug(f"ERROR: {error_msg}")
+                return False, None, {"error": error_msg}
         
         # Expand environment variables
         api_url = os.path.expandvars(api_url)
         if api_key:
             api_key = os.path.expandvars(api_key)
+        elif not api_key:
+            # Check environment variable for API key
+            api_key = os.environ.get('KAST_ZAP_API_KEY')
         
         self.debug(f"Connecting to {api_url}")
         
         # Create ZAP API client
         self.zap_client = ZAPAPIClient(api_url, api_key, timeout=timeout, debug_callback=self.debug)
         
-        # Verify connection
-        if not self.zap_client.check_connection():
-            return False, None, {"error": f"Cannot connect to {api_url}"}
+        # Test connectivity and get version
+        self.debug("Testing ZAP connectivity...")
+        success, version, error_msg = self.zap_client.get_version()
+        
+        if not success:
+            self.debug(f"ERROR: Failed to connect to ZAP at {api_url}")
+            self.debug(f"ERROR: {error_msg}")
+            self.debug(f"Test with: curl {api_url}/JSON/core/view/version/")
+            return False, None, {"error": f"ZAP connectivity test failed: {error_msg}"}
+        
+        # Success - log version
+        self.debug(f"✓ Connected to ZAP v{version} at {api_url}")
         
         self.instance_info = {
             'mode': 'remote',
             'api_url': api_url,
-            'has_api_key': bool(api_key)
+            'has_api_key': bool(api_key),
+            'zap_version': version
         }
         
         return True, self.zap_client, self.instance_info
@@ -510,7 +533,7 @@ class CloudZapProvider(ZapInstanceProvider):
             workspace_dir = Path(output_dir) / 'terraform_workspace'
             
             self.terraform_manager = TerraformManager(
-                str(terraform_dir),
+                self.cloud_provider,
                 str(workspace_dir),
                 debug_callback=self.debug
             )
@@ -519,17 +542,21 @@ class CloudZapProvider(ZapInstanceProvider):
             tf_vars = self._prepare_terraform_variables(target_url)
             
             self.debug(f"Using cloud provider: {self.cloud_provider}")
+            
+            # Prepare workspace with variables
+            self.terraform_manager.prepare_workspace(str(terraform_dir), tf_vars)
+            
             self.debug("Initializing Terraform...")
             
             # Terraform workflow: init -> plan -> apply
             if not self.terraform_manager.init():
                 return False, None, {"error": "Terraform init failed"}
             
-            if not self.terraform_manager.plan(tf_vars):
+            if not self.terraform_manager.plan():
                 return False, None, {"error": "Terraform plan failed"}
             
             self.debug("Applying Terraform configuration...")
-            if not self.terraform_manager.apply(tf_vars):
+            if not self.terraform_manager.apply():
                 return False, None, {"error": "Terraform apply failed"}
             
             # Get infrastructure outputs

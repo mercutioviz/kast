@@ -85,6 +85,33 @@ class ZAPAPIClient:
             self.debug(f"Connection check failed: {e}")
             return False
     
+    def get_version(self):
+        """
+        Get ZAP version information with detailed error reporting
+        
+        :return: Tuple of (success: bool, version: str, error_msg: str)
+        """
+        try:
+            result = self._make_request('/JSON/core/view/version/')
+            if result and 'version' in result:
+                version = result.get('version', 'unknown')
+                return True, version, None
+            else:
+                return False, None, "Invalid response from ZAP (no version field)"
+        except requests.exceptions.ConnectionError as e:
+            return False, None, f"Connection refused - verify ZAP is running and accessible at {self.api_url}"
+        except requests.exceptions.Timeout:
+            return False, None, f"Connection timeout - ZAP at {self.api_url} is not responding"
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                return False, None, "Authentication failed - check API key"
+            elif e.response.status_code == 403:
+                return False, None, "Access forbidden - verify API key permissions"
+            else:
+                return False, None, f"HTTP {e.response.status_code}: {e.response.reason}"
+        except Exception as e:
+            return False, None, f"Unexpected error: {str(e)}"
+    
     def wait_for_ready(self, timeout=300, poll_interval=10):
         """
         Wait for ZAP to be ready

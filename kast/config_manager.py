@@ -134,11 +134,15 @@ class ConfigManager:
         """
         Parse --set arguments into nested dictionary structure.
         
+        Supports arbitrary nesting levels for complex plugin configurations.
+        
         Examples:
             --set related_sites.httpx_rate_limit=20
             --set testssl.timeout=600
+            --set zap.remote.api_key=kast01
+            --set zap.cloud.aws.region=us-west-2
         
-        :param set_args: List of "plugin.key=value" strings
+        :param set_args: List of "plugin.key[.key...]=value" strings
         """
         for arg in set_args:
             if '=' not in arg:
@@ -148,21 +152,36 @@ class ConfigManager:
             key_path, value = arg.split('=', 1)
             parts = key_path.split('.')
             
-            if len(parts) != 2:
+            if len(parts) < 2:
                 self.logger.warning(f"Invalid --set format (expected plugin.key=value): {arg}")
                 continue
             
-            plugin_name, config_key = parts
+            plugin_name = parts[0]
+            config_keys = parts[1:]  # Remaining parts form the nested key path
             
             # Try to parse value as appropriate type
             parsed_value = self._parse_value(value)
             
-            # Store in overrides dictionary
+            # Initialize plugin entry if needed
             if plugin_name not in self.cli_overrides:
                 self.cli_overrides[plugin_name] = {}
-            self.cli_overrides[plugin_name][config_key] = parsed_value
             
-            self.logger.debug(f"CLI override: {plugin_name}.{config_key} = {parsed_value}")
+            # Build nested dictionary structure
+            current = self.cli_overrides[plugin_name]
+            for key in config_keys[:-1]:
+                if key not in current:
+                    current[key] = {}
+                elif not isinstance(current[key], dict):
+                    # Key exists but isn't a dict - overwrite it
+                    self.logger.warning(f"Overwriting non-dict value at {plugin_name}.{'.'.join(config_keys[:config_keys.index(key)+1])}")
+                    current[key] = {}
+                current = current[key]
+            
+            # Set the final value
+            final_key = config_keys[-1]
+            current[final_key] = parsed_value
+            
+            self.logger.debug(f"CLI override: {key_path} = {parsed_value}")
     
     def _parse_value(self, value: str) -> Any:
         """
@@ -225,15 +244,37 @@ class ConfigManager:
         # Start with plugin defaults from schema
         config = self._get_defaults_from_schema(plugin_name)
         
-        # Merge with config file settings
+        # Deep merge with config file settings
         if plugin_name in self.config_data.get("plugins", {}):
-            config.update(self.config_data["plugins"][plugin_name])
+            config = self._deep_merge(config, self.config_data["plugins"][plugin_name])
         
-        # Apply CLI overrides (highest priority)
+        # Deep merge CLI overrides (highest priority)
         if plugin_name in self.cli_overrides:
-            config.update(self.cli_overrides[plugin_name])
+            config = self._deep_merge(config, self.cli_overrides[plugin_name])
         
         return config
+    
+    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Deep merge two dictionaries, with override taking precedence.
+        
+        Recursively merges nested dictionaries instead of replacing them.
+        
+        :param base: Base dictionary
+        :param override: Override dictionary (takes precedence)
+        :return: Merged dictionary
+        """
+        result = base.copy()
+        
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                # Both are dicts - recursively merge
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                # Override value (not both dicts, or key doesn't exist in base)
+                result[key] = value
+        
+        return result
     
     def _get_defaults_from_schema(self, plugin_name: str) -> Dict[str, Any]:
         """

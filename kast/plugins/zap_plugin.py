@@ -231,6 +231,12 @@ class ZapPlugin(KastPlugin):
         
         :return: Configuration dictionary
         """
+        # DEBUG: Check if ConfigManager is available
+        if self.config_manager:
+            self.debug(f"ConfigManager available: {type(self.config_manager)}")
+        else:
+            self.debug("WARNING: ConfigManager is None - CLI overrides will not be applied!")
+        
         # Define search paths (same as ConfigManager)
         unified_config_paths = [
             Path("./kast_config.yaml"),  # Project-specific
@@ -319,6 +325,21 @@ class ZapPlugin(KastPlugin):
         :param config: Configuration dictionary from YAML
         :return: Configuration with CLI overrides applied
         """
+        self.debug("=== Applying CLI Overrides ===")
+        self.debug(f"Config before overrides - execution_mode: {config.get('execution_mode', 'NOT SET')}")
+        
+        if not self.config_manager:
+            self.debug("No ConfigManager available, skipping CLI overrides")
+            return config
+        
+        # Get entire plugin config from ConfigManager (includes CLI overrides)
+        try:
+            plugin_config = self.config_manager.get_plugin_config(self.name)
+            self.debug(f"Retrieved plugin config from ConfigManager: {list(plugin_config.keys())}")
+        except Exception as e:
+            self.debug(f"Error getting plugin config from ConfigManager: {e}")
+            return config
+        
         # Strategic parameters that can be overridden via CLI
         # Format: 'nested.key.path' maps to config['nested']['key']['path']
         overrideable_params = [
@@ -344,21 +365,48 @@ class ZapPlugin(KastPlugin):
             'zap_config.automation_plan'
         ]
         
+        override_count = 0
         for param_path in overrideable_params:
-            # Get value directly from ConfigManager (avoid circular dependency with self.config)
-            override_value = None
-            if self.config_manager:
-                try:
-                    override_value = self.config_manager.get_config(self.name, param_path)
-                except:
-                    pass
+            # Extract value from plugin config using nested path
+            self.debug(f"  Checking override for: {param_path}")
+            override_value = self._get_nested_value(plugin_config, param_path)
+            self.debug(f"    Found in plugin_config: {override_value} (type: {type(override_value).__name__ if override_value is not None else 'None'})")
             
-            if override_value is not None:
+            # Only apply if value differs from what's in YAML config
+            yaml_value = self._get_nested_value(config, param_path)
+            
+            if override_value is not None and override_value != yaml_value:
                 # Apply the override to nested config
                 self._set_nested_value(config, param_path, override_value)
-                self.debug(f"CLI override applied: {param_path} = {override_value}")
+                self.debug(f"✓ CLI override applied: {param_path} = {override_value} (was: {yaml_value})")
+                override_count += 1
+        
+        self.debug(f"=== Applied {override_count} CLI override(s) ===")
+        self.debug(f"Config after overrides - execution_mode: {config.get('execution_mode', 'NOT SET')}")
         
         return config
+    
+    def _get_nested_value(self, config, path):
+        """
+        Get a value from nested dictionary using dot notation path
+        
+        Example: _get_nested_value(config, 'local.api_port')
+                 returns config['local']['api_port']
+        
+        :param config: Configuration dictionary
+        :param path: Dot-notation path (e.g., 'local.api_port')
+        :return: Value at path, or None if not found
+        """
+        keys = path.split('.')
+        current = config
+        
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return None
+        
+        return current
     
     def _set_nested_value(self, config, path, value):
         """
@@ -518,6 +566,60 @@ class ZapPlugin(KastPlugin):
             # Load configuration
             self.config = self._load_config()
             
+            # Validate remote mode requirements
+            execution_mode = self.config.get('execution_mode', 'auto')
+            if execution_mode == 'remote':
+                remote_config = self.config.get('remote', {})
+                api_url = remote_config.get('api_url', '')
+                api_key = remote_config.get('api_key', '')
+                
+                # Check if URL is missing or unexpanded environment variable
+                if not api_url or api_url.startswith('${'):
+                    error_msg = "\n" + "="*70 + "\n"
+                    error_msg += "ERROR: Remote ZAP mode requires a ZAP instance URL.\n"
+                    error_msg += "="*70 + "\n\n"
+                    error_msg += "Provide the URL using one of these methods:\n\n"
+                    error_msg += "  1. CLI argument:\n"
+                    error_msg += "     --set zap.remote.api_url=http://zap.example.com:8080\n\n"
+                    error_msg += "  2. Environment variable:\n"
+                    error_msg += "     export KAST_ZAP_URL=http://zap.example.com:8080\n\n"
+                    error_msg += "  3. Config file (zap_config.yaml):\n"
+                    error_msg += "     remote:\n"
+                    error_msg += "       api_url: http://zap.example.com:8080\n\n"
+                    
+                    # Also check and warn about missing API key (in yellow)
+                    if not api_key or api_key.startswith('${'):
+                        error_msg += "\033[93m"  # Yellow color
+                        error_msg += "WARNING: No ZAP API key provided.\n"
+                        error_msg += "If your ZAP instance requires authentication, provide:\n\n"
+                        error_msg += "  1. CLI: --set zap.remote.api_key=YOUR_KEY\n"
+                        error_msg += "  2. Environment: export KAST_ZAP_API_KEY=YOUR_KEY\n"
+                        error_msg += "  3. Config file: Set remote.api_key in zap_config.yaml\n"
+                        error_msg += "\033[0m\n"  # Reset color
+                    
+                    error_msg += "="*70 + "\n"
+                    
+                    # Print to console (not just debug log)
+                    print(error_msg)
+                    self.debug("Remote mode validation failed: Missing api_url")
+                    return self.get_result_dict("fail", "Remote mode requires api_url to be configured", timestamp)
+                
+                # Warn about missing API key (but don't fail) - in yellow
+                if not api_key or api_key.startswith('${'):
+                    warning_msg = "\n\033[93m"  # Yellow color
+                    warning_msg += "="*70 + "\n"
+                    warning_msg += "WARNING: No ZAP API key provided for remote mode.\n"
+                    warning_msg += "="*70 + "\n\n"
+                    warning_msg += "If your ZAP instance requires authentication, provide the key using:\n\n"
+                    warning_msg += "  1. CLI: --set zap.remote.api_key=YOUR_KEY\n"
+                    warning_msg += "  2. Environment: export KAST_ZAP_API_KEY=YOUR_KEY\n"
+                    warning_msg += "  3. Config file: Set remote.api_key in zap_config.yaml\n\n"
+                    warning_msg += "Proceeding without API key (works if ZAP has API key disabled)...\n"
+                    warning_msg += "="*70 + "\n"
+                    warning_msg += "\033[0m"  # Reset color
+                    print(warning_msg)
+                    self.debug("Remote mode: No API key provided")
+            
             # Create provider using factory
             factory = ZapProviderFactory(self.config, self.debug)
             self.provider = factory.create_provider()
@@ -661,16 +763,29 @@ class ZapPlugin(KastPlugin):
 
     def post_process(self, raw_output, output_dir):
         """Post-process ZAP results"""
-        # Load findings
-        if isinstance(raw_output, str) and os.path.isfile(raw_output):
-            with open(raw_output, "r") as f:
-                findings = json.load(f)
-        elif isinstance(raw_output, dict):
-            findings = raw_output.get("results", raw_output)
-        else:
-            findings = {}
+        # Load findings - handle multiple input types
+        findings = {}
         
-        # Parse ZAP alerts
+        if isinstance(raw_output, str):
+            # Could be a file path or error message
+            if os.path.isfile(raw_output):
+                with open(raw_output, "r") as f:
+                    findings = json.load(f)
+            else:
+                # It's an error message string
+                self.debug(f"Post-process received error string: {raw_output}")
+                findings = {'error': raw_output}
+        elif isinstance(raw_output, dict):
+            # Could be results dict or get_result_dict structure
+            if 'results' in raw_output:
+                findings = raw_output['results']
+                # Handle case where results is a string (error case)
+                if isinstance(findings, str):
+                    findings = {'error': findings}
+            else:
+                findings = raw_output
+        
+        # Parse ZAP alerts (if available)
         alerts = findings.get('alerts', [])
         provider_mode = findings.get('provider_mode', 'unknown')
         instance_info = findings.get('instance_info', {})
