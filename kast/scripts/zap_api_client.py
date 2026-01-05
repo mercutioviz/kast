@@ -47,12 +47,26 @@ class ZAPAPIClient:
         try:
             self.debug(f"ZAP API request: {method} {url}")
             
+            # Prepare headers
+            headers = {}
+            
+            # For file uploads OR form data, include API key in headers and data
+            if (files or data) and self.api_key:
+                headers['X-ZAP-API-Key'] = self.api_key
+                # Ensure data dict exists
+                if data is None:
+                    data = {}
+                # Add API key to data if not already present
+                if 'apikey' not in data:
+                    data['apikey'] = self.api_key
+            
             response = self.session.request(
                 method=method,
                 url=url,
                 params=params,
                 data=data,
                 files=files,
+                headers=headers,
                 timeout=self.timeout
             )
             

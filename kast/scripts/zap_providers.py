@@ -146,7 +146,8 @@ class LocalZapProvider(ZapInstanceProvider):
             'zap.sh', '-daemon', '-port', '8080',
             '-config', f'api.key={api_key}',
             '-config', 'api.addrs.addr.name=.*',
-            '-config', 'api.addrs.addr.regex=true'
+            '-config', 'api.addrs.addr.regex=true',
+            '-config', 'api.filexfer=true'
         ]
         
         try:
@@ -349,6 +350,10 @@ class RemoteZapProvider(ZapInstanceProvider):
         """
         Upload and execute automation plan via ZAP automation framework API
         
+        Uses a two-step process:
+        1. Upload the plan file using /OTHER/core/other/fileUpload/
+        2. Run the plan using /JSON/automation/action/runPlan/
+        
         :param plan_content: YAML content of automation plan
         :param target_url: Target URL to scan
         :return: True if successful
@@ -359,24 +364,63 @@ class RemoteZapProvider(ZapInstanceProvider):
             
             self.debug("Uploading automation plan to remote ZAP instance...")
             
-            # Use ZAP's automation framework API to run the plan
-            # Note: ZAP automation framework supports running plans via API
-            response = self.zap_client._make_request(
-                '/JSON/automation/action/runPlan/',
+            # Step 1: Upload the automation plan file
+            from io import BytesIO
+            plan_file = BytesIO(plan_content.encode('utf-8'))
+            
+            # Target filename on ZAP server
+            target_filename = 'kast_automation_plan.yaml'
+            
+            # ZAP expects 'fileContents' as the file parameter
+            files = {
+                'fileContents': ('automation_plan.yaml', plan_file, 'application/octet-stream')
+            }
+            
+            # Additional data including the target filename
+            data = {
+                'fileName': target_filename
+            }
+            
+            self.debug("Step 1: Uploading file to ZAP...")
+            upload_response = self.zap_client._make_request(
+                '/OTHER/core/other/fileUpload/',
                 method='POST',
-                data={'plan': plan_content}
+                files=files,
+                data=data
             )
             
-            if response and response.get('Result') == 'OK':
+            if not upload_response:
+                self.debug("Failed to upload automation plan file")
+                return False
+            
+            self.debug(f"File upload response: {upload_response}")
+            
+            # Step 2: Run the uploaded automation plan
+            # Extract the full uploaded path from response
+            uploaded_path = upload_response.get('Uploaded')
+            if not uploaded_path:
+                self.debug("Upload response missing 'Uploaded' path")
+                return False
+            
+            self.debug(f"Step 2: Running automation plan at: {uploaded_path}")
+            run_response = self.zap_client._make_request(
+                '/JSON/automation/action/runPlan/',
+                method='POST',
+                data={'filePath': uploaded_path}
+            )
+            
+            if run_response and run_response.get('Result') == 'OK':
                 self.debug("Automation plan uploaded and initiated successfully")
                 return True
             else:
-                error = response.get('message', 'Unknown error') if response else 'No response'
+                error = run_response.get('message', 'Unknown error') if run_response else 'No response'
                 self.debug(f"Failed to run automation plan: {error}")
                 return False
                 
         except Exception as e:
             self.debug(f"Error uploading automation plan: {e}")
+            import traceback
+            self.debug(traceback.format_exc())
             return False
     
     def download_results(self, output_dir, report_name):
@@ -628,7 +672,8 @@ class CloudZapProvider(ZapInstanceProvider):
                 zap.sh -daemon -port 8080 \
                 -config api.key={api_key} \
                 -config api.addrs.addr.name=.* \
-                -config api.addrs.addr.regex=true"""
+                -config api.addrs.addr.regex=true \
+                -config api.filexfer=true"""
             
             result = self.ssh_executor.execute_command(zap_cmd)
             if result['exit_code'] != 0:
