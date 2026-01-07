@@ -38,24 +38,24 @@ All modes use the **ZAP Automation Framework** by default for consistent, repeat
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      KAST Orchestrator                       │
+│                      KAST Orchestrator                      │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     ZAP Cloud Plugin                         │
+│                     ZAP Cloud Plugin                        │
 ├─────────────────────────────────────────────────────────────┤
 │  1. Load Configuration (zap_cloud_config.yaml)              │
-│  2. Generate SSH Keypair                                     │
-│  3. Provision Infrastructure (Terraform)                     │
-│  4. Connect via SSH                                          │
+│  2. Generate SSH Keypair                                    │
+│  3. Provision Infrastructure (Terraform)                    │
+│  4. Connect via SSH                                         │
 │  5. Install Docker + NGINX Reverse Proxy                    │
 │  6. Start ZAP Docker Container (internal :8081)             │
 │  7. Run Automation Framework Scan                           │
 │  8. Monitor Progress via ZAP API (through NGINX :8080)      │
-│  9. Download Results                                         │
-│ 10. Teardown Infrastructure                                  │
-│ 11. Post-process Results                                     │
+│  9. Download Results                                        │
+│ 10. Teardown Infrastructure                                 │
+│ 11. Post-process Results                                    │
 └─────────────────────────────────────────────────────────────┘
            │                │                │
            ▼                ▼                ▼
@@ -70,9 +70,9 @@ All modes use the **ZAP Automation Framework** by default for consistent, repeat
               ┌──────────────────────┐
               │   Cloud Instance     │
               │                      │
-              │  NGINX :8080 (ext)  │
+              │  NGINX :8080 (ext)   │
               │       ↓              │
-              │  ZAP :8081 (local)  │
+              │  ZAP :8081 (local)   │
               └──────────────────────┘
 ```
 
@@ -220,7 +220,7 @@ env:
       urls:
         - "${TARGET_URL}"
       includePaths:
-        - ".*"
+        - "${TARGET_URL}.*"
       excludePaths: []
       authentication:
         method: "manual"
