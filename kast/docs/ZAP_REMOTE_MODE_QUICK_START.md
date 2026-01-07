@@ -218,6 +218,64 @@ If remote mode isn't working:
 - [ ] Are you running from the correct directory (for relative config paths)?
 - [ ] Did you check `--debug` output for actual mode being used?
 
+## NGINX Reverse Proxy Mode (Recommended)
+
+### Why Use NGINX?
+
+When running ZAP in remote mode, using NGINX as a reverse proxy solves critical issues:
+
+**The Problem**: ZAP functions as both a web proxy and an API server on the same port. Without port differentiation in the `Host` header, ZAP can confuse API requests with proxy traffic, leading to proxy loop errors and scan failures.
+
+**The Solution**: NGINX listens on the external port (8080) and proxies to ZAP on an internal port (8081), ensuring the `Host` header always includes the port number.
+
+```
+Client → NGINX :8080 → ZAP :8081 (localhost only)
+```
+
+### Quick Setup with launch-zap.sh
+
+The project includes a ready-to-use script that sets up ZAP with nginx proxy mode:
+
+```bash
+# Location: kast/scripts/launch-zap.sh
+# This script:
+# 1. Starts ZAP Docker container on 127.0.0.1:8081
+# 2. Expects nginx to be installed and configured
+# 3. Exposes ZAP via nginx on :8080
+
+# Install nginx first
+sudo apt-get install -y nginx
+
+# Copy the nginx config
+sudo cp kast/config/nginx/zap-proxy.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/zap-proxy /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl restart nginx
+
+# Run the launch script
+kast/scripts/launch-zap.sh
+```
+
+Now connect to ZAP via: `http://your-server:8080`
+
+### Benefits
+
+- ✅ **Prevents Proxy Loops**: ZAP sees `Host: localhost:8081`, won't try to proxy API requests
+- ✅ **Better Security**: ZAP only binds to localhost, not exposed directly
+- ✅ **Consistent Headers**: All requests appear from 127.0.0.1
+- ✅ **Standard Pattern**: Well-established reverse proxy architecture
+- ✅ **Better Performance**: NGINX handles timeouts and buffering optimally
+
+### Configuration Reference
+
+See `kast/config/nginx/` for:
+- **zap-proxy.conf**: Ready-to-use nginx configuration
+- **README.md**: Detailed explanation, troubleshooting, and architecture
+
+### Cloud Mode Auto-Configuration
+
+When using cloud mode, nginx is automatically installed and configured by Terraform for all providers (AWS, Azure, GCP). No manual setup needed.
+
 ## Summary
 
 **To use remote mode, you MUST either:**
@@ -227,3 +285,5 @@ If remote mode isn't working:
 3. Use CLI override: `--set zap.execution_mode=remote --set zap.remote.api_url=http://...`
 
 Without one of these, auto-discovery will default to local (if Docker available) or cloud (fallback).
+
+**For Production Remote Instances**: Use nginx reverse proxy mode (see above) to prevent proxy loop issues.

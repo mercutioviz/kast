@@ -59,6 +59,7 @@ docker run -d --name zap-test \
   zap.sh -daemon -port 8080 \
   -config api.key=test-key \
   -config api.addrs.addr.name=.* \
+  -config api.filexfer=true \
   -config api.addrs.addr.regex=true
 
 # Verify ZAP is running

@@ -49,12 +49,13 @@ All modes use the **ZAP Automation Framework** by default for consistent, repeat
 │  2. Generate SSH Keypair                                     │
 │  3. Provision Infrastructure (Terraform)                     │
 │  4. Connect via SSH                                          │
-│  5. Start ZAP Docker Container                              │
-│  6. Run Automation Framework Scan                           │
-│  7. Monitor Progress via ZAP API                            │
-│  8. Download Results                                         │
-│  9. Teardown Infrastructure                                  │
-│ 10. Post-process Results                                     │
+│  5. Install Docker + NGINX Reverse Proxy                    │
+│  6. Start ZAP Docker Container (internal :8081)             │
+│  7. Run Automation Framework Scan                           │
+│  8. Monitor Progress via ZAP API (through NGINX :8080)      │
+│  9. Download Results                                         │
+│ 10. Teardown Infrastructure                                  │
+│ 11. Post-process Results                                     │
 └─────────────────────────────────────────────────────────────┘
            │                │                │
            ▼                ▼                ▼
@@ -66,11 +67,31 @@ All modes use the **ZAP Automation Framework** by default for consistent, repeat
          └───────────────┴───────────────┘
                          │
                          ▼
-                  ┌──────────────┐
-                  │ ZAP Docker   │
-                  │  Container   │
-                  └──────────────┘
+              ┌──────────────────────┐
+              │   Cloud Instance     │
+              │                      │
+              │  NGINX :8080 (ext)  │
+              │       ↓              │
+              │  ZAP :8081 (local)  │
+              └──────────────────────┘
 ```
+
+### NGINX Reverse Proxy Architecture
+
+All cloud deployments now use NGINX as a reverse proxy in front of ZAP to prevent proxy loop issues:
+
+- **External Access**: NGINX listens on port 8080, accessible from KAST plugin
+- **Internal ZAP**: ZAP runs on localhost:8081, not directly exposed
+- **Header Management**: NGINX rewrites `Host` header to include port number
+- **Prevents Loops**: ZAP sees `Host: localhost:8081`, distinguishes API from proxy requests
+
+**Benefits**:
+- ✅ Solves ZAP's proxy loop confusion
+- ✅ Better security (ZAP not directly exposed)
+- ✅ Standard reverse proxy pattern
+- ✅ Improved timeout and buffering management
+
+See `kast/config/nginx/` for configuration details and `kast/docs/ZAP_REMOTE_MODE_QUICK_START.md` for remote mode setup.
 
 ## Prerequisites
 
