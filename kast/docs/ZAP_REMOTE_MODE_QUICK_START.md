@@ -207,6 +207,428 @@ python kast/main.py --target https://api.example.com --plugins zap --zap-profile
 python kast/main.py --target https://prod.example.com --plugins zap --zap-profile passive
 ```
 
+## Using Custom Automation Plans in Remote Mode
+
+If you've created your own ZAP automation plan YAML file, you can use it in remote mode with any of the configuration methods below.
+
+### Quick Answer: Command Line Syntax
+
+```bash
+# Use your custom automation plan with remote ZAP instance
+export KAST_ZAP_URL="http://your-zap-server:8080"
+
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=/path/to/your/custom_plan.yaml
+```
+
+### Method 1: CLI Override (Best for One-Time Scans)
+
+```bash
+# Set remote ZAP instance
+export KAST_ZAP_URL="http://zap.example.com:8080"
+export KAST_ZAP_API_KEY="your-api-key"
+
+# Use absolute path to custom plan
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=/home/user/my_zap_plans/custom_scan.yaml
+
+# Or use relative path (from current directory)
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./my_custom_scan.yaml
+
+# With debug output to verify
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./custom.yaml --debug
+```
+
+### Method 2: Config File (Best for Permanent Setup)
+
+**Option A: Project Config** (`./kast_config.yaml`)
+```yaml
+plugins:
+  zap:
+    execution_mode: remote
+    remote:
+      api_url: "http://zap-server.internal:8080"
+      api_key: "your-api-key"
+      use_automation_framework: true
+    
+    zap_config:
+      automation_plan: "/absolute/path/to/custom_plan.yaml"
+      # Or relative: "./custom_plans/my_plan.yaml"
+      timeout_minutes: 60
+      poll_interval_seconds: 30
+```
+
+**Option B: User Config** (`~/.config/kast/config.yaml`)
+```yaml
+plugins:
+  zap:
+    execution_mode: remote
+    remote:
+      api_url: "${KAST_ZAP_URL}"
+      api_key: "${KAST_ZAP_API_KEY}"
+    
+    zap_config:
+      automation_plan: "~/my_zap_plans/custom_plan.yaml"
+```
+
+**Option C: Installation Config** (`kast/config/zap_config.yaml`)
+```yaml
+execution_mode: remote
+
+remote:
+  api_url: "http://your-zap-server:8080"
+  api_key: "your-api-key"
+  use_automation_framework: true
+
+zap_config:
+  automation_plan: "kast/config/my_custom_plan.yaml"
+```
+
+### Path Types Supported
+
+**✅ Absolute Paths**:
+```bash
+--set zap.zap_config.automation_plan=/home/user/plans/custom.yaml
+--set zap.zap_config.automation_plan=/opt/security/zap_plans/api_scan.yaml
+```
+
+**✅ Relative Paths** (from current working directory):
+```bash
+--set zap.zap_config.automation_plan=./my_plan.yaml
+--set zap.zap_config.automation_plan=../shared_plans/custom.yaml
+--set zap.zap_config.automation_plan=security/zap_custom.yaml
+```
+
+**✅ Home Directory Paths**:
+```bash
+--set zap.zap_config.automation_plan=~/zap_plans/custom.yaml
+```
+
+### Verifying Your Custom Plan is Used
+
+Run with `--debug` to confirm your custom plan is loaded:
+
+```bash
+export KAST_ZAP_URL="http://your-zap:8080"
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./my_custom.yaml --debug
+```
+
+**Look for these log messages**:
+```
+[DEBUG] [zap]: ZAP execution mode: remote
+[DEBUG] [zap]: Connecting to remote ZAP instance...
+[DEBUG] [zap]: Remote ZAP API URL: http://your-zap:8080
+[DEBUG] [zap]: Automation plan: ./my_custom.yaml
+[DEBUG] [zap]: Validating automation plan...
+[DEBUG] [zap]: Automation plan validation successful
+[DEBUG] [zap]: Uploading automation plan to remote ZAP...
+[DEBUG] [zap]: Starting automation framework scan...
+```
+
+### Custom Plan Structure
+
+Your custom automation plan should follow this structure:
+
+```yaml
+# my_custom_plan.yaml
+env:
+  contexts:
+    - name: "My Custom Security Scan"
+      urls:
+        - "${TARGET_URL}"
+      includePaths:
+        - ".*"
+      excludePaths:
+        - ".*logout.*"
+        - ".*signout.*"
+
+jobs:
+  # Spider the application
+  - type: spider
+    parameters:
+      maxDuration: 15
+      maxDepth: 8
+      maxChildren: 20
+  
+  # Wait for passive scan to complete
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+  
+  # Run active scan
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 45
+      threadPerHost: 3
+  
+  # Generate report
+  - type: report
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+```
+
+### Common Customizations
+
+**1. Authenticated Scanning**:
+```yaml
+env:
+  contexts:
+    - name: "Authenticated Scan"
+      urls:
+        - "${TARGET_URL}"
+      authentication:
+        method: "form"
+        parameters:
+          loginUrl: "${TARGET_URL}/login"
+          loginRequestData: "username={%username%}&password={%password%}"
+      users:
+        - name: "test_user"
+          credentials:
+            username: "testuser"
+            password: "testpass"
+```
+
+**2. Production-Safe Scanning** (passive only):
+```yaml
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 10
+      maxDepth: 5
+  
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 10
+  
+  # NO activeScan job = passive only, safe for production
+  
+  - type: report
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+```
+
+**3. API-Focused Scanning**:
+```yaml
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 5
+      maxDepth: 2  # APIs are flat
+  
+  - type: activeScan
+    parameters:
+      policy: "API-Minimal"
+      maxScanDurationInMins: 30
+```
+
+**4. Deep Comprehensive Scan**:
+```yaml
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 30
+      maxDepth: 15
+      maxChildren: 50
+      threadCount: 4
+  
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 120
+      threadPerHost: 4
+      maxRuleDurationInMins: 10
+```
+
+### Troubleshooting Custom Plans
+
+**Problem**: "Automation plan file not found"
+```bash
+# Solution: Verify the path
+ls -la /path/to/your/custom_plan.yaml
+
+# For relative paths, check your current directory
+pwd
+ls -la ./custom_plan.yaml
+
+# Use absolute path if relative doesn't work
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=/absolute/path/to/plan.yaml
+```
+
+**Problem**: "Invalid automation plan YAML"
+```bash
+# Solution: Validate YAML syntax
+python -c "import yaml; yaml.safe_load(open('custom_plan.yaml'))"
+
+# Common issues:
+# - Missing colons after keys
+# - Incorrect indentation (must use spaces, not tabs)
+# - Missing quotes around strings with special characters
+```
+
+**Problem**: "Scan runs but doesn't use custom plan"
+```bash
+# Solution: Verify automation framework is enabled (default)
+export KAST_ZAP_URL="http://your-zap:8080"
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./custom.yaml \
+  --set zap.remote.use_automation_framework=true \
+  --debug
+```
+
+**Problem**: "Custom plan validation fails"
+```bash
+# Solution: Check for required sections
+# Your plan MUST have:
+# - env section with at least one context
+# - jobs section with at least one job
+# - Each job must have a 'type' field
+
+# Example minimal valid plan:
+cat > minimal_plan.yaml << 'EOF'
+env:
+  contexts:
+    - name: "test"
+      urls: ["${TARGET_URL}"]
+
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 5
+  
+  - type: report
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+EOF
+```
+
+### Creating Your First Custom Plan
+
+**Step 1**: Start with a predefined template
+```bash
+# Copy a template to modify
+cp kast/config/zap_automation_standard.yaml ./my_custom_plan.yaml
+```
+
+**Step 2**: Edit for your needs
+```bash
+nano ./my_custom_plan.yaml
+
+# Modify:
+# - Spider duration and depth
+# - Active scan duration
+# - Add exclusion paths
+# - Add authentication if needed
+```
+
+**Step 3**: Test with debug output
+```bash
+export KAST_ZAP_URL="http://your-zap:8080"
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./my_custom_plan.yaml --debug
+```
+
+**Step 4**: Monitor the scan
+```bash
+# Watch for:
+# - "Automation plan validation successful"
+# - "Uploading automation plan to remote ZAP..."
+# - "Starting automation framework scan..."
+# - Progress updates during scan
+```
+
+### Environment-Specific Plans
+
+Use environment variables to switch between plans:
+
+```yaml
+# In kast_config.yaml
+plugins:
+  zap:
+    zap_config:
+      automation_plan: "./zap_plans/${ENVIRONMENT}_scan.yaml"
+```
+
+Then:
+```bash
+# Development scan
+export ENVIRONMENT=dev
+python kast/main.py --target https://dev.example.com --plugins zap
+
+# Production scan (different plan)
+export ENVIRONMENT=prod
+python kast/main.py --target https://prod.example.com --plugins zap
+```
+
+### Best Practices
+
+**✅ DO**:
+- Start with a predefined template and modify it
+- Use version control for your custom plans
+- Test plans in development before production
+- Document what each custom plan does
+- Use meaningful names: `api_deep_scan.yaml`, `prod_passive.yaml`
+
+**❌ DON'T**:
+- Create overly complex plans without testing
+- Use active scans on production without approval
+- Forget to exclude logout/delete endpoints
+- Hardcode sensitive credentials in plans
+
+### Example: Complete Remote Mode with Custom Plan
+
+```bash
+# Set up remote ZAP
+export KAST_ZAP_URL="http://zap-server.internal:8080"
+export KAST_ZAP_API_KEY="your-secure-api-key"
+
+# Create custom plan
+cat > ./api_security_scan.yaml << 'EOF'
+env:
+  contexts:
+    - name: "API Security Scan"
+      urls:
+        - "${TARGET_URL}"
+      includePaths:
+        - ".*/api/.*"
+      excludePaths:
+        - ".*/api/health.*"
+
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 5
+      maxDepth: 2
+  
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 3
+  
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 30
+      policy: "API-Minimal"
+  
+  - type: report
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+EOF
+
+# Run the scan
+python kast/main.py --target https://api.example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./api_security_scan.yaml --debug
+```
+
 ## Quick Debug Checklist
 
 If remote mode isn't working:

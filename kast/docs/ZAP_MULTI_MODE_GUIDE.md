@@ -262,30 +262,263 @@ remote:
 
 **Note**: If automation framework is enabled but the plan is invalid or missing, the scan will fail (not fall back to API).
 
-### Customizing the Automation Plan
+### Using Custom Automation Plans
 
-#### Option 1: Edit Default Plan
+If you've created your own ZAP automation plan YAML file, you can use it with any of the three execution modes (local, remote, or cloud).
 
-```bash
-# Edit the default plan
-nano kast/config/zap_automation_plan.yaml
-```
-
-#### Option 2: Use Custom Plan
+#### Quick Answer: The `--set` Syntax
 
 ```bash
-# Via CLI override
+# Use your custom automation plan
 python kast/main.py --target https://example.com --plugins zap \
-  --config zap.zap_config.automation_plan=/path/to/custom_plan.yaml
+  --set zap.zap_config.automation_plan=/path/to/your/custom_plan.yaml
 ```
 
-#### Option 3: Create Per-Environment Plans
+**Key Points**:
+- ✅ Works with **absolute paths**: `/home/user/my_plans/custom.yaml`
+- ✅ Works with **relative paths**: `./my_custom_plan.yaml` or `../plans/custom.yaml`
+- ✅ Path is relative to **current working directory** when running KAST
+- ✅ Works in **all modes**: local, remote, and cloud
+
+#### Method 1: CLI Override (Recommended for Ad-Hoc Scans)
+
+```bash
+# Absolute path
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=/home/user/zap_plans/my_custom_scan.yaml
+
+# Relative path (from current directory)
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./my_custom_scan.yaml
+
+# With debug output to verify it's being used
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=/path/to/custom.yaml --debug
+```
+
+#### Method 2: Config File (Recommended for Permanent Setup)
+
+Edit your configuration file (any of these locations work):
+
+**Option A: Project-specific config** (`./kast_config.yaml`)
+```yaml
+plugins:
+  zap:
+    zap_config:
+      automation_plan: "/absolute/path/to/custom_plan.yaml"
+      # Or relative: "./custom_plans/my_plan.yaml"
+```
+
+**Option B: User config** (`~/.config/kast/config.yaml`)
+```yaml
+plugins:
+  zap:
+    zap_config:
+      automation_plan: "~/zap_plans/custom_plan.yaml"
+```
+
+**Option C: Installation config** (`kast/config/zap_config.yaml`)
+```yaml
+zap_config:
+  automation_plan: "kast/config/my_custom_plan.yaml"
+```
+
+#### Method 3: Environment-Based Plans
 
 ```yaml
-# zap_config.yaml
+# In zap_config.yaml
 zap_config:
-  automation_plan: "kast/config/zap_automation_${ENVIRONMENT}.yaml"
+  automation_plan: "kast/config/zap_automation_${SCAN_PROFILE}.yaml"
 ```
+
+Then switch profiles:
+```bash
+export SCAN_PROFILE=my_custom_profile
+python kast/main.py --target https://example.com --plugins zap
+```
+
+#### Verifying Your Custom Plan is Used
+
+Run with `--debug` to see which plan is loaded:
+
+```bash
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./my_plan.yaml --debug
+```
+
+**Look for these log messages**:
+```
+[DEBUG] [zap]: Automation plan: ./my_plan.yaml
+[DEBUG] [zap]: Validating automation plan...
+[DEBUG] [zap]: Automation plan validation successful
+[DEBUG] [zap]: Uploading automation plan to ZAP...
+```
+
+#### Custom Plan Validation
+
+The plugin automatically validates your custom automation plan:
+
+**✅ Valid Plan Structure**:
+```yaml
+env:
+  contexts:
+    - name: "My Custom Scan"
+      urls:
+        - "${TARGET_URL}"
+      includePaths:
+        - ".*"
+
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 15
+      maxDepth: 8
+  
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+  
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 45
+  
+  - type: report
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap_report.json"
+```
+
+**❌ Common Validation Errors**:
+
+1. **Missing required sections**:
+```
+Error: Automation plan missing required 'env' section
+Error: Automation plan missing required 'jobs' section
+```
+
+2. **Invalid YAML syntax**:
+```
+Error: Failed to parse automation plan: invalid YAML at line 15
+```
+
+3. **Missing job type**:
+```
+Error: Job at index 2 missing required 'type' field
+```
+
+4. **File not found**:
+```
+Error: Automation plan file not found: /path/to/custom.yaml
+```
+
+#### Troubleshooting Custom Plans
+
+**Problem**: Plan file not found
+```bash
+# Solution: Verify path and check from KAST directory
+ls -la /path/to/your/custom_plan.yaml
+
+# For relative paths, run from correct directory
+pwd  # Should show your project root
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./custom_plan.yaml
+```
+
+**Problem**: Scan runs but ignores custom plan
+```bash
+# Solution: Verify automation framework is enabled
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./custom.yaml \
+  --set zap.remote.use_automation_framework=true \
+  --debug
+```
+
+**Problem**: YAML validation fails
+```bash
+# Solution: Validate YAML syntax separately
+python -c "import yaml; yaml.safe_load(open('custom_plan.yaml'))"
+
+# Or use online YAML validator
+# https://www.yamllint.com/
+```
+
+#### Creating Your First Custom Plan
+
+Start with one of the predefined templates:
+
+```bash
+# Copy a template to customize
+cp kast/config/zap_automation_standard.yaml ./my_custom_scan.yaml
+
+# Edit the copy
+nano ./my_custom_scan.yaml
+
+# Test it
+python kast/main.py --target https://example.com --plugins zap \
+  --set zap.zap_config.automation_plan=./my_custom_scan.yaml --debug
+```
+
+**Common Customizations**:
+
+1. **Longer scan duration**:
+```yaml
+jobs:
+  - type: activeScan
+    parameters:
+      maxScanDurationInMins: 90  # Increase from default
+```
+
+2. **Exclude sensitive paths**:
+```yaml
+env:
+  contexts:
+    - name: "Production Safe Scan"
+      excludePaths:
+        - ".*logout.*"
+        - ".*delete.*"
+        - ".*admin.*"
+```
+
+3. **Add authentication**:
+```yaml
+env:
+  contexts:
+    - name: "Authenticated Scan"
+      authentication:
+        method: "form"
+        parameters:
+          loginUrl: "${TARGET_URL}/login"
+          loginRequestData: "username={%username%}&password={%password%}"
+```
+
+4. **API-focused scanning**:
+```yaml
+jobs:
+  - type: spider
+    parameters:
+      maxDuration: 5
+      maxDepth: 2  # APIs are typically flat
+  
+  - type: activeScan
+    parameters:
+      policy: "API-Minimal"  # Use API-specific policy
+```
+
+### Predefined vs Custom Plans
+
+**When to use predefined profiles** (`--zap-profile quick/standard/thorough/api/passive`):
+- ✅ Standard security testing
+- ✅ Quick setup, no YAML editing
+- ✅ Well-tested configurations
+- ✅ Good for most use cases
+
+**When to create custom plans**:
+- ✅ Specific authentication requirements
+- ✅ Complex exclusion rules
+- ✅ Non-standard scan durations
+- ✅ Custom reporting formats
+- ✅ Integration with specific workflows
 
 ### Automation Plan Validation
 
