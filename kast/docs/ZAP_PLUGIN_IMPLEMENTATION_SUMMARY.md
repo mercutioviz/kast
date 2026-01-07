@@ -268,10 +268,10 @@ export AWS_SECRET_ACCESS_KEY="your_secret"
 # cloud_provider: aws
 
 # Run scan
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 
 # With debug output
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 ```
 
 ## Testing Recommendations

@@ -273,16 +273,16 @@ def _auto_discover_provider(self):
 ```bash
 # Test local mode
 docker pull ghcr.io/zaproxy/zaproxy:stable
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 
 # Test remote mode
 export KAST_ZAP_URL="http://localhost:8080"
 export KAST_ZAP_API_KEY="test-key"
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 
 # Test auto-discovery
 unset KAST_ZAP_URL
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 ```
 
 ## Next Steps

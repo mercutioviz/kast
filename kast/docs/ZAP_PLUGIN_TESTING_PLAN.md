@@ -115,7 +115,7 @@ docker rm $(docker ps -a -q --filter ancestor=ghcr.io/zaproxy/zaproxy) 2>/dev/nu
 # 3. Run scan with debug output
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/local_autostart \
   --debug
 
@@ -154,7 +154,7 @@ docker ps | grep kast-zap-local
 # 2. Run another scan
 python kast/main.py \
   --target https://httpbin.org/html \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/local_reuse \
   --debug
 
@@ -197,7 +197,7 @@ docker rm kast-zap-local 2>/dev/null || true
 # 3. Run scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/local_cleanup \
   --debug
 
@@ -234,7 +234,7 @@ sudo systemctl stop docker
 # 2. Attempt scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/local_error \
   --debug
 
@@ -276,7 +276,7 @@ export KAST_ZAP_API_KEY="test-key"
 # 3. Run scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/remote_env \
   --debug
 
@@ -323,7 +323,7 @@ unset KAST_ZAP_API_KEY
 # 3. Run scan
 python kast/main.py \
   --target https://httpbin.org/html \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/remote_config \
   --debug
 ```
@@ -353,7 +353,7 @@ export KAST_ZAP_API_KEY="test-key"
 # 2. Attempt scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/remote_error \
   --debug
 
@@ -402,7 +402,7 @@ aws sts get-caller-identity
 # 3. Run scan (will take 5-10 minutes)
 time python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/cloud_aws \
   --debug 2>&1 | tee cloud_aws_test.log
 
@@ -468,7 +468,7 @@ cat kast/config/zap_cloud_config.yaml
 # 3. Run scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/cloud_legacy \
   --debug 2>&1 | tee cloud_legacy_test.log
 ```
@@ -499,7 +499,7 @@ python kast/main.py \
 # 1. Use an invalid target URL to force scan failure
 python kast/main.py \
   --target http://invalid-nonexistent-domain-12345.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/cloud_error \
   --debug 2>&1 | tee cloud_error_test.log
 
@@ -547,7 +547,7 @@ export ARM_CLIENT_SECRET="your_secret"
 # 3. Run scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/cloud_azure \
   --debug 2>&1 | tee cloud_azure_test.log
 ```
@@ -584,7 +584,7 @@ export KAST_ZAP_API_KEY="test-key"
 # 3. Run scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/auto_remote \
   --debug
 
@@ -624,7 +624,7 @@ unset KAST_ZAP_URL
 # 3. Run scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/auto_local \
   --debug
 ```
@@ -649,9 +649,9 @@ python kast/main.py \
 **Steps**:
 ```bash
 # 1. Run scans in each mode
-python kast/main.py --target http://testphp.vulnweb.com --plugins zap --output-dir test_output/report_local --debug
+python kast/main.py --target http://testphp.vulnweb.com --run-only zap --output-dir test_output/report_local --debug
 export KAST_ZAP_URL="http://localhost:8080"
-python kast/main.py --target http://testphp.vulnweb.com --plugins zap --output-dir test_output/report_remote --debug
+python kast/main.py --target http://testphp.vulnweb.com --run-only zap --output-dir test_output/report_remote --debug
 unset KAST_ZAP_URL
 
 # 2. Inspect HTML reports
@@ -688,7 +688,7 @@ grep -i "zap" test_output/report_local/kast_report_*.html
 # Run multiple plugins together
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins whatweb,testssl,zap \
+  --run-only whatweb,testssl,zap \
   --output-dir test_output/multi_plugin \
   --debug
 
@@ -722,7 +722,7 @@ cp test_output/report_local/zap_results.json test_output/report_only_input/
 # Run in report-only mode
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/report_only \
   --report-only \
   --debug
@@ -752,14 +752,14 @@ python kast/main.py \
 # Test local mode (first run - cold start)
 time python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/perf_local_cold \
   --debug
 
 # Test local mode (warm - container exists)
 time python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/perf_local_warm \
   --debug
 
@@ -767,13 +767,13 @@ time python kast/main.py \
 export KAST_ZAP_URL="http://localhost:8080"
 time python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/perf_remote \
   --debug
 unset KAST_ZAP_URL
 
 # Cloud mode timing (if testing cloud)
-# time python kast/main.py --target ... --plugins zap --debug
+# time python kast/main.py --target ... --run-only zap --debug
 ```
 
 **Expected Performance**:
@@ -824,7 +824,7 @@ grep -E "(Starting|complete)" test_output/*/debug.log
 # Use a target that times out
 python kast/main.py \
   --target http://10.255.255.1 \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/timeout \
   --debug
 ```
@@ -849,9 +849,9 @@ python kast/main.py \
 **Steps**:
 ```bash
 # Test various invalid URLs
-python kast/main.py --target "not-a-url" --plugins zap --output-dir test_output/invalid1 --debug
-python kast/main.py --target "ftp://example.com" --plugins zap --output-dir test_output/invalid2 --debug
-python kast/main.py --target "" --plugins zap --output-dir test_output/invalid3 --debug
+python kast/main.py --target "not-a-url" --run-only zap --output-dir test_output/invalid1 --debug
+python kast/main.py --target "ftp://example.com" --run-only zap --output-dir test_output/invalid2 --debug
+python kast/main.py --target "" --run-only zap --output-dir test_output/invalid3 --debug
 ```
 
 **Expected Results**:
@@ -876,7 +876,7 @@ python kast/main.py --target "" --plugins zap --output-dir test_output/invalid3 
 # Start a scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/interrupted \
   --debug &
 
@@ -918,7 +918,7 @@ docker ps | grep kast-zap-local
 # Check that API keys don't leak in logs
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/security \
   --debug 2>&1 | tee security_test.log
 
@@ -947,7 +947,7 @@ grep -i "api.key" security_test.log
 # Run cloud scan
 python kast/main.py \
   --target http://testphp.vulnweb.com \
-  --plugins zap \
+  --run-only zap \
   --output-dir test_output/ssh_security \
   --debug 2>&1 | tee ssh_test.log
 
@@ -1031,21 +1031,21 @@ export TEST_OUTPUT="test_output/quick"
 
 # Test 1: Local Mode
 echo "Testing Local Mode..."
-python kast/main.py --target $TEST_TARGET --plugins zap --output-dir ${TEST_OUTPUT}_local --debug
+python kast/main.py --target $TEST_TARGET --run-only zap --output-dir ${TEST_OUTPUT}_local --debug
 echo "✓ Local mode passed"
 
 # Test 2: Remote Mode
 echo "Testing Remote Mode..."
 export KAST_ZAP_URL="http://localhost:8080"
 export KAST_ZAP_API_KEY="test-key"
-python kast/main.py --target $TEST_TARGET --plugins zap --output-dir ${TEST_OUTPUT}_remote --debug
+python kast/main.py --target $TEST_TARGET --run-only zap --output-dir ${TEST_OUTPUT}_remote --debug
 unset KAST_ZAP_URL
 unset KAST_ZAP_API_KEY
 echo "✓ Remote mode passed"
 
 # Test 3: Auto-discovery
 echo "Testing Auto-discovery..."
-python kast/main.py --target $TEST_TARGET --plugins zap --output-dir ${TEST_OUTPUT}_auto --debug
+python kast/main.py --target $TEST_TARGET --run-only zap --output-dir ${TEST_OUTPUT}_auto --debug
 echo "✓ Auto-discovery passed"
 
 echo ""
@@ -1161,7 +1161,7 @@ For ongoing validation, consider setting up automated testing:
 # ci_test.sh
 
 # Run only fast, reliable tests
-python kast/main.py --target http://testphp.vulnweb.com --plugins zap --output-dir ci_test --debug
+python kast/main.py --target http://testphp.vulnweb.com --run-only zap --output-dir ci_test --debug
 
 # Verify report generated
 if [ -f ci_test/kast_report_*.html ]; then

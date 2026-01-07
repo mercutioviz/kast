@@ -50,7 +50,7 @@ The plugin intelligently selects the best available mode or can be configured ex
 **Usage**:
 ```bash
 # Auto mode will detect Docker and use local mode
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 
 # Or explicitly specify local mode in config
 # Set execution_mode: local in zap_config.yaml
@@ -79,7 +79,7 @@ export KAST_ZAP_URL="http://zap.example.com:8080"
 export KAST_ZAP_API_KEY="your-api-key"
 
 # Run scan
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 ```
 
 **Behavior**:
@@ -108,7 +108,7 @@ export AWS_ACCESS_KEY_ID="your_key"
 export AWS_SECRET_ACCESS_KEY="your_secret"
 
 # Run scan
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 ```
 
 **Behavior**:
@@ -183,24 +183,24 @@ KAST provides **5 predefined test plans** optimized for different scenarios:
 **Option 1: CLI Shortcut** (Easiest)
 ```bash
 # Quick scan (CI/CD)
-python kast/main.py --target https://example.com --plugins zap --zap-profile quick
+python kast/main.py --target https://example.com --run-only zap --zap-profile quick
 
 # Standard scan (default)
-python kast/main.py --target https://example.com --plugins zap --zap-profile standard
+python kast/main.py --target https://example.com --run-only zap --zap-profile standard
 
 # Thorough scan (pre-prod)
-python kast/main.py --target https://example.com --plugins zap --zap-profile thorough
+python kast/main.py --target https://example.com --run-only zap --zap-profile thorough
 
 # API scan
-python kast/main.py --target https://api.example.com --plugins zap --zap-profile api
+python kast/main.py --target https://api.example.com --run-only zap --zap-profile api
 
 # Passive scan (production)
-python kast/main.py --target https://prod.example.com --plugins zap --zap-profile passive
+python kast/main.py --target https://prod.example.com --run-only zap --zap-profile passive
 ```
 
 **Option 2: Direct Path Override**
 ```bash
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=kast/config/zap_automation_quick.yaml
 ```
 
@@ -252,7 +252,7 @@ If you need to use direct API calls instead (legacy behavior):
 
 ```bash
 # Via CLI override
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --config zap.remote.use_automation_framework=false
 
 # Or edit zap_config.yaml
@@ -270,7 +270,7 @@ If you've created your own ZAP automation plan YAML file, you can use it with an
 
 ```bash
 # Use your custom automation plan
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=/path/to/your/custom_plan.yaml
 ```
 
@@ -284,15 +284,15 @@ python kast/main.py --target https://example.com --plugins zap \
 
 ```bash
 # Absolute path
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=/home/user/zap_plans/my_custom_scan.yaml
 
 # Relative path (from current directory)
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=./my_custom_scan.yaml
 
 # With debug output to verify it's being used
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=/path/to/custom.yaml --debug
 ```
 
@@ -334,7 +334,7 @@ zap_config:
 Then switch profiles:
 ```bash
 export SCAN_PROFILE=my_custom_profile
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 ```
 
 #### Verifying Your Custom Plan is Used
@@ -342,7 +342,7 @@ python kast/main.py --target https://example.com --plugins zap
 Run with `--debug` to see which plan is loaded:
 
 ```bash
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=./my_plan.yaml --debug
 ```
 
@@ -421,14 +421,14 @@ ls -la /path/to/your/custom_plan.yaml
 
 # For relative paths, run from correct directory
 pwd  # Should show your project root
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=./custom_plan.yaml
 ```
 
 **Problem**: Scan runs but ignores custom plan
 ```bash
 # Solution: Verify automation framework is enabled
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=./custom.yaml \
   --set zap.remote.use_automation_framework=true \
   --debug
@@ -455,7 +455,7 @@ cp kast/config/zap_automation_standard.yaml ./my_custom_scan.yaml
 nano ./my_custom_scan.yaml
 
 # Test it
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.automation_plan=./my_custom_scan.yaml --debug
 ```
 
@@ -668,11 +668,11 @@ When `execution_mode: auto` is set, the plugin follows this priority:
 
 ```bash
 # First run - starts container
-python kast/main.py --target https://dev.example.com --plugins zap --debug
+python kast/main.py --target https://dev.example.com --run-only zap --debug
 # Container: kast-zap-local started
 
 # Subsequent runs - reuses container
-python kast/main.py --target https://staging.example.com --plugins zap
+python kast/main.py --target https://staging.example.com --run-only zap
 # Container: kast-zap-local reused (much faster!)
 ```
 
@@ -685,7 +685,7 @@ env:
   KAST_ZAP_API_KEY: $ZAP_API_KEY  # From CI secrets
 
 script:
-  - python kast/main.py --target $DEPLOY_URL --plugins zap
+  - python kast/main.py --target $DEPLOY_URL --run-only zap
 ```
 
 ### Example 3: Production Assessment (Cloud)
@@ -694,7 +694,7 @@ script:
 # Run isolated scan in cloud
 python kast/main.py \
   --target https://production.example.com \
-  --plugins zap \
+  --run-only zap \
   --debug
 
 # Infrastructure provisioned → Scan → Auto-cleanup
@@ -705,16 +705,16 @@ python kast/main.py \
 ```bash
 # Force local mode
 # Edit zap_config.yaml: execution_mode: local
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 
 # Force remote mode with inline config
 export KAST_ZAP_URL="http://localhost:8080"
 # Edit zap_config.yaml: execution_mode: remote
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 
 # Force cloud mode
 # Edit zap_config.yaml: execution_mode: cloud
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 ```
 
 ## Environment Variables

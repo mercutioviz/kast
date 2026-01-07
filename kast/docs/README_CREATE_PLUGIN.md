@@ -280,7 +280,7 @@ The script automatically:
 3. **Test with real tool**
    ```bash
    # Run KAST with just your plugin
-   python kast/main.py --target https://example.com --plugins your_tool
+   python kast/main.py --target https://example.com --run-only your_tool
    ```
 
 4. **Add to configuration** (optional)

@@ -129,18 +129,18 @@ These components required **zero modifications**:
 
 ```bash
 # Works exactly as before - no changes needed
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 ```
 
 ### Overriding Execution Mode
 
 ```bash
 # Force local mode via CLI
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.execution_mode=local
 
 # Force remote mode
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.execution_mode=remote \
   --set zap.remote.api_url=http://my-zap:8080
 ```
@@ -149,7 +149,7 @@ python kast/main.py --target https://example.com --plugins zap \
 
 ```bash
 # Use custom Docker image with different port
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.execution_mode=local \
   --set zap.local.docker_image=mycorp/custom-zap:v2 \
   --set zap.local.api_port=9090
@@ -159,7 +159,7 @@ python kast/main.py --target https://example.com --plugins zap \
 
 ```bash
 # Increase timeout for long-running scan
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.zap_config.timeout_minutes=180
 ```
 
@@ -167,7 +167,7 @@ python kast/main.py --target https://example.com --plugins zap \
 
 ```bash
 # Use Azure instead of AWS
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.execution_mode=cloud \
   --set zap.cloud.cloud_provider=azure
 ```
@@ -176,7 +176,7 @@ python kast/main.py --target https://example.com --plugins zap \
 
 ```bash
 # Combine multiple CLI overrides
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --set zap.execution_mode=local \
   --set zap.local.api_port=9090 \
   --set zap.local.cleanup_on_completion=true \

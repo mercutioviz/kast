@@ -140,7 +140,7 @@ else:
 
 **Command**:
 ```bash
-python kast/main.py --target example.com --plugins zap \
+python kast/main.py --target example.com --run-only zap \
   --set zap.execution_mode=remote \
   --set zap.remote.api_url=http://zap:8080
 ```
@@ -164,7 +164,7 @@ python kast/main.py --target example.com --plugins zap \
 
 **Command**:
 ```bash
-python kast/main.py --target example.com --plugins zap \
+python kast/main.py --target example.com --run-only zap \
   --set zap.execution_mode=remote \
   --set zap.remote.api_url=http://wrong-host:8080
 ```
@@ -185,7 +185,7 @@ python kast/main.py --target example.com --plugins zap \
 
 **Command**:
 ```bash
-python kast/main.py --target example.com --plugins zap \
+python kast/main.py --target example.com --run-only zap \
   --set zap.execution_mode=remote
 ```
 
@@ -206,7 +206,7 @@ Solutions:
 **Command**:
 ```bash
 export KAST_ZAP_URL="http://zap:8080"
-python kast/main.py --target example.com --plugins zap
+python kast/main.py --target example.com --run-only zap
 ```
 
 **Expected Logs**:
@@ -251,7 +251,7 @@ docker run -d --name test-zap -p 8080:8080 ghcr.io/zaproxy/zaproxy:stable \
   zap.sh -daemon -port 8080 -config api.key=test123
 
 # Test KAST with explicit remote mode
-python kast/main.py --target http://example.com --plugins zap \
+python kast/main.py --target http://example.com --run-only zap \
   --set zap.execution_mode=remote \
   --set zap.remote.api_url=http://localhost:8080 \
   --set zap.remote.api_key=test123 \
@@ -262,7 +262,7 @@ python kast/main.py --target http://example.com --plugins zap \
 
 ### Test 2: Bad URL Fails Fast
 ```bash
-python kast/main.py --target http://example.com --plugins zap \
+python kast/main.py --target http://example.com --run-only zap \
   --set zap.execution_mode=remote \
   --set zap.remote.api_url=http://nonexistent:8080 \
   --debug
@@ -272,7 +272,7 @@ python kast/main.py --target http://example.com --plugins zap \
 
 ### Test 3: Missing URL Gives Helpful Error
 ```bash
-python kast/main.py --target http://example.com --plugins zap \
+python kast/main.py --target http://example.com --run-only zap \
   --set zap.execution_mode=remote \
   --debug
 ```
@@ -283,7 +283,7 @@ python kast/main.py --target http://example.com --plugins zap \
 ```bash
 export KAST_ZAP_URL="http://localhost:8080"
 export KAST_ZAP_API_KEY="test123"
-python kast/main.py --target http://example.com --plugins zap --debug
+python kast/main.py --target http://example.com --run-only zap --debug
 ```
 
 **Verify**: Auto-discovery detects env var and uses remote mode
@@ -311,12 +311,12 @@ export KAST_ZAP_URL="${ZAP_INSTANCE_URL}"
 export KAST_ZAP_API_KEY="${ZAP_API_KEY}"
 
 # Run with auto mode - will detect env vars
-python kast/main.py --target "${DEPLOY_URL}" --plugins zap
+python kast/main.py --target "${DEPLOY_URL}" --run-only zap
 ```
 
 **Alternative (explicit)**:
 ```bash
-python kast/main.py --target "${DEPLOY_URL}" --plugins zap \
+python kast/main.py --target "${DEPLOY_URL}" --run-only zap \
   --set zap.execution_mode=remote \
   --set zap.remote.api_url="${ZAP_INSTANCE_URL}" \
   --set zap.remote.api_key="${ZAP_API_KEY}"

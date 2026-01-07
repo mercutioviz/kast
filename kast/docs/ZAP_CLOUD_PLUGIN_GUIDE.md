@@ -276,24 +276,24 @@ export GCP_PROJECT_ID="your_project_id"
 
 ```bash
 # Cloud mode (if configured as default)
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 
 # Explicitly force cloud mode
 # Edit zap_config.yaml: execution_mode: cloud
-python kast/main.py --target https://example.com --plugins zap
+python kast/main.py --target https://example.com --run-only zap
 ```
 
 ### With Debug Output
 
 ```bash
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 ```
 
 ### Custom Automation Plan
 
 ```bash
 # Override automation plan path via CLI
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --config zap.zap_config.automation_plan=/path/to/custom_plan.yaml
 ```
 
@@ -301,20 +301,20 @@ python kast/main.py --target https://example.com --plugins zap \
 
 ```bash
 # Use direct API calls instead of automation framework
-python kast/main.py --target https://example.com --plugins zap \
+python kast/main.py --target https://example.com --run-only zap \
   --config zap.cloud.use_automation_framework=false
 ```
 
 ### Report Only Mode
 
 ```bash
-python kast/main.py --target https://example.com --plugins zap --report-only
+python kast/main.py --target https://example.com --run-only zap --report-only
 ```
 
 ### Multiple Plugins
 
 ```bash
-python kast/main.py --target https://example.com --plugins whatweb,testssl,zap
+python kast/main.py --target https://example.com --run-only whatweb,testssl,zap
 ```
 
 ## How It Works
@@ -430,7 +430,7 @@ Error: Infrastructure provisioning failed
 Enable debug mode for detailed logging:
 
 ```bash
-python kast/main.py --target https://example.com --plugins zap --debug
+python kast/main.py --target https://example.com --run-only zap --debug
 ```
 
 Debug output includes:
@@ -595,7 +595,7 @@ security_scan:
   stage: security
   script:
     - pip install -r requirements.txt
-    - python kast/main.py --target $TARGET_URL --plugins zap
+    - python kast/main.py --target $TARGET_URL --run-only zap
   artifacts:
     paths:
       - output/
@@ -624,7 +624,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          python kast/main.py --target ${{ secrets.TARGET_URL }} --plugins zap
+          python kast/main.py --target ${{ secrets.TARGET_URL }} --run-only zap
       - name: Upload results
         uses: actions/upload-artifact@v2
         with:
