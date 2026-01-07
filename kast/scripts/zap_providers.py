@@ -286,6 +286,10 @@ class LocalZapProvider(ZapInstanceProvider):
 class RemoteZapProvider(ZapInstanceProvider):
     """Provider for existing remote ZAP instances"""
     
+    def __init__(self, config, debug_callback=None):
+        super().__init__(config, debug_callback)
+        self.plan_id = None  # Store planId for monitoring
+    
     def get_mode_name(self):
         return "remote"
     
@@ -409,13 +413,35 @@ class RemoteZapProvider(ZapInstanceProvider):
                 data={'filePath': uploaded_path}
             )
             
-            if run_response and run_response.get('Result') == 'OK':
-                self.debug("Automation plan uploaded and initiated successfully")
-                return True
+            # Check for planId in response (indicates success)
+            if run_response and 'planId' in run_response:
+                self.plan_id = run_response.get('planId')
+                self.debug(f"✓ Automation plan initiated successfully (planId: {self.plan_id})")
+                
+                # OPTIONAL: Verify plan is actually running
+                try:
+                    progress_response = self.zap_client._make_request(
+                        '/JSON/automation/view/planProgress/',
+                        params={'planId': self.plan_id}
+                    )
+                    
+                    if progress_response and 'started' in progress_response:
+                        self.debug(f"✓ Plan confirmed running (started: {progress_response.get('started')})")
+                    else:
+                        self.debug("Note: Could not verify plan progress (may still be initializing)")
+                except Exception as e:
+                    self.debug(f"Note: Plan progress check skipped: {e}")
+                
+                return self.plan_id  # Return planId for monitoring
             else:
+                # Check for error response or legacy Result format
+                if run_response and run_response.get('Result') == 'OK':
+                    self.debug("✓ Automation plan initiated successfully (legacy response)")
+                    return True  # Return True for backward compatibility
+                
                 error = run_response.get('message', 'Unknown error') if run_response else 'No response'
                 self.debug(f"Failed to run automation plan: {error}")
-                return False
+                return None  # Return None to indicate failure
                 
         except Exception as e:
             self.debug(f"Error uploading automation plan: {e}")
@@ -423,15 +449,41 @@ class RemoteZapProvider(ZapInstanceProvider):
             self.debug(traceback.format_exc())
             return False
     
+    def wait_for_plan_completion(self, timeout, poll_interval, output_dir=None):
+        """
+        Wait for automation plan to complete
+        
+        :param timeout: Max wait time in seconds
+        :param poll_interval: Poll interval in seconds
+        :param output_dir: Optional output directory for progress snapshots
+        :return: Tuple of (success: bool, progress: dict)
+        """
+        if not self.plan_id:
+            self.debug("No plan ID available for monitoring")
+            return False, None
+        
+        return self.zap_client.wait_for_plan_completion(
+            self.plan_id,
+            timeout=timeout,
+            poll_interval=poll_interval,
+            output_dir=output_dir
+        )
+    
     def download_results(self, output_dir, report_name):
-        """Download results via API"""
+        """Download results via JSON report API"""
         try:
+            self.debug("Downloading JSON report from ZAP...")
+            report_data = self.zap_client.get_json_report()
+            
             output_path = Path(output_dir) / report_name
-            self.zap_client.generate_report(str(output_path), 'json')
-            self.debug(f"Results downloaded to {output_path}")
+            import json
+            with open(output_path, 'w') as f:
+                json.dump(report_data, f, indent=2)
+            
+            self.debug(f"✓ Report downloaded to {output_path}")
             return str(output_path)
         except Exception as e:
-            self.debug(f"Error downloading results: {e}")
+            self.debug(f"Error downloading report: {e}")
             return None
     
     def cleanup(self):

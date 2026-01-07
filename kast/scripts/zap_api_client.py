@@ -250,6 +250,133 @@ class ZAPAPIClient:
         self.debug("Timeout waiting for scan completion")
         return False
     
+    def get_plan_progress(self, plan_id):
+        """
+        Get automation plan progress
+        
+        :param plan_id: Plan ID from runPlan response
+        :return: Progress dict with started, finished, info, warn, error
+        """
+        try:
+            result = self._make_request(
+                '/JSON/automation/view/planProgress/',
+                params={'planId': plan_id}
+            )
+            return result
+        except Exception as e:
+            self.debug(f"Failed to get plan progress: {e}")
+            return None
+    
+    def wait_for_plan_completion(self, plan_id, timeout=3600, poll_interval=30, output_dir=None):
+        """
+        Poll automation plan progress until completion or timeout
+        
+        :param plan_id: Plan ID to monitor
+        :param timeout: Maximum wait time in seconds
+        :param poll_interval: Seconds between status checks
+        :param output_dir: Optional output directory to write progress snapshots
+        :return: Tuple of (success: bool, final_progress: dict)
+        """
+        self.debug(f"Waiting for plan {plan_id} completion (timeout: {timeout}s, poll: {poll_interval}s)")
+        
+        if output_dir:
+            self.debug(f"Progress snapshots will be written to {output_dir}")
+        
+        start_time = time.time()
+        last_info_count = 0
+        scan_start_time = None
+        
+        while time.time() - start_time < timeout:
+            progress = self.get_plan_progress(plan_id)
+            
+            if not progress:
+                self.debug("Warning: Could not get plan progress")
+                time.sleep(poll_interval)
+                continue
+            
+            # Capture start time from first progress response
+            if not scan_start_time and progress.get('started'):
+                scan_start_time = progress.get('started')
+            
+            # Write progress snapshot if output_dir provided
+            if output_dir:
+                self._write_progress_snapshot(
+                    plan_id=plan_id,
+                    progress=progress,
+                    scan_start_time=scan_start_time,
+                    elapsed_seconds=int(time.time() - start_time),
+                    output_dir=output_dir
+                )
+            
+            # Check if finished
+            finished = progress.get('finished', '')
+            if finished:
+                self.debug(f"✓ Plan completed at {finished}")
+                
+                # Write final snapshot
+                if output_dir:
+                    self._write_progress_snapshot(
+                        plan_id=plan_id,
+                        progress=progress,
+                        scan_start_time=scan_start_time,
+                        elapsed_seconds=int(time.time() - start_time),
+                        output_dir=output_dir,
+                        final=True
+                    )
+                
+                # Check for errors
+                errors = progress.get('error', [])
+                if errors:
+                    self.debug(f"Plan completed with {len(errors)} error(s):")
+                    for error in errors:
+                        self.debug(f"  ERROR: {error}")
+                    return False, progress
+                
+                return True, progress
+            
+            # Log progress updates
+            info = progress.get('info', [])
+            if len(info) > last_info_count:
+                for msg in info[last_info_count:]:
+                    self.debug(f"  Progress: {msg}")
+                last_info_count = len(info)
+            
+            # Check for warnings
+            warnings = progress.get('warn', [])
+            if warnings:
+                for warn in warnings:
+                    self.debug(f"  Warning: {warn}")
+            
+            elapsed = int(time.time() - start_time)
+            self.debug(f"Plan still running... ({elapsed}s elapsed, {len(info)} updates)")
+            time.sleep(poll_interval)
+        
+        self.debug(f"Timeout waiting for plan {plan_id} completion")
+        return False, None
+    
+    def get_json_report(self):
+        """
+        Download JSON report from ZAP using the jsonreport endpoint
+        
+        :return: Report dict
+        """
+        try:
+            self.debug("Fetching JSON report from ZAP...")
+            result = self._make_request('/OTHER/core/other/jsonreport/')
+            
+            # The response might be wrapped in 'text' or be direct JSON
+            if isinstance(result, dict) and 'text' in result:
+                # Parse the text as JSON
+                report = json.loads(result['text'])
+                self.debug(f"JSON report retrieved ({len(report.get('site', []))} sites)")
+                return report
+            
+            self.debug(f"JSON report retrieved")
+            return result
+        except Exception as e:
+            self.debug(f"Failed to get JSON report: {e}")
+            raise
+    
     def get_alerts(self, base_url=None):
         """
         Retrieve all alerts from ZAP
@@ -353,3 +480,94 @@ class ZAPAPIClient:
         except Exception as e:
             self.debug(f"Failed to get ZAP info: {e}")
             return {}
+    
+    def _write_progress_snapshot(self, plan_id, progress, scan_start_time, elapsed_seconds, output_dir, final=False):
+        """
+        Write progress snapshot to output directory
+        
+        :param plan_id: Plan ID being monitored
+        :param progress: Progress dict from planProgress API
+        :param scan_start_time: ISO timestamp when scan started
+        :param elapsed_seconds: Seconds elapsed since monitoring started
+        :param output_dir: Directory to write snapshot file
+        :param final: Whether this is the final snapshot
+        """
+        try:
+            from datetime import datetime
+            
+            # Collect additional metrics (with error handling for each)
+            alerts_summary = {}
+            num_alerts = 0
+            spider_percent = 0
+            ascan_percent = 0
+            passive_queue = 0
+            
+            try:
+                alerts_summary_result = self._make_request('/JSON/core/view/alertsSummary/')
+                if alerts_summary_result:
+                    alerts_summary = alerts_summary_result
+            except Exception as e:
+                self.debug(f"Could not fetch alerts summary: {e}")
+            
+            try:
+                num_alerts_result = self._make_request('/JSON/core/view/numberOfAlerts/')
+                if num_alerts_result:
+                    num_alerts = int(num_alerts_result.get('numberOfAlerts', 0))
+            except Exception as e:
+                self.debug(f"Could not fetch alert count: {e}")
+            
+            try:
+                spider_status = self._make_request('/JSON/spider/view/status/')
+                if spider_status:
+                    spider_percent = int(spider_status.get('status', 0))
+            except Exception as e:
+                self.debug(f"Could not fetch spider status: {e}")
+            
+            try:
+                ascan_status = self._make_request('/JSON/ascan/view/status/')
+                if ascan_status:
+                    ascan_percent = int(ascan_status.get('status', 0))
+            except Exception as e:
+                self.debug(f"Could not fetch active scan status: {e}")
+            
+            try:
+                pscan_records = self._make_request('/JSON/pscan/view/recordsToScan/')
+                if pscan_records:
+                    passive_queue = int(pscan_records.get('recordsToScan', 0))
+            except Exception as e:
+                self.debug(f"Could not fetch passive scan queue: {e}")
+            
+            # Build snapshot
+            snapshot = {
+                "scan_started": scan_start_time,
+                "last_updated": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "elapsed_seconds": elapsed_seconds,
+                "plan_id": plan_id,
+                "status": "completed" if progress.get('finished') else "running",
+                "finished": progress.get('finished', ''),
+                "progress": {
+                    "spider_percent": spider_percent,
+                    "active_scan_percent": ascan_percent,
+                    "passive_scan_queue": passive_queue
+                },
+                "alerts": {
+                    "total": num_alerts,
+                    "by_risk": alerts_summary
+                },
+                "job_updates": progress.get('info', []),
+                "warnings": progress.get('warn', []),
+                "errors": progress.get('error', [])
+            }
+            
+            # Write to file
+            output_path = Path(output_dir) / 'zap_scan_progress.json'
+            with open(output_path, 'w') as f:
+                json.dump(snapshot, f, indent=2)
+            
+            # Log summary on first and final writes
+            if elapsed_seconds == 0 or final:
+                self.debug(f"Progress snapshot written: {num_alerts} alerts, spider {spider_percent}%, ascan {ascan_percent}%")
+            
+        except Exception as e:
+            # Don't fail the scan if progress writing fails
+            self.debug(f"Warning: Failed to write progress snapshot: {e}")

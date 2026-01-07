@@ -9,8 +9,8 @@ env:
       urls:
         - "${TARGET_URL}"
       includePaths:
-        - ".*/api/.*"
-        - ".*/v[0-9]+/.*"  # Match versioned API paths
+        - "${TARGET_URL}/api/.*"
+        - "${TARGET_URL}/v[0-9]+/.*"  # Match versioned API paths
       excludePaths:
         - ".*logout.*"
         - ".*signout.*"

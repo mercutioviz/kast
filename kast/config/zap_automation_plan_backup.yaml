@@ -7,7 +7,7 @@ env:
       urls:
         - "${TARGET_URL}"
       includePaths:
-        - ".*"
+        - ".${TARGET_URL}"
       excludePaths:
         - ".*logout.*"
         - ".*signout.*"

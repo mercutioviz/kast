@@ -462,6 +462,34 @@ class ZapPlugin(KastPlugin):
             return os.environ.get(env_var, obj)
         return obj
 
+    def _normalize_target_url(self, target):
+        """
+        Normalize target URL by adding HTTPS scheme if missing.
+        Respects explicit HTTP/HTTPS if user provides it.
+        
+        Examples:
+          www.example.com -> https://www.example.com
+          example.com -> https://example.com
+          http://example.com -> http://example.com (unchanged)
+          https://example.com -> https://example.com (unchanged)
+        
+        :param target: Target URL (may or may not have scheme)
+        :return: Normalized URL with scheme
+        """
+        from urllib.parse import urlparse
+        
+        parsed = urlparse(target)
+        
+        # If scheme already present, use as-is (respects user's explicit choice)
+        if parsed.scheme in ['http', 'https']:
+            self.debug(f"Target has explicit scheme: {target}")
+            return target
+        
+        # No scheme - default to HTTPS
+        normalized = f"https://{target}"
+        self.debug(f"No scheme detected, using HTTPS: {normalized}")
+        return normalized
+
     def _validate_automation_plan(self, plan_content):
         """
         Validate ZAP automation plan YAML
@@ -550,6 +578,10 @@ class ZapPlugin(KastPlugin):
     def run(self, target, output_dir, report_only):
         """Run ZAP scan using appropriate provider"""
         self.setup(target, output_dir)
+        
+        # Normalize target URL (add https:// if no scheme provided)
+        target = self._normalize_target_url(target)
+        
         timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
         
         if report_only:
@@ -642,6 +674,8 @@ class ZapPlugin(KastPlugin):
             mode_config = self.config.get(provider_mode, {})
             use_automation = mode_config.get('use_automation_framework', True)
             
+            plan_id = None  # Track plan ID for monitoring
+            
             if use_automation:
                 # Load and validate automation plan
                 automation_plan = self._load_automation_plan()
@@ -653,16 +687,30 @@ class ZapPlugin(KastPlugin):
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", error_msg, timestamp)
                 
+                # Substitute target URL in the plan
+                plan_with_target = automation_plan.replace('${TARGET_URL}', target)
+                
+                # Write the plan to output directory BEFORE uploading
+                plan_output_path = os.path.join(output_dir, 'zap_automation_plan.yaml')
+                try:
+                    with open(plan_output_path, 'w') as f:
+                        f.write(plan_with_target)
+                    self.debug(f"Automation plan saved to: {plan_output_path}")
+                except Exception as e:
+                    self.debug(f"Warning: Failed to save automation plan to output directory: {e}")
+                
                 # Upload and execute automation plan
                 self.debug("Uploading and executing automation plan...")
-                if not self.provider.upload_automation_plan(automation_plan, target):
+                plan_id = self.provider.upload_automation_plan(automation_plan, target)
+                
+                if not plan_id:
                     # Upload failed - FAIL (per requirement: failed AF attempts should fail the scan)
                     error_msg = "Failed to upload/execute automation plan"
                     self.debug(f"ERROR: {error_msg}")
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", error_msg, timestamp)
                 
-                self.debug("Automation framework initiated successfully")
+                self.debug(f"Automation plan running (plan_id: {plan_id})")
             else:
                 # Automation framework explicitly disabled - use direct API
                 self.debug("Automation framework disabled, using direct API scanning...")
@@ -675,13 +723,36 @@ class ZapPlugin(KastPlugin):
             timeout_minutes = zap_config.get('timeout_minutes', 60)
             poll_interval = zap_config.get('poll_interval_seconds', 30)
             
-            self.debug(f"Monitoring scan (timeout: {timeout_minutes}m, poll: {poll_interval}s)")
-            if not self.zap_client.wait_for_scan_completion(
-                timeout=timeout_minutes * 60, 
-                poll_interval=poll_interval
-            ):
-                self._cleanup_on_failure()
-                return self.get_result_dict("fail", "Scan timeout", timestamp)
+            if use_automation and plan_id:
+                # Use plan-specific monitoring with progress snapshots
+                self.debug(f"Monitoring automation plan progress (timeout: {timeout_minutes}m, poll: {poll_interval}s)")
+                self.debug(f"Progress snapshots will be written to: {output_dir}/zap_scan_progress.json")
+                
+                success, progress = self.provider.wait_for_plan_completion(
+                    timeout=timeout_minutes * 60,
+                    poll_interval=poll_interval,
+                    output_dir=output_dir
+                )
+                
+                if not success:
+                    error_msg = "Automation plan execution failed or timed out"
+                    if progress and progress.get('error'):
+                        errors = progress['error']
+                        error_msg += f": {', '.join(errors[:3])}"  # Show first 3 errors
+                    self.debug(f"ERROR: {error_msg}")
+                    self._cleanup_on_failure()
+                    return self.get_result_dict("fail", error_msg, timestamp)
+                
+                self.debug("✓ Automation plan completed successfully")
+            else:
+                # Use generic scan monitoring (backward compatibility for API-based scans)
+                self.debug(f"Monitoring scan progress (timeout: {timeout_minutes}m, poll: {poll_interval}s)")
+                if not self.zap_client.wait_for_scan_completion(
+                    timeout=timeout_minutes * 60,
+                    poll_interval=poll_interval
+                ):
+                    self._cleanup_on_failure()
+                    return self.get_result_dict("fail", "Scan timeout", timestamp)
             
             # Download results
             self.debug("Downloading scan results...")
