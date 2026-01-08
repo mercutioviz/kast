@@ -836,6 +836,7 @@ class ZapPlugin(KastPlugin):
         """Post-process ZAP results"""
         # Load findings - handle multiple input types
         findings = {}
+        disposition = "success"  # Default disposition
         
         if isinstance(raw_output, str):
             # Could be a file path or error message
@@ -846,13 +847,17 @@ class ZapPlugin(KastPlugin):
                 # It's an error message string
                 self.debug(f"Post-process received error string: {raw_output}")
                 findings = {'error': raw_output}
+                disposition = "fail"
         elif isinstance(raw_output, dict):
             # Could be results dict or get_result_dict structure
             if 'results' in raw_output:
+                # Extract disposition if present
+                disposition = raw_output.get('disposition', 'success')
                 findings = raw_output['results']
                 # Handle case where results is a string (error case)
                 if isinstance(findings, str):
                     findings = {'error': findings}
+                    disposition = "fail"
             else:
                 findings = raw_output
         
@@ -896,6 +901,7 @@ class ZapPlugin(KastPlugin):
             "plugin-display-name": self.display_name,
             "plugin-website-url": self.website_url,
             "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "disposition": disposition,
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary,
