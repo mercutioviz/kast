@@ -35,6 +35,7 @@ CHECKPOINT_PACKAGES="system_packages"
 CHECKPOINT_NODEJS="nodejs"
 CHECKPOINT_GO_TOOLS="go_tools"
 CHECKPOINT_GECKO="geckodriver"
+CHECKPOINT_DOCKER="docker"
 CHECKPOINT_TERRAFORM="terraform"
 CHECKPOINT_OBSERVATORY="observatory"
 CHECKPOINT_LIBPANGO="libpango"
@@ -184,6 +185,7 @@ checkpoint_completed() {
         "$CHECKPOINT_NODEJS"
         "$CHECKPOINT_GO_TOOLS"
         "$CHECKPOINT_GECKO"
+        "$CHECKPOINT_DOCKER"
         "$CHECKPOINT_TERRAFORM"
         "$CHECKPOINT_OBSERVATORY"
         "$CHECKPOINT_LIBPANGO"
@@ -1292,6 +1294,108 @@ install_geckodriver() {
     log_success "Geckodriver installed"
 }
 
+install_docker() {
+    if checkpoint_completed "$CHECKPOINT_DOCKER"; then
+        log_info "Docker already installed, skipping..."
+        return 0
+    fi
+    
+    log_info "Installing Docker..."
+    
+    # Remove old Docker versions if present
+    log_info "Removing old Docker versions (if any)..."
+    apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+    
+    # Install prerequisites for Docker repository
+    log_info "Setting up Docker repository..."
+    apt install -y ca-certificates curl gnupg lsb-release
+    
+    # Add Docker's official GPG key
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/$(detect_os)/gpg | gpg --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+    
+    # Set up Docker repository based on distribution
+    local os_id=$(detect_os)
+    local repo_url=""
+    
+    case "$os_id" in
+        debian|kali)
+            # Kali is based on Debian, use Debian repository
+            repo_url="https://download.docker.com/linux/debian"
+            # For Kali, we need to use the Debian codename
+            if [[ "$os_id" == "kali" ]]; then
+                # Kali Rolling is based on Debian Testing/Unstable, use bookworm (Debian 12)
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] $repo_url bookworm stable" | \
+                    tee /etc/apt/sources.list.d/docker.list > /dev/null
+            else
+                echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] $repo_url $(lsb_release -cs) stable" | \
+                    tee /etc/apt/sources.list.d/docker.list > /dev/null
+            fi
+            ;;
+        ubuntu)
+            repo_url="https://download.docker.com/linux/ubuntu"
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] $repo_url $(lsb_release -cs) stable" | \
+                tee /etc/apt/sources.list.d/docker.list > /dev/null
+            ;;
+        *)
+            log_error "Unsupported distribution for Docker installation: $os_id"
+            return 1
+            ;;
+    esac
+    
+    log_success "Docker repository configured"
+    
+    # Update package index
+    log_info "Updating package index..."
+    apt update
+    
+    # Install Docker Engine, CLI, containerd, and plugins
+    log_info "Installing Docker packages..."
+    if apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+        log_success "Docker packages installed"
+    else
+        log_error "Failed to install Docker packages"
+        return 1
+    fi
+    
+    # Start and enable Docker service
+    log_info "Starting Docker service..."
+    systemctl start docker
+    systemctl enable docker
+    
+    if systemctl is-active --quiet docker; then
+        log_success "Docker service is running"
+    else
+        log_warning "Docker service may not be running properly"
+    fi
+    
+    # Add the original user to the docker group
+    log_info "Adding user '$ORIG_USER' to docker group..."
+    usermod -aG docker "$ORIG_USER"
+    log_success "User added to docker group"
+    log_info "Note: User must log out and back in for group membership to take effect"
+    
+    # Verify Docker installation
+    local docker_version=$(docker --version 2>/dev/null | grep -oP 'version \K[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+    if [[ -n "$docker_version" ]]; then
+        log_success "Docker $docker_version installed successfully"
+    else
+        log_warning "Could not verify Docker version"
+    fi
+    
+    # Test Docker with hello-world (optional, for verification)
+    log_info "Testing Docker installation..."
+    if docker run --rm hello-world &>/dev/null; then
+        log_success "Docker test successful"
+    else
+        log_warning "Docker test failed - this may be normal if network is restricted"
+    fi
+    
+    save_checkpoint "$CHECKPOINT_DOCKER"
+    log_success "Docker installed"
+}
+
 install_terraform() {
     if checkpoint_completed "$CHECKPOINT_TERRAFORM"; then
         log_info "Terraform already installed, skipping..."
@@ -1592,6 +1696,18 @@ verify_installation() {
         ((failed++))
     fi
     
+    # Check Docker
+    if ! command -v docker &>/dev/null; then
+        log_warning "docker not found in PATH"
+        ((failed++))
+    else
+        # Verify Docker daemon is running
+        if ! systemctl is-active --quiet docker 2>/dev/null; then
+            log_warning "docker daemon is not running"
+            ((failed++))
+        fi
+    fi
+    
     if ! command -v terraform &>/dev/null; then
         log_warning "terraform not found in PATH"
         ((failed++))
@@ -1695,6 +1811,29 @@ check_and_install_tools() {
     else
         log_info "✓ Geckodriver already installed"
         ((tools_skipped++))
+    fi
+    
+    # Install Docker
+    if ! command -v docker &>/dev/null; then
+        log_info "Installing Docker..."
+        if install_docker; then
+            ((tools_installed++))
+        fi
+    else
+        # Check if Docker daemon is running
+        if systemctl is-active --quiet docker 2>/dev/null; then
+            log_info "✓ Docker already installed and running"
+            ((tools_skipped++))
+        else
+            log_warning "Docker installed but daemon not running - attempting to start..."
+            systemctl start docker 2>/dev/null || true
+            if systemctl is-active --quiet docker 2>/dev/null; then
+                log_success "Docker daemon started successfully"
+                ((tools_skipped++))
+            else
+                log_warning "Could not start Docker daemon"
+            fi
+        fi
     fi
     
     echo ""
@@ -2091,6 +2230,7 @@ main() {
     install_nodejs
     install_go_tools
     install_geckodriver
+    install_docker
     install_terraform
     install_observatory
     install_libpango
