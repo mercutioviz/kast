@@ -861,19 +861,60 @@ class ZapPlugin(KastPlugin):
             else:
                 findings = raw_output
         
-        # Parse ZAP alerts (if available)
-        alerts = findings.get('alerts', [])
         provider_mode = findings.get('provider_mode', 'unknown')
         instance_info = findings.get('instance_info', {})
+        
+        # Extract alerts from nested site structure
+        # ZAP report structure: findings['site'] is an array of site objects,
+        # each containing an 'alerts' array
+        all_alerts = []
+        sites = findings.get('site', [])
+        
+        # Handle both array and single site formats
+        if not isinstance(sites, list):
+            sites = [sites] if sites else []
+        
+        site_breakdown = []  # Track per-site statistics
+        
+        for site in sites:
+            site_name = site.get('@name', 'Unknown')
+            site_alerts = site.get('alerts', [])
+            
+            # Handle both array and single alert formats
+            if not isinstance(site_alerts, list):
+                site_alerts = [site_alerts] if site_alerts else []
+            
+            if site_alerts:
+                site_breakdown.append({
+                    'name': site_name,
+                    'alert_count': len(site_alerts)
+                })
+                all_alerts.extend(site_alerts)
+        
+        self.debug(f"Extracted {len(all_alerts)} alerts from {len(sites)} site(s)")
+        
+        # Map riskcode to risk names
+        risk_map = {
+            '3': 'High',
+            '2': 'Medium',
+            '1': 'Low',
+            '0': 'Informational'
+        }
         
         # Group by risk
         risk_counts = {'High': 0, 'Medium': 0, 'Low': 0, 'Informational': 0}
         issues = []
         
-        for alert in alerts:
-            risk = alert.get('risk', 'Informational')
+        for alert in all_alerts:
+            # Get risk from riskcode (preferred) or risk field
+            riskcode = alert.get('riskcode', '0')
+            risk = risk_map.get(str(riskcode), alert.get('risk', 'Informational'))
+            
             risk_counts[risk] = risk_counts.get(risk, 0) + 1
-            issues.append(f"{alert.get('name', 'Unknown')} [{risk}]")
+            
+            # Include alert name and risk level
+            alert_name = alert.get('alert', alert.get('name', 'Unknown'))
+            issues.append(f"{alert_name} [{risk}]")
         
         # Calculate findings_count - total number of security alerts/vulnerabilities
         findings_count = total = sum(risk_counts.values())
@@ -888,12 +929,22 @@ class ZapPlugin(KastPlugin):
         
         self.debug(f"{self.name} findings_count: {findings_count}")
         
-        # Build details
+        # Build details with per-site breakdown
         details = f"Execution Mode: {provider_mode}\n"
         details += f"Total Alerts: {total}\n"
+        details += f"Sites Scanned: {len(sites)}\n\n"
+        
+        # Risk breakdown
+        details += "Risk Breakdown:\n"
         for risk, count in risk_counts.items():
             if count > 0:
                 details += f"  {risk}: {count}\n"
+        
+        # Per-site breakdown
+        if site_breakdown:
+            details += "\nPer-Site Alert Count:\n"
+            for site_info in site_breakdown:
+                details += f"  {site_info['name']}: {site_info['alert_count']} alerts\n"
         
         processed = {
             "plugin-name": self.name,

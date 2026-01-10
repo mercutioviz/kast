@@ -67,6 +67,7 @@ class ConfigManager:
         :return: True if config loaded successfully, False otherwise
         """
         loaded_file = None
+        config_file_error = None
         
         # If specific config file provided, try to load it
         if config_file:
@@ -78,10 +79,10 @@ class ConfigManager:
                     self.logger.info(f"Loaded config from: {config_path}")
                 except Exception as e:
                     self.logger.error(f"Failed to load config from {config_path}: {e}")
-                    return False
+                    config_file_error = str(e)
             else:
                 self.logger.warning(f"Config file not found: {config_path}")
-                return False
+                # Don't return early - still need to parse CLI overrides
         else:
             # Try default locations in priority order
             for config_path in self.config_paths:
@@ -96,15 +97,17 @@ class ConfigManager:
                         self.logger.warning(f"Failed to load config from {config_path}: {e}")
                         continue
         
-        # Parse CLI overrides (--set arguments)
+        # IMPORTANT: Always parse CLI overrides, even if config file not found
+        # CLI overrides have highest priority and should work standalone
         if self.cli_args and hasattr(self.cli_args, 'set') and self.cli_args.set:
             self._parse_cli_overrides(self.cli_args.set)
+            self.logger.debug(f"Parsed {len(self.cli_overrides)} plugin CLI override(s)")
         
         if loaded_file:
             self.logger.debug(f"Configuration loaded from {loaded_file}")
             return True
         else:
-            self.logger.debug("No configuration file found, using defaults")
+            self.logger.debug("No configuration file found, using defaults and CLI overrides")
             return False
     
     def _load_yaml_file(self, path: Path) -> Dict[str, Any]:

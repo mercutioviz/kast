@@ -31,6 +31,7 @@ NC='\033[0m' # No Color
 # Installation checkpoints
 CHECKPOINT_INIT="initialization"
 CHECKPOINT_PREREQ_VALIDATION="prerequisite_validation"
+CHECKPOINT_SWAP="swap_configuration"
 CHECKPOINT_PACKAGES="system_packages"
 CHECKPOINT_NODEJS="nodejs"
 CHECKPOINT_GO_TOOLS="go_tools"
@@ -181,6 +182,7 @@ checkpoint_completed() {
     local checkpoints=(
         "$CHECKPOINT_INIT"
         "$CHECKPOINT_PREREQ_VALIDATION"
+        "$CHECKPOINT_SWAP"
         "$CHECKPOINT_PACKAGES"
         "$CHECKPOINT_NODEJS"
         "$CHECKPOINT_GO_TOOLS"
@@ -582,6 +584,137 @@ create_backup() {
             return 1
         fi
     fi
+    return 0
+}
+
+###############################################################################
+# SWAP FILE MANAGEMENT
+###############################################################################
+
+check_swap_status() {
+    log_info "Checking swap configuration..."
+    
+    # Check if any swap is active (file or partition)
+    local swap_info=$(swapon --show --noheadings 2>/dev/null)
+    
+    if [[ -n "$swap_info" ]]; then
+        log_success "Swap is already configured:"
+        echo "$swap_info" | while read -r line; do
+            log_info "  $line"
+        done
+        return 0
+    else
+        log_info "No swap currently configured"
+        return 1
+    fi
+}
+
+configure_swap() {
+    if checkpoint_completed "$CHECKPOINT_SWAP"; then
+        log_info "Swap configuration already completed, skipping..."
+        return 0
+    fi
+    
+    log_info "Checking swap file configuration..."
+    
+    # Check if swap already exists
+    if check_swap_status; then
+        log_info "Swap already configured, skipping swap creation"
+        save_checkpoint "$CHECKPOINT_SWAP"
+        return 0
+    fi
+    
+    # No swap found, prompt user
+    echo ""
+    echo -e "${YELLOW}No swap file detected.${NC}"
+    echo ""
+    read -p "Would you like to create a swap file? [Y/n]: " create_swap
+    create_swap=${create_swap:-Y}
+    
+    if [[ ! "$create_swap" =~ ^[Yy]$ ]]; then
+        log_info "User declined swap file creation"
+        save_checkpoint "$CHECKPOINT_SWAP"
+        return 0
+    fi
+    
+    # Prompt for swap file size
+    echo ""
+    echo "Enter swap file size in GB (1-9, or 0 to skip)"
+    read -p "Swap size [4]: " swap_size
+    swap_size=${swap_size:-4}
+    
+    # Validate input
+    if ! [[ "$swap_size" =~ ^[0-9]$ ]]; then
+        log_error "Invalid input. Must be a single digit 0-9."
+        return 1
+    fi
+    
+    # Handle 0 (skip)
+    if [[ "$swap_size" -eq 0 ]]; then
+        log_info "Swap file creation skipped (user entered 0)"
+        save_checkpoint "$CHECKPOINT_SWAP"
+        return 0
+    fi
+    
+    # Validate max size
+    if [[ "$swap_size" -gt 9 ]]; then
+        log_error "Swap size cannot exceed 9GB"
+        return 1
+    fi
+    
+    log_info "Creating ${swap_size}GB swap file..."
+    
+    # Check available disk space
+    local available_space=$(df / | awk 'NR==2 {print int($4/1024/1024)}')
+    local required_space=$((swap_size + 1))
+    
+    if [[ $available_space -lt $required_space ]]; then
+        log_error "Insufficient disk space. Available: ${available_space}GB, Required: ${required_space}GB"
+        return 1
+    fi
+    
+    # Create swap file
+    log_info "Allocating swap file (this may take a moment)..."
+    if ! fallocate -l ${swap_size}G /swapfile 2>/dev/null; then
+        log_warning "fallocate failed, falling back to dd..."
+        if ! dd if=/dev/zero of=/swapfile bs=1G count=$swap_size status=progress 2>/dev/null; then
+            log_error "Failed to create swap file"
+            return 1
+        fi
+    fi
+    
+    # Set correct permissions
+    chmod 600 /swapfile
+    
+    # Set up swap area
+    log_info "Setting up swap area..."
+    if ! mkswap /swapfile >/dev/null 2>&1; then
+        log_error "Failed to set up swap area"
+        rm -f /swapfile
+        return 1
+    fi
+    
+    # Enable swap
+    log_info "Enabling swap..."
+    if ! swapon /swapfile 2>/dev/null; then
+        log_error "Failed to enable swap"
+        rm -f /swapfile
+        return 1
+    fi
+    
+    # Add to /etc/fstab for persistence
+    if ! grep -q "/swapfile" /etc/fstab 2>/dev/null; then
+        log_info "Adding swap to /etc/fstab for persistence..."
+        echo "/swapfile none swap sw 0 0" >> /etc/fstab
+        log_success "Swap file added to /etc/fstab"
+    fi
+    
+    log_success "${swap_size}GB swap file created and enabled"
+    
+    # Display current swap status
+    swapon --show
+    
+    save_checkpoint "$CHECKPOINT_SWAP"
     return 0
 }
 
@@ -1648,6 +1781,17 @@ verify_installation() {
     local failed=0
     local os_id=$(detect_os)
     
+    # Check swap status
+    local swap_info=$(swapon --show --noheadings 2>/dev/null)
+    if [[ -n "$swap_info" ]]; then
+        log_success "Swap is configured:"
+        echo "$swap_info" | while read -r line; do
+            log_info "  $line"
+        done
+    else
+        log_info "No swap configured (this is optional)"
+    fi
+    
     # Check if launcher scripts exist and are executable
     if [[ ! -x /usr/local/bin/kast ]]; then
         log_error "KAST launcher script not found or not executable"
@@ -2209,6 +2353,9 @@ main() {
     
     # Validate prerequisites before installation
     validate_prerequisites
+    
+    # Configure swap file if needed
+    configure_swap
     
     # Execute installation steps
     install_system_packages
