@@ -28,8 +28,8 @@ variable "machine_type" {
   default     = "n1-standard-2"
 }
 
-variable "preemptible" {
-  description = "Use preemptible (spot) instance"
+variable "use_preemptible_instance" {
+  description = "Use preemptible instance (true) or standard (false)"
   type        = bool
   default     = true
 }

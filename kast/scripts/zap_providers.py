@@ -554,14 +554,14 @@ class CloudZapProvider(ZapInstanceProvider):
         self.debug(f"SSH keypair generated: {private_key_path}")
         return private_key_path, public_openssh.decode('utf-8')
     
-    def _prepare_terraform_variables(self, target_url):
+    def _prepare_terraform_variables(self, target_url, use_spot=True):
         """
         Prepare Terraform variables from configuration
         
         :param target_url: Target URL to scan
+        :param use_spot: Whether to use spot/preemptible instances
         :return: Dictionary of Terraform variables
         """
-        cloud_config = self.config.get('cloud', {})
         zap_config = self.config.get('zap_config', {})
         
         # Common variables
@@ -572,10 +572,11 @@ class CloudZapProvider(ZapInstanceProvider):
         
         # Cloud provider specific variables
         if self.cloud_provider == 'aws':
-            aws_config = cloud_config.get('aws', {})
+            aws_config = self.config.get('aws', {})
             variables.update({
                 'region': aws_config.get('region', 'us-east-1'),
                 'instance_type': aws_config.get('instance_type', 't3.medium'),
+                'use_spot_instance': use_spot,  # Control spot vs on-demand
                 'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
             })
             # Add AWS credentials if provided in config
@@ -585,20 +586,22 @@ class CloudZapProvider(ZapInstanceProvider):
                 variables['aws_secret_access_key'] = aws_config['secret_access_key']
         
         elif self.cloud_provider == 'azure':
-            azure_config = cloud_config.get('azure', {})
+            azure_config = self.config.get('azure', {})
             variables.update({
                 'location': azure_config.get('location', 'eastus'),
                 'vm_size': azure_config.get('vm_size', 'Standard_B2s'),
+                'use_spot_instance': use_spot,  # Control spot vs on-demand
                 'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
             })
         
         elif self.cloud_provider == 'gcp':
-            gcp_config = cloud_config.get('gcp', {})
+            gcp_config = self.config.get('gcp', {})
             variables.update({
                 'project_id': gcp_config.get('project_id'),
                 'region': gcp_config.get('region', 'us-central1'),
                 'zone': gcp_config.get('zone', 'us-central1-a'),
                 'machine_type': gcp_config.get('machine_type', 'e2-medium'),
+                'use_preemptible_instance': use_spot,  # GCP uses 'preemptible' terminology
                 'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
             })
         
@@ -609,51 +612,117 @@ class CloudZapProvider(ZapInstanceProvider):
         
         return variables
     
-    def provision(self, target_url, output_dir):
-        """Provision cloud infrastructure using Terraform"""
-        self.debug("Provisioning cloud infrastructure...")
+    def _provision_with_retry(self, target_url, output_dir, use_spot=True):
+        """
+        Provision infrastructure with automatic fallback from spot to on-demand
         
-        try:
-            # Import dependencies
-            from kast.scripts.terraform_manager import TerraformManager
-            from kast.scripts.ssh_executor import SSHExecutor
+        :param target_url: Target URL to scan
+        :param output_dir: Output directory
+        :param use_spot: Whether to attempt spot instances first
+        :return: Tuple of (success: bool, instance_type: str, error: dict or None)
+        """
+        # Import dependencies
+        from kast.scripts.terraform_manager import TerraformManager
+        
+        cloud_config = self.config.get('cloud', {})
+        self.cloud_provider = cloud_config.get('cloud_provider', 'aws')
+        
+        # Initialize Terraform Manager
+        terraform_dir = Path(__file__).parent.parent / 'terraform' / self.cloud_provider
+        workspace_dir = Path(output_dir) / 'terraform_workspace'
+        
+        self.terraform_manager = TerraformManager(
+            self.cloud_provider,
+            str(workspace_dir),
+            debug_callback=self.debug
+        )
+        
+        # Attempt 1: Try with spot instances (if enabled)
+        if use_spot:
+            self.debug("=" * 60)
+            self.debug("ATTEMPT 1: Provisioning with spot/preemptible instances")
+            self.debug("=" * 60)
             
-            cloud_config = self.config.get('cloud', {})
-            self.cloud_provider = cloud_config.get('cloud_provider', 'aws')
-            
-            # Generate SSH keypair
-            self.ssh_key_path, self.ssh_public_key = self._generate_ssh_keypair()
-            
-            # Initialize Terraform Manager
-            terraform_dir = Path(__file__).parent.parent / 'terraform' / self.cloud_provider
-            workspace_dir = Path(output_dir) / 'terraform_workspace'
-            
-            self.terraform_manager = TerraformManager(
-                self.cloud_provider,
-                str(workspace_dir),
-                debug_callback=self.debug
-            )
-            
-            # Prepare Terraform variables
-            tf_vars = self._prepare_terraform_variables(target_url)
+            # Prepare Terraform variables for spot instances
+            tf_vars = self._prepare_terraform_variables(target_url, use_spot=True)
             
             self.debug(f"Using cloud provider: {self.cloud_provider}")
-            
-            # Prepare workspace with variables
             self.terraform_manager.prepare_workspace(str(terraform_dir), tf_vars)
             
-            self.debug("Initializing Terraform...")
-            
-            # Terraform workflow: init -> plan -> apply
             if not self.terraform_manager.init():
                 return False, None, {"error": "Terraform init failed"}
             
             if not self.terraform_manager.plan():
                 return False, None, {"error": "Terraform plan failed"}
             
-            self.debug("Applying Terraform configuration...")
-            if not self.terraform_manager.apply():
-                return False, None, {"error": "Terraform apply failed"}
+            self.debug("Applying Terraform configuration (spot instances)...")
+            if self.terraform_manager.apply():
+                self.debug("✓ Spot instance provisioned successfully")
+                return True, "spot", None
+            
+            # Check if failure was due to capacity
+            if self.terraform_manager.is_capacity_error():
+                self.debug("⚠ Spot instance capacity unavailable, will retry with on-demand")
+                
+                # Clean up failed attempt
+                try:
+                    self.terraform_manager.destroy(timeout=300)
+                    self.terraform_manager.cleanup_workspace()
+                except Exception as e:
+                    self.debug(f"Note: Cleanup after failed spot attempt: {e}")
+            else:
+                # Non-capacity error - don't retry
+                return False, None, {"error": "Terraform apply failed (non-capacity error)"}
+        
+        # Attempt 2: Try with on-demand instances
+        self.debug("=" * 60)
+        self.debug("ATTEMPT 2: Provisioning with on-demand instances")
+        self.debug("=" * 60)
+        
+        # Reinitialize Terraform Manager with new workspace
+        workspace_dir = Path(output_dir) / 'terraform_workspace_ondemand'
+        self.terraform_manager = TerraformManager(
+            self.cloud_provider,
+            str(workspace_dir),
+            debug_callback=self.debug
+        )
+        
+        # Prepare Terraform variables for on-demand instances
+        tf_vars = self._prepare_terraform_variables(target_url, use_spot=False)
+        
+        self.terraform_manager.prepare_workspace(str(terraform_dir), tf_vars)
+        
+        if not self.terraform_manager.init():
+            return False, None, {"error": "Terraform init failed (on-demand)"}
+        
+        if not self.terraform_manager.plan():
+            return False, None, {"error": "Terraform plan failed (on-demand)"}
+        
+        self.debug("Applying Terraform configuration (on-demand instances)...")
+        if self.terraform_manager.apply():
+            self.debug("✓ On-demand instance provisioned successfully")
+            return True, "on-demand", None
+        else:
+            return False, None, {"error": "Terraform apply failed (on-demand)"}
+    
+    def provision(self, target_url, output_dir):
+        """Provision cloud infrastructure using Terraform"""
+        self.debug("Provisioning cloud infrastructure...")
+        
+        try:
+            # Import dependencies
+            from kast.scripts.ssh_executor import SSHExecutor
+            
+            cloud_config = self.config.get('cloud', {})
+            
+            # Generate SSH keypair
+            self.ssh_key_path, self.ssh_public_key = self._generate_ssh_keypair()
+            
+            # Provision with automatic retry/fallback
+            success, instance_type, error = self._provision_with_retry(target_url, output_dir)
+            
+            if not success:
+                return False, None, error or {"error": "Infrastructure provisioning failed"}
             
             # Get infrastructure outputs
             self.infrastructure_outputs = self.terraform_manager.get_outputs()
@@ -662,8 +731,8 @@ class CloudZapProvider(ZapInstanceProvider):
                 return False, None, {"error": "Failed to get Terraform outputs"}
             
             # Extract connection details
-            instance_ip = self.infrastructure_outputs.get('instance_ip', {}).get('value')
-            zap_api_url = self.infrastructure_outputs.get('zap_api_url', {}).get('value')
+            instance_ip = self.infrastructure_outputs.get('public_ip')
+            zap_api_url = self.infrastructure_outputs.get('zap_api_url')
             
             if not instance_ip:
                 return False, None, {"error": "No instance IP in Terraform outputs"}
@@ -677,9 +746,9 @@ class CloudZapProvider(ZapInstanceProvider):
             
             self.debug("Waiting for SSH to be available...")
             self.ssh_executor = SSHExecutor(
-                hostname=instance_ip,
-                username=ssh_user,
-                key_filename=self.ssh_key_path,
+                host=instance_ip,
+                user=ssh_user,
+                private_key_path=self.ssh_key_path,
                 debug_callback=self.debug
             )
             

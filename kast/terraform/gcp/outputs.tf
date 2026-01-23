@@ -33,3 +33,9 @@ output "ssh_user" {
 output "zap_api_url" {
   description = "ZAP API endpoint URL"
   value       = "http://${google_compute_address.zap_ip.address}:8080"
+}
+
+output "instance_type" {
+  description = "Type of instance provisioned (preemptible or standard)"
+  value       = var.use_preemptible_instance ? "preemptible" : "standard"
+}

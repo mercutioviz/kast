@@ -36,8 +36,8 @@ variable "vm_size" {
   default     = "Standard_B2s"
 }
 
-variable "spot_enabled" {
-  description = "Enable spot instance"
+variable "use_spot_instance" {
+  description = "Use spot instance (true) or standard (false)"
   type        = bool
   default     = true
 }

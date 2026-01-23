@@ -99,7 +99,7 @@ resource "aws_security_group" "zap_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # TODO: Restrict to operator IP
+    cidr_blocks = ["0.0.0.0/0"] # TODO: Restrict to operator IP
     description = "SSH access"
   }
 
@@ -108,7 +108,7 @@ resource "aws_security_group" "zap_sg" {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # TODO: Restrict to operator IP
+    cidr_blocks = ["0.0.0.0/0"] # TODO: Restrict to operator IP
     description = "ZAP API access"
   }
 
@@ -139,7 +139,7 @@ resource "aws_key_pair" "zap_key" {
 # Get latest Ubuntu AMI
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"]  # Canonical
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
@@ -167,12 +167,50 @@ set -e
 exec > >(tee -a /var/log/zap-setup.log)
 exec 2>&1
 
-echo "Starting ZAP cloud setup at $(date)"
+echo "Starting ZAP cloud setup at $$(date)"
 
 # Update system
 echo "Updating system packages..."
 apt-get update
 apt-get upgrade -y
+
+# Create swap file for memory-intensive ZAP operations
+echo "Configuring swap file..."
+if ! swapon --show | grep -q '/swapfile'; then
+    echo "Creating 4GB swap file..."
+    
+    # Check available disk space
+    available_space=$$(df / | awk 'NR==2 {print int($$4/1024/1024)}')
+    if [ $$available_space -lt 5 ]; then
+        echo "WARNING: Insufficient disk space for swap file (available: $${available_space}GB)"
+    else
+        # Create swap file
+        if ! fallocate -l 4G /swapfile 2>/dev/null; then
+            echo "fallocate failed, using dd instead..."
+            dd if=/dev/zero of=/swapfile bs=1G count=4 status=progress
+        fi
+        
+        # Set correct permissions
+        chmod 600 /swapfile
+        
+        # Set up swap area
+        mkswap /swapfile
+        
+        # Enable swap
+        swapon /swapfile
+        
+        # Add to /etc/fstab for persistence
+        if ! grep -q "/swapfile" /etc/fstab; then
+            echo "/swapfile none swap sw 0 0" >> /etc/fstab
+        fi
+        
+        echo "Swap file created and enabled:"
+        swapon --show
+    fi
+else
+    echo "Swap already configured, skipping"
+    swapon --show
+fi
 
 # Install Docker using official installation script (more reliable)
 echo "Installing Docker using official script..."
@@ -186,7 +224,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-echo "Docker version: $(docker --version)"
+echo "Docker version: $$(docker --version)"
 
 # Start Docker service
 echo "Starting Docker service..."
@@ -324,24 +362,26 @@ fi
 # Create ready flag
 touch /tmp/zap-ready
 
-echo "ZAP cloud setup completed at $(date)"
-echo "ZAP API URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8080"
+echo "ZAP cloud setup completed at $$(date)"
+echo "ZAP API URL: http://$$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):8080"
 echo "ZAP API Key: ${var.zap_api_key}"
 EOF
 }
 
-# EC2 Spot Instance Request
-resource "aws_spot_instance_request" "zap_instance" {
+# EC2 Spot Instance Request (used when use_spot_instance = true)
+resource "aws_spot_instance_request" "zap_spot" {
+  count = var.use_spot_instance ? 1 : 0
+
   ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.zap_subnet.id
   vpc_security_group_ids = [aws_security_group.zap_sg.id]
   key_name               = aws_key_pair.zap_key.key_name
-  
+
   spot_price           = var.spot_max_price
   wait_for_fulfillment = true
   spot_type            = "one-time"
-  
+
   user_data = local.user_data
 
   root_block_device {
@@ -351,7 +391,30 @@ resource "aws_spot_instance_request" "zap_instance" {
   }
 
   tags = merge(local.common_tags, {
-    Name = "${local.scan_identifier}-instance"
+    Name = "${local.scan_identifier}-spot-instance"
+  })
+}
+
+# EC2 On-Demand Instance (used when use_spot_instance = false)
+resource "aws_instance" "zap_ondemand" {
+  count = var.use_spot_instance ? 0 : 1
+
+  ami                    = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu.id
+  instance_type          = var.instance_type
+  subnet_id              = aws_subnet.zap_subnet.id
+  vpc_security_group_ids = [aws_security_group.zap_sg.id]
+  key_name               = aws_key_pair.zap_key.key_name
+
+  user_data = local.user_data
+
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = 30
+    delete_on_termination = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.scan_identifier}-ondemand-instance"
   })
 }
 

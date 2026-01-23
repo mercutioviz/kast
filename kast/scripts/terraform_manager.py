@@ -27,6 +27,7 @@ class TerraformManager:
         self.debug = debug_callback or (lambda x: None)
         self.terraform_dir = None
         self.state_file = None
+        self.last_stderr = None  # Store last error output for analysis
         
     def check_terraform_installed(self):
         """
@@ -186,6 +187,9 @@ class TerraformManager:
                 timeout=timeout
             )
             
+            # Store stderr for error analysis
+            self.last_stderr = result.stderr
+            
             if result.returncode == 0:
                 self.debug("Terraform apply successful")
                 if result.stdout:
@@ -197,10 +201,55 @@ class TerraformManager:
                 
         except subprocess.TimeoutExpired:
             self.debug(f"Terraform apply timed out after {timeout}s")
+            self.last_stderr = f"Timeout after {timeout}s"
             return False
         except Exception as e:
             self.debug(f"Terraform apply error: {e}")
+            self.last_stderr = str(e)
             return False
+    
+    def is_capacity_error(self):
+        """
+        Check if last failure was due to spot/preemptible capacity issues
+        
+        :return: True if capacity error detected
+        """
+        if not self.last_stderr:
+            return False
+        
+        stderr_lower = self.last_stderr.lower()
+        
+        # AWS spot capacity errors
+        aws_errors = [
+            'insufficientinstancecapacity',
+            'max spot instance count exceeded',
+            'spot market capacity not available',
+            'capacity-not-available',
+            'spot-instance-count-exceeded',
+            'spotmaxpricetoolow'
+        ]
+        
+        # Azure spot capacity errors
+        azure_errors = [
+            'skunotavailable',
+            'allocationfailed',
+            'overconstrainedallocationrequest',
+            'capacity not available',
+            'spotvm quota',
+            'lowpriorityvm quota'
+        ]
+        
+        # GCP preemptible capacity errors
+        gcp_errors = [
+            'zone_resource_pool_exhausted',
+            'quota exceeded',
+            'insufficient resources',
+            'preemptible_quota_exceeded',
+            'resource_pool_exhausted'
+        ]
+        
+        all_errors = aws_errors + azure_errors + gcp_errors
+        return any(error in stderr_lower for error in all_errors)
     
     def get_outputs(self):
         """

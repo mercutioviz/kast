@@ -34,3 +34,8 @@ output "zap_api_url" {
   description = "ZAP API endpoint URL"
   value       = "http://${azurerm_public_ip.zap_pip.ip_address}:8080"
 }
+
+output "instance_type" {
+  description = "Type of instance provisioned (spot or on-demand)"
+  value       = var.use_spot_instance ? "spot" : "on-demand"
+}

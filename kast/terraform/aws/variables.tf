@@ -28,6 +28,12 @@ variable "spot_max_price" {
   default     = "0.05"
 }
 
+variable "use_spot_instance" {
+  description = "Use spot instance (true) or on-demand (false)"
+  type        = bool
+  default     = true
+}
+
 variable "ssh_public_key" {
   description = "SSH public key for instance access"
   type        = string
@@ -50,8 +56,8 @@ variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
   default = {
-    Project    = "KAST"
-    ManagedBy  = "KAST-ZAP-Plugin"
+    Project     = "KAST"
+    ManagedBy   = "KAST-ZAP-Plugin"
     Environment = "security-scan"
   }
 }

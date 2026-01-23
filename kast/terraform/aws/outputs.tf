@@ -1,13 +1,14 @@
 # AWS Terraform Outputs
+# Conditionally outputs based on spot vs on-demand instance
 
 output "instance_id" {
   description = "EC2 instance ID"
-  value       = aws_spot_instance_request.zap_instance.spot_instance_id
+  value       = var.use_spot_instance ? aws_spot_instance_request.zap_spot[0].spot_instance_id : aws_instance.zap_ondemand[0].id
 }
 
 output "public_ip" {
   description = "Public IP address of the ZAP instance (ephemeral)"
-  value       = aws_spot_instance_request.zap_instance.public_ip
+  value       = var.use_spot_instance ? aws_spot_instance_request.zap_spot[0].public_ip : aws_instance.zap_ondemand[0].public_ip
 }
 
 output "vpc_id" {
@@ -32,5 +33,10 @@ output "ssh_user" {
 
 output "zap_api_url" {
   description = "URL for ZAP API access"
-  value       = "http://${aws_spot_instance_request.zap_instance.public_ip}:8080"
+  value       = var.use_spot_instance ? "http://${aws_spot_instance_request.zap_spot[0].public_ip}:8080" : "http://${aws_instance.zap_ondemand[0].public_ip}:8080"
+}
+
+output "instance_type" {
+  description = "Type of instance provisioned (spot or on-demand)"
+  value       = var.use_spot_instance ? "spot" : "on-demand"
 }
