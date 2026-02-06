@@ -558,57 +558,165 @@ class CloudZapProvider(ZapInstanceProvider):
         """
         Prepare Terraform variables from configuration
         
+        Resolution order for each parameter:
+        1. CLI override at cloud.{param} (generic, applies to all providers)
+        2. CLI override at cloud.{provider}.{param} (provider-specific)
+        3. YAML value at cloud.{provider}.{param} (provider-specific)
+        4. Hardcoded default
+
         :param target_url: Target URL to scan
         :param use_spot: Whether to use spot/preemptible instances
         :return: Dictionary of Terraform variables
         """
         zap_config = self.config.get('zap_config', {})
+        cloud_config = self.config.get('cloud', {})
         
+        self.debug("=== Preparing Terraform Variables ===")
+        self.debug(f"Cloud provider: {self.cloud_provider}")
+        self.debug(f"Use spot/preemptible: {use_spot}")
+
         # Common variables
         variables = {
             'ssh_public_key': self.ssh_public_key,
             'target_url': target_url,
         }
-        
+
         # Cloud provider specific variables
         if self.cloud_provider == 'aws':
-            aws_config = self.config.get('aws', {})
+            aws_config = cloud_config.get('aws', {})
+            
+            # Region: CLI generic > CLI aws-specific > YAML aws-specific > default
+            region = cloud_config.get('region') or aws_config.get('region', 'us-east-1')
+            self.debug(f"AWS region resolution:")
+            self.debug(f"  cloud.region (CLI generic): {cloud_config.get('region')}")
+            self.debug(f"  cloud.aws.region (YAML): {aws_config.get('region')}")
+            self.debug(f"  → Final value: {region}")
+            
+            # Instance type: CLI generic > CLI aws-specific > YAML aws-specific > default
+            instance_type = cloud_config.get('instance_type') or aws_config.get('instance_type', 't3.medium')
+            self.debug(f"AWS instance_type resolution:")
+            self.debug(f"  cloud.instance_type (CLI): {cloud_config.get('instance_type')}")
+            self.debug(f"  cloud.aws.instance_type (YAML): {aws_config.get('instance_type')}")
+            self.debug(f"  → Final value: {instance_type}")
+            
+            # Spot max price
+            spot_max_price = cloud_config.get('spot_max_price') or aws_config.get('spot_max_price', '0.05')
+            self.debug(f"AWS spot_max_price: {spot_max_price}")
+            
+            # Allowed CIDRs
+            allowed_cidrs = cloud_config.get('allowed_cidrs') or aws_config.get('allowed_cidrs', [])
+            if allowed_cidrs:
+                self.debug(f"AWS allowed_cidrs: {allowed_cidrs}")
+            
+            # Auto terminate
+            auto_terminate = cloud_config.get('auto_terminate')
+            if auto_terminate is None:
+                auto_terminate = aws_config.get('auto_terminate', True)
+            self.debug(f"AWS auto_terminate: {auto_terminate}")
+            
             variables.update({
-                'region': aws_config.get('region', 'us-east-1'),
-                'instance_type': aws_config.get('instance_type', 't3.medium'),
-                'use_spot_instance': use_spot,  # Control spot vs on-demand
+                'region': region,
+                'instance_type': instance_type,
+                'use_spot_instance': use_spot,
+                'spot_max_price': str(spot_max_price),
                 'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
             })
-            # Add AWS credentials if provided in config
+            
+            # Optional: AMI ID
+            ami_id = aws_config.get('ami_id', '')
+            if ami_id:
+                variables['ami_id'] = ami_id
+                self.debug(f"AWS ami_id: {ami_id}")
+            
+            # Optional: AWS credentials
             if aws_config.get('access_key_id'):
                 variables['aws_access_key_id'] = aws_config['access_key_id']
+                self.debug("AWS credentials: access_key_id provided")
             if aws_config.get('secret_access_key'):
                 variables['aws_secret_access_key'] = aws_config['secret_access_key']
+                self.debug("AWS credentials: secret_access_key provided")
         
         elif self.cloud_provider == 'azure':
-            azure_config = self.config.get('azure', {})
+            azure_config = cloud_config.get('azure', {})
+            
+            # Location/region: CLI generic > CLI azure-specific > YAML azure-specific > default
+            location = cloud_config.get('region') or azure_config.get('region') or azure_config.get('location', 'eastus')
+            self.debug(f"Azure location resolution:")
+            self.debug(f"  cloud.region (CLI): {cloud_config.get('region')}")
+            self.debug(f"  cloud.azure.region (YAML): {azure_config.get('region')}")
+            self.debug(f"  cloud.azure.location (YAML): {azure_config.get('location')}")
+            self.debug(f"  → Final value: {location}")
+            
+            # VM size: CLI generic > CLI azure-specific > YAML azure-specific > default
+            vm_size = cloud_config.get('instance_type') or azure_config.get('vm_size', 'Standard_B2s')
+            self.debug(f"Azure vm_size: {vm_size}")
+            
+            # Spot configuration
+            spot_enabled = azure_config.get('spot_enabled', True) if use_spot else False
+            spot_max_price = cloud_config.get('spot_max_price') or azure_config.get('spot_max_price', -1)
+            self.debug(f"Azure spot_enabled: {spot_enabled}, spot_max_price: {spot_max_price}")
+            
             variables.update({
-                'location': azure_config.get('location', 'eastus'),
-                'vm_size': azure_config.get('vm_size', 'Standard_B2s'),
-                'use_spot_instance': use_spot,  # Control spot vs on-demand
+                'location': location,
+                'vm_size': vm_size,
+                'use_spot_instance': use_spot,
+                'spot_max_price': spot_max_price,
                 'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
             })
+            
+            # Azure credentials (required)
+            for cred_key in ['subscription_id', 'tenant_id', 'client_id', 'client_secret']:
+                if azure_config.get(cred_key):
+                    variables[f'azure_{cred_key}'] = azure_config[cred_key]
+                    self.debug(f"Azure credential: {cred_key} provided")
         
         elif self.cloud_provider == 'gcp':
-            gcp_config = self.config.get('gcp', {})
+            gcp_config = cloud_config.get('gcp', {})
+            
+            # Region: CLI generic > CLI gcp-specific > YAML gcp-specific > default
+            region = cloud_config.get('region') or gcp_config.get('region', 'us-central1')
+            self.debug(f"GCP region resolution:")
+            self.debug(f"  cloud.region (CLI): {cloud_config.get('region')}")
+            self.debug(f"  cloud.gcp.region (YAML): {gcp_config.get('region')}")
+            self.debug(f"  → Final value: {region}")
+            
+            # Zone
+            zone = gcp_config.get('zone', f'{region}-a')
+            self.debug(f"GCP zone: {zone}")
+            
+            # Machine type: CLI generic > CLI gcp-specific > YAML gcp-specific > default
+            machine_type = cloud_config.get('instance_type') or gcp_config.get('machine_type', 'e2-medium')
+            self.debug(f"GCP machine_type: {machine_type}")
+            
+            # Preemptible (GCP's term for spot)
+            preemptible = gcp_config.get('preemptible', True) if use_spot else False
+            self.debug(f"GCP preemptible: {preemptible}")
+            
             variables.update({
                 'project_id': gcp_config.get('project_id'),
-                'region': gcp_config.get('region', 'us-central1'),
-                'zone': gcp_config.get('zone', 'us-central1-a'),
-                'machine_type': gcp_config.get('machine_type', 'e2-medium'),
-                'use_preemptible_instance': use_spot,  # GCP uses 'preemptible' terminology
+                'region': region,
+                'zone': zone,
+                'machine_type': machine_type,
+                'use_preemptible_instance': preemptible,
                 'zap_docker_image': zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable'),
             })
+            
+            # GCP credentials
+            if gcp_config.get('credentials_file'):
+                variables['gcp_credentials_file'] = gcp_config['credentials_file']
+                self.debug(f"GCP credentials_file: {gcp_config['credentials_file']}")
         
         # Add tags/labels
         tags = self.config.get('tags', {})
         if tags:
             variables['tags'] = tags
+            self.debug(f"Tags: {tags}")
+        
+        self.debug("=== Terraform Variables Prepared ===")
+        # Log final variables (excluding sensitive data)
+        safe_vars = {k: v for k, v in variables.items() 
+                    if not any(secret in k.lower() for secret in ['key', 'secret', 'password', 'credentials'])}
+        self.debug(f"Final variables (non-sensitive): {safe_vars}")
         
         return variables
     
@@ -773,6 +881,31 @@ class CloudZapProvider(ZapInstanceProvider):
             if not connected:
                 return False, None, {"error": "Failed to establish SSH connection"}
             
+            # Wait for startup script to complete (it creates /tmp/zap-ready flag)
+            self.debug("Waiting for startup script to complete...")
+            if not self.ssh_executor.wait_for_file('/tmp/zap-ready', timeout=600, poll_interval=10):
+                self.debug("Warning: Startup script completion flag not found, checking Docker directly...")
+            
+            # Verify Docker is installed and ready
+            self.debug("Verifying Docker installation...")
+            max_docker_wait = 300  # 5 minutes
+            docker_ready = False
+            docker_wait_start = time.time()
+            
+            while time.time() - docker_wait_start < max_docker_wait:
+                exit_code, stdout, stderr = self.ssh_executor.execute_command('docker --version')
+                if exit_code == 0:
+                    self.debug(f"✓ Docker is installed: {stdout.strip()}")
+                    docker_ready = True
+                    break
+                else:
+                    elapsed = int(time.time() - docker_wait_start)
+                    self.debug(f"Docker not ready yet (waited {elapsed}s), retrying...")
+                    time.sleep(10)
+            
+            if not docker_ready:
+                return False, None, {"error": "Docker installation failed or timed out"}
+            
             # Deploy ZAP container
             zap_config = self.config.get('zap_config', {})
             docker_image = zap_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable')
@@ -781,8 +914,8 @@ class CloudZapProvider(ZapInstanceProvider):
             self.debug("Starting ZAP container on remote instance...")
             
             # Create directories
-            self.ssh_executor.execute_command('mkdir -p /home/ubuntu/zap_config')
-            self.ssh_executor.execute_command('mkdir -p /home/ubuntu/zap_reports')
+            exit_code, stdout, stderr = self.ssh_executor.execute_command('mkdir -p /home/ubuntu/zap_config')
+            exit_code, stdout, stderr = self.ssh_executor.execute_command('mkdir -p /home/ubuntu/zap_reports')
             
             # Start ZAP container
             zap_cmd = f"""docker run -d --name zap-scanner \
@@ -796,9 +929,9 @@ class CloudZapProvider(ZapInstanceProvider):
                 -config api.addrs.addr.regex=true \
                 -config api.filexfer=true"""
             
-            result = self.ssh_executor.execute_command(zap_cmd)
-            if result['exit_code'] != 0:
-                self.debug(f"Failed to start ZAP container: {result['stderr']}")
+            exit_code, stdout, stderr = self.ssh_executor.execute_command(zap_cmd)
+            if exit_code != 0:
+                self.debug(f"Failed to start ZAP container: {stderr}")
                 return False, None, {"error": "Failed to start ZAP container"}
             
             self.debug("ZAP container started, waiting for API to be ready...")
@@ -876,9 +1009,9 @@ class CloudZapProvider(ZapInstanceProvider):
             
             # Check if file exists
             check_cmd = f"test -f {remote_path} && echo 'exists' || echo 'missing'"
-            result = self.ssh_executor.execute_command(check_cmd)
+            exit_code, stdout, stderr = self.ssh_executor.execute_command(check_cmd)
             
-            if 'exists' not in result['stdout']:
+            if 'exists' not in stdout:
                 self.debug(f"Report not found at {remote_path}, generating via API...")
                 # Generate report via API
                 local_path = os.path.join(output_dir, report_name)
