@@ -2,7 +2,10 @@
 
 ## Project Context
 
-This is the KAST (Kali Automated Scan Tool) project - a modular Python framework for automating web application security scanning.
+This is the KAST (Kali Automated Scan Tool) project - a modular Python framework for automating web application security scanning. KAST orchestrates multiple security tools, aggregates findings, and generates comprehensive HTML/PDF reports with executive summaries.
+
+**Current Version:** 2.14.3  
+**Repository:** https://github.com/mercutioviz/kast
 
 ## Instructions
 
@@ -13,6 +16,8 @@ For comprehensive project guidelines, architecture details, coding conventions, 
 This file contains:
 - Complete architecture documentation
 - Plugin development guide with examples
+- Configuration system documentation
+- ZAP integration and cloud infrastructure guide
 - Code style and conventions
 - Testing standards
 - Common patterns and best practices
@@ -24,33 +29,60 @@ This file contains:
 ### Key Concepts
 - **Plugin System**: All security tools are wrapped as plugins inheriting from `KastPlugin`
 - **Orchestrator**: Manages plugin execution (parallel/sequential with dependency resolution)
+- **Configuration System**: YAML-based config with `ConfigManager`, plugin schemas, and CLI overrides (`--set`, `--config`, `--config-init`, `--config-show`, `--config-schema`)
 - **Issue Registry**: Centralized security issue database at `kast/data/issue_registry.json`
 - **Report Builder**: Generates HTML/PDF reports with executive summaries
+- **ZAP Integration**: Multi-mode OWASP ZAP scanning (local Docker, remote, cloud with Terraform)
+- **Infrastructure Provisioning**: Cloud provisioning via Terraform (AWS/Azure/GCP) for remote ZAP scanning
 
 ### File Locations
 - Plugins: `kast/plugins/`
 - Tests: `kast/tests/`
 - Templates: `kast/templates/`
 - Documentation: `kast/docs/`
+- Configuration: `kast/config/` (default config, ZAP automation plans, nginx configs)
+- Scripts: `kast/scripts/` (ZAP providers, Terraform manager, SSH executor, monitoring)
+- Terraform: `kast/terraform/` (AWS/Azure/GCP modules)
+- Config Manager: `kast/config_manager.py`
+
+### Available Plugins (as of v2.14.3)
+
+| Plugin | Display Name | Type | Priority | Dependencies |
+|--------|--------------|------|----------|--------------|
+| `mozilla_observatory` | Mozilla Observatory | Passive | 5 | None |
+| `script_detection` | External Script Detection | Passive | 10 | mozilla_observatory |
+| `subfinder` | Subfinder | Passive | 10 | None |
+| `wafw00f` | Wafw00f | Passive | 10 | None |
+| `whatweb` | WhatWeb | Passive | 15 | None |
+| `related_sites` | Related Sites Discovery | Passive | 45 | None |
+| `ftap` | Find The Admin Panel | Passive | 50 | None |
+| `testssl` | Test SSL | Passive | 50 | None |
+| `katana` | Katana | Passive | 60 | None |
+| `zap` | OWASP ZAP | Active | 200 | None |
 
 ### Plugin Development
 When creating plugins:
-1. Start with `kast/plugins/template_plugin.py`
-2. Implement required methods: `__init__`, `is_available`, `run`, `post_process`
-3. Return standardized result dictionaries
-4. Always include `executive_summary` in processed output
-5. Map findings to issue registry where applicable
+1. Start with `kast/plugins/template_plugin.py` or use `kast/scripts/create_plugin.py`
+2. Use the new-style `__init__` signature: `def __init__(self, cli_args, config_manager=None):`
+3. Implement required methods: `__init__`, `is_available`, `run`, `post_process`, `get_dry_run_info`
+4. Define a `config_schema` class attribute for configuration support
+5. Return standardized result dictionaries using `self.get_result_dict()`
+6. Always include `executive_summary` and `findings_count` in processed output
+7. Map findings to issue registry where applicable
+8. Provide both `custom_html` and `custom_html_pdf` for rich report widgets
 
 ### Code Standards
-- Python 3.7+ (tested on 3.9-3.11)
+- Python 3.9+ (tested on 3.9-3.11)
 - PascalCase for classes, snake_case for functions
 - Comprehensive error handling (never crash the orchestrator)
 - Thread-safe operations for parallel execution
 - Always use `self.get_result_dict()` for results
+- Use `self.get_config(key, default)` for reading plugin configuration
 
 ### Testing
 - Use unittest framework
 - Tests in `kast/tests/test_*.py`
+- Config test helpers in `kast/tests/helpers/config_test_helpers.py`
 - Run: `python -m pytest kast/tests/`
 - Aim for 80%+ coverage on plugin methods
 
@@ -61,14 +93,19 @@ When creating plugins:
 3. **Standardize timestamps**: Use `datetime.utcnow().isoformat(timespec="milliseconds")`
 4. **Thread safety**: Use locks when writing to shared data in parallel mode
 5. **Executive summaries**: Always provide high-level findings for non-technical audience
+6. **Configuration support**: Accept `config_manager=None` in `__init__`, define `config_schema`, implement `_load_plugin_config()`
+7. **Dry run support**: Implement `get_dry_run_info(target, output_dir)` to show what would execute
+8. **Findings count**: Always include `findings_count` (integer) in processed output JSON
+9. **Dual HTML output**: Provide `custom_html` (interactive) and `custom_html_pdf` (static) for report widgets
 
 ## Before Making Changes
 
 1. Review relevant sections in `genai-instructions.md`
-2. Check existing plugins for patterns
+2. Check existing plugins for patterns (especially newer ones like `related_sites_plugin.py`, `zap_plugin.py`)
 3. Verify tests exist and pass
 4. Consider impact on both HTML and PDF reports
 5. Test in both sequential and parallel execution modes
+6. If adding config options, define in `config_schema` and update `kast/config/default_config.yaml`
 
 ---
 
