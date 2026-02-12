@@ -197,6 +197,17 @@
     "code_fix_timeframe": "1 week",
     "waf_deployment_timeframe": "1-2 days"
   },
+  "redirection-not-to-https-on-initial-redirection": {
+    "display_name": "Redirection Not to HTTPS on Initial Redirection",
+    "description": "The initial HTTP redirection does not redirect to an HTTPS URL. This means the first hop from HTTP may go to another HTTP URL before eventually reaching HTTPS, leaving the initial request vulnerable to man-in-the-middle attacks.",
+    "remediation": "Configure the web server to redirect HTTP requests directly to the HTTPS version of the URL on the first redirection. Ensure no intermediate HTTP hops exist in the redirection chain. A WAF can enforce immediate HTTPS redirection to eliminate insecure intermediate hops.",
+    "severity": "Medium",
+    "category": "Redirection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
+  },
   "referrer-policy-unsafe": {
     "display_name": "Unsafe Referrer Policy",
     "description": "The Referrer-Policy header is missing or set to an unsafe value, potentially leaking sensitive information in HTTP requests.",
