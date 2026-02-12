@@ -647,5 +647,27 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-2 weeks",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "ORG-DISC-001": {
+    "display_name": "Multiple Organizational Domains Discovered",
+    "description": "Certificate Transparency logs and DNS analysis reveal additional domains belonging to the same organization. Each domain represents a potential entry point that attackers could target.",
+    "remediation": "Ensure WAF coverage extends to all organizational web properties. Conduct security assessments on each discovered domain and maintain an inventory of all public-facing web assets.",
+    "severity": "Informational",
+    "category": "Reconnaissance",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 weeks"
+  },
+  "ORG-DISC-002": {
+    "display_name": "Large Organizational Web Footprint",
+    "description": "A significant number of high-confidence domains were discovered belonging to the same organization. A large web footprint increases the overall attack surface and the likelihood that some properties may lack adequate protection.",
+    "remediation": "Deploy WAF protection across all organizational domains. Prioritize high-traffic and business-critical properties. Consider a centralized WAF management solution for consistent policy enforcement.",
+    "severity": "Low",
+    "category": "Reconnaissance",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "2-4 weeks"
   }
 }
