@@ -18,7 +18,6 @@ psutil>=5.9.6
 
 # Configuration and templates
 pyyaml
-argparse
 jinja2
 
 # Report generation
@@ -32,3 +31,6 @@ langdetect>=1.0.9
 
 # SSH and remote access
 paramiko>=3.0.0
+
+# WHOIS correlation (optional, for org_discovery plugin)
+python-whois>=0.9.4

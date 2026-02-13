@@ -35,7 +35,7 @@ plugins:
     crtsh_enabled: true             # Enable Certificate Transparency log search via crt.sh
     dns_analysis_enabled: true      # Enable SPF/DMARC DNS record analysis
     whois_enabled: false            # Enable reverse WHOIS correlation (requires python-whois)
-    crtsh_timeout: 90               # Timeout per crt.sh request in seconds (10-120)
+    crtsh_timeout: 180              # Timeout per crt.sh request in seconds (10-120)
     crtsh_max_retries: 3            # Max retries on crt.sh 503/timeout (0-5)
     crtsh_retry_base_delay: 5.0     # Base delay in seconds for exponential backoff (5s, 10s, 20s)
     crtsh_rate_limit_delay: 3.0     # Delay between crt.sh requests in seconds
