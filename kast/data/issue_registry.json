@@ -669,5 +669,28 @@
     "remediation_approach": "waf",
     "code_fix_timeframe": "N/A",
     "waf_deployment_timeframe": "2-4 weeks"
+  },
+  "ORG-DISC-003": {
+    "display_name": "Amass Passive Enumeration Discovered Additional Assets",
+    "description": "OWASP Amass passive enumeration discovered subdomains and related domains through aggregation of multiple OSINT data sources (APIs, certificate logs, DNS datasets, web archives). These assets expand the known attack surface beyond what certificate transparency alone reveals.",
+    "remediation": "Inventory all discovered assets and ensure WAF coverage extends to each. Validate DNS records for stale or dangling entries that could be hijacked. Prioritize scanning of newly discovered subdomains for vulnerabilities.",
+    "severity": "Informational",
+    "category": "Reconnaissance",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 weeks"
+  },
+  "ORG-DISC-004": {
+    "display_name": "Internet-Exposed Services Detected via Shodan",
+    "description": "Shodan internet scanning identified publicly accessible services associated with the organization. Exposed services such as web servers, databases, APIs, or management interfaces represent potential attack vectors, especially if running outdated software or lacking proper access controls.",
+    "remediation": "Review all exposed services and restrict unnecessary public access using firewalls or network segmentation. Deploy a WAF in front of all web-facing services. Ensure exposed software is up to date and properly hardened. Consider placing management interfaces behind VPN or IP allowlists.",
+    "severity": "Medium",
+    "category": "Reconnaissance",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 weeks",
+    "infrastructure_fix_timeframe": "1-2 weeks"
   }
 }
