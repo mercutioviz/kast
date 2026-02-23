@@ -68,7 +68,7 @@ TOOL_MIN_VERSIONS["golang"]="1.24.0"
 TOOL_APT_PACKAGES["golang"]="golang"
 # Check for go in PATH first, then try absolute path (for sudo context)
 TOOL_CHECK_COMMANDS["golang"]="(command -v go >/dev/null 2>&1 && go version 2>/dev/null | awk '{print \$3}' | sed 's/go//') || (/usr/local/go/bin/go version 2>/dev/null | awk '{print \$3}' | sed 's/go//')"
-TOOL_REQUIRED_BY["golang"]="katana, subfinder, httpx"
+TOOL_REQUIRED_BY["golang"]="katana, subfinder, httpx, amass"
 TOOL_MANUAL_INSTALL["golang"]="golang_tarball"
 
 # Java Runtime Environment - Required by OWASP ZAP
@@ -1377,6 +1377,26 @@ install_go_tools() {
         log_info "httpx already installed"
     fi
     
+    # Install amass (OWASP Amass - organization domain discovery)
+    if [[ ! -f "$ORIG_HOME/go/bin/amass" ]] || [[ ! -f "/usr/local/bin/amass" ]]; then
+        log_info "Installing amass (OWASP Amass)..."
+        log_info "Building amass with CGO disabled (per OWASP Amass documentation)..."
+        sudo -u "$ORIG_USER" bash -c "
+            export CGO_ENABLED=0
+            export GOPATH='$gopath'
+            export GOBIN='$gopath/bin'
+            '$go_binary' install -v github.com/owasp-amass/amass/v5/cmd/amass@main
+        "
+        if [[ -f "$ORIG_HOME/go/bin/amass" ]]; then
+            cp -f "$ORIG_HOME/go/bin/amass" /usr/local/bin/amass
+            log_success "Amass installed successfully"
+        else
+            log_error "Amass installation failed"
+        fi
+    else
+        log_info "Amass already installed"
+    fi
+    
     save_checkpoint "$CHECKPOINT_GO_TOOLS"
     log_success "Go tools installed"
 }
@@ -1822,6 +1842,11 @@ verify_installation() {
     
     if ! command -v httpx &>/dev/null; then
         log_warning "httpx not found in PATH"
+        ((failed++))
+    fi
+    
+    if ! command -v amass &>/dev/null; then
+        log_warning "amass not found in PATH"
         ((failed++))
     fi
     

@@ -34,3 +34,6 @@ paramiko>=3.0.0
 
 # WHOIS correlation (optional, for org_discovery plugin)
 python-whois>=0.9.4
+
+# Shodan API (optional, for org_discovery plugin)
+shodan>=1.31.0

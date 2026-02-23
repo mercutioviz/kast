@@ -35,6 +35,11 @@ plugins:
     crtsh_enabled: true             # Enable Certificate Transparency log search via crt.sh
     dns_analysis_enabled: true      # Enable SPF/DMARC DNS record analysis
     whois_enabled: false            # Enable reverse WHOIS correlation (requires python-whois)
+    amass_enabled: false            # Enable OWASP Amass passive enumeration (requires amass binary)
+    amass_timeout: 300              # Amass enumeration timeout in seconds (60-900)
+    shodan_enabled: false           # Enable Shodan internet-exposed service search (requires API key)
+    shodan_api_key: null            # Shodan API key (or set SHODAN_API_KEY env var)
+    shodan_max_results: 50          # Max Shodan results to return (1-500)
     crtsh_timeout: 180              # Timeout per crt.sh request in seconds (10-120)
     crtsh_max_retries: 3            # Max retries on crt.sh 503/timeout (0-5)
     crtsh_retry_base_delay: 5.0     # Base delay in seconds for exponential backoff (5s, 10s, 20s)
