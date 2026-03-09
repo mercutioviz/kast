@@ -692,5 +692,27 @@
     "code_fix_timeframe": "N/A",
     "waf_deployment_timeframe": "1-2 weeks",
     "infrastructure_fix_timeframe": "1-2 weeks"
+  },
+  "AI-CHATBOT-001": {
+    "display_name": "AI Chatbot / Virtual Agent Detected",
+    "description": "An AI-powered chatbot or virtual agent was detected on the target website. Agentic AI chatbots can introduce security risks including prompt injection attacks, sensitive data leakage through conversational interfaces, and expanded attack surface via third-party JavaScript integrations. The chatbot may have access to backend systems, knowledge bases, or customer data that could be exploited.",
+    "remediation": "Audit the AI chatbot integration for prompt injection vulnerabilities. Ensure the chatbot does not expose sensitive internal information. Review the third-party JavaScript loaded by the chat widget for supply-chain risks. Implement Content Security Policy (CSP) rules to restrict chatbot script sources. A WAF can help monitor and filter malicious inputs directed at the chatbot endpoint.",
+    "severity": "Medium",
+    "category": "AI Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "AI-CHATBOT-002": {
+    "display_name": "Multiple AI Chatbot Indicators Detected",
+    "description": "Multiple indicators of AI chatbot presence were detected across different data sources (crawled URLs, technology fingerprints, external scripts). A high number of chatbot indicators may suggest multiple chat integrations, complex bot architectures, or chatbot-related endpoints that increase the overall attack surface.",
+    "remediation": "Consolidate chatbot integrations where possible to reduce third-party dependencies. Audit each chatbot endpoint and script source for security vulnerabilities. Ensure all chatbot-related JavaScript is loaded via HTTPS with Subresource Integrity (SRI). Implement rate limiting and input validation on chatbot API endpoints. A WAF can enforce access controls and input filtering on chatbot-related endpoints.",
+    "severity": "Medium",
+    "category": "AI Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "4-6 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

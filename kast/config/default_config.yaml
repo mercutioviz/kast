@@ -48,6 +48,12 @@ plugins:
     org_name_override: null         # Override organization name for CT search
     confidence_threshold: 0.3       # Minimum confidence score (0.0-1.0) to include a domain
 
+  # AI Chatbot Detection Plugin
+  # Analyzes passive scan data to detect agentic AI chatbots on the target
+  ai_chatbot_detection:
+    enabled: true                   # Enable or disable AI chatbot detection
+    confidence_threshold: "low"     # Minimum confidence to report: low, medium, high
+
   # Add configurations for other plugins here as they are updated
   # Example format:
   # plugin_name:

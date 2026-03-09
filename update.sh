@@ -68,6 +68,7 @@ FORCE_MODE=false
 DRY_RUN=false
 ROLLBACK_ID=""
 LIST_BACKUPS=false
+SKIP_TOOLS=false
 
 ###############################################################################
 # LOGGING AND OUTPUT FUNCTIONS
@@ -876,6 +877,7 @@ OPTIONS:
     --force                 Force update despite warnings
     --dry-run               Show what would be updated without making changes
     --rollback <timestamp>  Rollback to a specific backup
+    --skip-tools            Skip external tools check/installation
     --list-backups          List available backups
     -h, --help              Show this help message
 
@@ -928,6 +930,10 @@ parse_arguments() {
             --rollback)
                 ROLLBACK_ID="$2"
                 shift 2
+                ;;
+            --skip-tools)
+                SKIP_TOOLS=true
+                shift
                 ;;
             --list-backups)
                 LIST_BACKUPS=true
@@ -1058,8 +1064,9 @@ main() {
         echo "  2. Update git repository (git pull)"
         echo "  3. Update Python dependencies (if requirements.txt changed)"
         echo "  4. Synchronize files from git to installation"
-        echo "  5. Update version file to $NEW_VERSION"
-        echo "  6. Validate updated installation"
+        echo "  5. Check and install missing/outdated external tools"
+        echo "  6. Update version file to $NEW_VERSION"
+        echo "  7. Validate updated installation"
         echo ""
         log_info "Dry run complete. No changes made."
         exit 0
@@ -1076,7 +1083,7 @@ main() {
     
     # Step 1: Create backup
     echo ""
-    log_info "Step 1/6: Creating backup..."
+    log_info "Step 1/7: Creating backup..."
     if ! create_backup; then
         log_error "Failed to create backup. Aborting update."
         exit 1
@@ -1085,7 +1092,7 @@ main() {
     
     # Step 2: Update git repository
     echo ""
-    log_info "Step 2/6: Updating git repository..."
+    log_info "Step 2/7: Updating git repository..."
     if ! update_git_repository; then
         log_error "Failed to update git repository"
         # Offer rollback
@@ -1102,7 +1109,7 @@ main() {
     
     # Step 3: Update Python dependencies
     echo ""
-    log_info "Step 3/6: Updating Python dependencies..."
+    log_info "Step 3/7: Updating Python dependencies..."
     if ! update_python_dependencies; then
         log_error "Failed to update Python dependencies"
         if [[ "$AUTO_MODE" == false ]]; then
@@ -1118,7 +1125,7 @@ main() {
     
     # Step 4: Synchronize files
     echo ""
-    log_info "Step 4/6: Synchronizing files..."
+    log_info "Step 4/7: Synchronizing files..."
     if ! sync_files; then
         log_error "Failed to synchronize files"
         if [[ "$AUTO_MODE" == false ]]; then
@@ -1132,14 +1139,39 @@ main() {
     fi
     save_checkpoint "$CHECKPOINT_FILE_SYNC"
     
-    # Step 5: Update version file
+    # Step 5: Check and install external tools
     echo ""
-    log_info "Step 5/6: Updating version file..."
+    log_info "Step 5/7: Checking external tools..."
+    if [[ "$SKIP_TOOLS" == false ]]; then
+        if [[ -f "$INSTALL_DIR/install.sh" ]]; then
+            log_info "Running external tools check (install.sh --check-tools)..."
+            # Capture original user for install.sh (it needs SUDO_USER)
+            export SUDO_USER="${SUDO_USER:-$USER}"
+            bash "$INSTALL_DIR/install.sh" --check-tools --auto --install-dir "$INSTALL_DIR" 2>&1 | tee -a "$UPDATE_LOG"
+            local tools_exit=${PIPESTATUS[0]}
+            if [[ $tools_exit -eq 0 ]]; then
+                log_success "External tools check completed"
+            else
+                log_warning "External tools check had issues (exit code: $tools_exit)"
+                log_warning "Some tools may not be available. You can re-run with:"
+                log_warning "  sudo ./install.sh --check-tools"
+            fi
+        else
+            log_warning "install.sh not found in $INSTALL_DIR, skipping tools check"
+            log_info "You can manually check tools with: sudo ./install.sh --check-tools"
+        fi
+    else
+        log_info "Skipping external tools check (--skip-tools specified)"
+    fi
+    
+    # Step 6: Update version file
+    echo ""
+    log_info "Step 6/7: Updating version file..."
     update_version_file  # Non-critical, don't fail on this
     
-    # Step 6: Post-update validation
+    # Step 7: Post-update validation
     echo ""
-    log_info "Step 6/6: Validating updated installation..."
+    log_info "Step 7/7: Validating updated installation..."
     if ! validate_installation "post_update"; then
         log_error "Post-update validation failed"
         log_error "Installation may be in an inconsistent state"
