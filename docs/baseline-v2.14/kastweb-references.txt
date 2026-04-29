@@ -1,0 +1,216 @@
+zap_utils.py:13:KAST_ZAP_CONTAINER_NAME = "kast-zap-local"
+zap_utils.py:763:        api_key = 'kast-local'  # Match the API key used in remote mode
+zap_utils.py:1224:  --group-name kast-zap-sg \\
+zap_utils.py:1244:    "SecurityGroups": ["kast-zap-sg"],
+zap_utils.py:1255:  -config api.key=kast-cloud \\
+zap_utils.py:1267:  --security-groups kast-zap-sg \\
+zap_utils.py:1283:  -config api.key=kast-cloud \\
+zap_utils.py:1298:# API Key: kast-cloud
+zap_utils.py:1314:  --group-name kast-zap-sg \\
+zap_utils.py:1345:  --name kast-zap-rg \\
+zap_utils.py:1350:  --resource-group kast-zap-rg \\
+zap_utils.py:1351:  --name kast-zap-nsg \\
+zap_utils.py:1360:  --resource-group kast-zap-rg \\
+zap_utils.py:1361:  --name kast-zap-vnet \\
+zap_utils.py:1367:  --resource-group kast-zap-rg \\
+zap_utils.py:1368:  --name kast-zap-ip \\
+zap_utils.py:1373:  --resource-group kast-zap-rg \\
+zap_utils.py:1374:  --name kast-zap-nic \\
+zap_utils.py:1375:  --vnet-name kast-zap-vnet \\
+zap_utils.py:1377:  --public-ip-address kast-zap-ip \\
+zap_utils.py:1378:  --network-security-group kast-zap-nsg \\
+zap_utils.py:1387:  --resource-group kast-zap-rg \\
+zap_utils.py:1388:  --name kast-zap-vm \\
+zap_utils.py:1390:  --nics kast-zap-nic \\
+zap_utils.py:1408:  -config api.key=kast-cloud \\
+zap_utils.py:1415:  --resource-group kast-zap-rg \\
+zap_utils.py:1416:  --name kast-zap-vm \\
+zap_utils.py:1422:# API Key: kast-cloud
+zap_utils.py:1425:az group delete --name kast-zap-rg --yes --no-wait"""
+zap_utils.py:1438:  --resource-group kast-zap-rg \\
+zap_utils.py:1439:  --nsg-name kast-zap-nsg \\
+zap_utils.py:1477:gcloud compute firewall-rules create kast-zap-allow \\
+zap_utils.py:1485:  --target-tags=kast-zap
+zap_utils.py:1488:gcloud compute instances create kast-zap-vm \\
+zap_utils.py:1493:  --tags=kast-zap{preemptible_flag} \\
+zap_utils.py:1512:  -config api.key=kast-cloud \\
+zap_utils.py:1518:gcloud compute instances describe kast-zap-vm \\
+zap_utils.py:1524:# API Key: kast-cloud
+zap_utils.py:1527:gcloud compute ssh kast-zap-vm --project={project_id} --zone={zone}
+zap_utils.py:1530:gcloud compute instances delete kast-zap-vm \\
+zap_utils.py:1536:gcloud compute firewall-rules delete kast-zap-allow \\
+models.py:126:    def get_cli_command(self, kast_cli_path):
+models.py:131:            kast_cli_path: Path to KAST CLI executable from config
+models.py:137:        cmd_parts = [kast_cli_path]
+forms.py:371:            'placeholder': '/home/user/kast_results/example.com-20250101-120000',
+email.py:357:        pdf_path = Path(scan.output_dir) / 'kast_report.pdf'
+email.py:382:        pdf_filename = f"kast_report_{scan.target}_{scan.id}.pdf"
+email.py:408:                    zip_filename = f"kast_results_{scan.target}_{scan.id}.zip"
+__init__.py:96:        # Set default kast_results_root if not configured
+__init__.py:97:        if not SystemSettings.get_setting('kast_results_root'):
+__init__.py:99:                'kast_results_root',
+__init__.py:100:                '/opt/kast-web',
+__init__.py:104:            app.logger.info("Initialized default kast_results_root setting: /opt/kast-web")
+tasks.py:68:        from app.utils import get_kast_results_dir
+tasks.py:70:        output_dir = get_kast_results_dir() / f"{target}-{timestamp}"
+tasks.py:82:        log_file_path = output_dir / 'kast_execution.log'
+tasks.py:100:                temp_config_fd, config_file_path = tempfile.mkstemp(suffix='.yaml', prefix='kast_config_')
+tasks.py:207:        kast_cli = current_app.config['KAST_CLI_PATH']
+tasks.py:208:        cmd = [kast_cli, '-t', target, '-m', scan_mode, '--format', 'both']
+tasks.py:217:            output_config_path = output_dir / 'kast_config.yaml'
+tasks.py:1087:        kast_cli = current_app.config['KAST_CLI_PATH']
+tasks.py:1088:        cmd = [kast_cli, '--report-only', str(output_dir), '--format', 'both']
+routes/scans.py:130:            if json_file.name == 'kast_report.json':
+routes/scans.py:183:        potential_report = Path(scan.output_dir) / 'kast_report.html'
+routes/scans.py:265:    report_path = Path(scan.output_dir) / 'kast_report.html'
+routes/scans.py:283:        filename = match.group(2)  # e.g., 'kast-logo.png'
+routes/scans.py:287:            return f'{attr}="{url_for("static", filename="images/kast-logo.png")}"'
+routes/scans.py:323:        report_path = Path(scan.output_dir) / 'kast_report.pdf'
+routes/scans.py:324:        download_name = f'kast_report_{scan.target}_{scan.id}.pdf'
+routes/scans.py:326:        report_path = Path(scan.output_dir) / 'kast_report.html'
+routes/scans.py:327:        download_name = f'kast_report_{scan.target}_{scan.id}.html'
+routes/scans.py:346:    """Serve static files from scan output directory (e.g., kast_style.css)"""
+routes/scans.py:617:    from app.utils import execute_kast_scan
+routes/scans.py:619:        result = execute_kast_scan(
+routes/scans.py:1021:    download_name = f'kast_execution_log_{scan.target}_{scan.id}.log'
+routes/main.py:107:    results_dir = current_app.config.get('KAST_RESULTS_DIR', './kast_results')
+routes/admin.py:150:            'kast_results_root': request.form.get('kast_results_root', '/opt/kast-web').strip(),
+routes/admin.py:354:@bp.route('/test-kast-permissions', methods=['POST'])
+routes/admin.py:357:def test_kast_permissions():
+routes/admin.py:359:    from app.utils import verify_kast_results_permissions
+routes/admin.py:362:    root_path = request.form.get('kast_results_root', '').strip()
+routes/admin.py:368:    success, message = verify_kast_results_permissions(root_path)
+routes/admin.py:373:        full_path = Path(root_path).resolve() / 'kast_results'
+routes/admin.py:595:def parse_kast_plugins(kast_path):
+routes/admin.py:596:    """Parse kast -ls output for plugin details
+routes/admin.py:609:            [kast_path, '-ls'],
+routes/admin.py:752:    def get_kast_cli_info():
+routes/admin.py:755:            kast_path = os.environ.get('KAST_CLI_PATH', '/usr/local/bin/kast')
+routes/admin.py:756:            if os.path.exists(kast_path):
+routes/admin.py:758:                    [kast_path, '--version'],
+routes/admin.py:766:                plugins, parse_error = parse_kast_plugins(kast_path)
+routes/admin.py:769:                    'path': kast_path,
+routes/admin.py:782:                return {'path': kast_path, 'exists': False}
+routes/admin.py:849:        'logs': '/var/log/kast-web',
+routes/admin.py:850:        'results': os.environ.get('KAST_RESULTS_DIR', '/var/lib/kast-web/results'),
+routes/admin.py:881:        'kast_web': check_service_status('kast-web'),
+routes/admin.py:882:        'kast_celery': check_service_status('kast-celery'),
+routes/admin.py:903:    info['kast_cli'] = get_kast_cli_info()
+routes/admin.py:959:@bp.route('/quick-action/test-kast', methods=['POST'])
+routes/admin.py:962:def test_kast_cli():
+routes/admin.py:967:        kast_path = os.environ.get('KAST_CLI_PATH', '/usr/local/bin/kast')
+routes/admin.py:969:        if not os.path.exists(kast_path):
+routes/admin.py:972:                'message': f'KAST CLI not found at {kast_path}'
+routes/admin.py:977:            [kast_path, '--version'],
+routes/admin.py:993:            [kast_path, '-ls'],
+routes/admin.py:1010:            action='kast_cli_tested',
+routes/admin.py:1062:        backup_filename = f'kast.db.backup-{timestamp}'
+routes/api.py:110:            if filename == 'kast_report.json':
+routes/api.py:111:                logger.debug(f"  -> Skipping kast_report.json")
+utils.py:12:    Get list of available KAST plugins by calling kast --list-plugins
+utils.py:17:        kast_cli = current_app.config['KAST_CLI_PATH']
+utils.py:19:            [kast_cli, '--list-plugins'],
+utils.py:30:        # The output format from kast is:
+utils.py:85:def execute_kast_scan(scan_id, target, scan_mode, plugins=None, parallel=False, verbose=False, dry_run=False):
+utils.py:115:        kast_cli = current_app.config['KAST_CLI_PATH']
+utils.py:116:        cmd = [kast_cli, '-t', target, '-m', scan_mode, '--format', 'both']
+utils.py:449:    fallback_path = Path(current_app.root_path) / 'static' / 'images' / 'kast-logo.png'
+utils.py:511:def get_kast_results_dir():
+utils.py:513:    Get the absolute path to the kast_results directory based on SystemSettings
+utils.py:516:        Path: Absolute path to kast_results directory
+utils.py:521:    root_dir = SystemSettings.get_setting('kast_results_root')
+utils.py:523:    # If not configured, use default (/opt/kast-web)
+utils.py:525:        root_dir = '/opt/kast-web'
+utils.py:526:        current_app.logger.info(f"No kast_results_root configured, using default: {root_dir}")
+utils.py:528:    # Build full path to kast_results directory
+utils.py:529:    results_dir = Path(root_dir).resolve() / 'kast_results'
+utils.py:534:        current_app.logger.debug(f"Using kast_results directory: {results_dir}")
+utils.py:536:        current_app.logger.error(f"Failed to create kast_results directory {results_dir}: {e}")
+utils.py:541:def verify_kast_results_permissions(root_path):
+utils.py:543:    Verify that the Flask app can create and write to kast_results directory
+utils.py:546:        root_path: Root directory path (string) where kast_results will be created
+utils.py:557:            return (False, "Path must be absolute (e.g., /opt/kast-web, not ./kast-web)")
+utils.py:561:        results_dir = root / 'kast_results'
+utils.py:567:        # Try to create kast_results directory if it doesn't exist
+./static/js/main.js:68:        .then(response => response.json())
+./zap_utils.py:227:            data = response.json()
+./zap_utils.py:583:                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+./zap_utils.py:1395:  --custom-data zap-cloud-init.txt
+./zap_utils.py:1397:# Save this as zap-cloud-init.txt:
+./zap_utils.py:1398:cat > zap-cloud-init.txt <<'EOF'
+./import_utils.py:31:            - result_files (list): List of *_processed.json files found
+./import_utils.py:50:        result_files = list(scan_path.glob("*_processed.json"))
+./import_utils.py:53:            return False, f"No KAST result files (*_processed.json) found in directory", []
+./import_utils.py:72:        result_files (list): List of Path objects for *_processed.json files
+./models.py:751:    raw_snapshot = db.Column(db.Text)  # Full JSON from zap_scan_progress.json
+./models.py:789:        """Update progress from zap_scan_progress.json snapshot"""
+./forms.py:860:            'placeholder': '/path/to/service-account-key.json',
+./templates/scan_files.html:120:                            {% if file.name.endswith('.json') %}
+./templates/scan_files.html:126:                            {% elif file.name.endswith('.txt') %}
+./templates/admin/settings.html:268:    .then(response => response.json())
+./templates/admin/settings.html:304:    .then(response => response.json())
+./templates/admin/import_scan.html:81:                    <li>KAST result files (*_processed.json)</li>
+./templates/admin/import_scan.html:109:├── plugin1_processed.json
+./templates/admin/import_scan.html:110:├── plugin2_processed.json
+./templates/admin/import_scan.html:112:└── report.json</code></pre>
+./templates/admin/system_info.html:847:            return response.json().then(data => ({
+./templates/admin/system_info.html:908:        .then(response => response.json())
+./templates/admin/zap/plan_form.html:185:        .then(response => response.json().then(data => ({status: response.status, data: data})))
+./templates/admin/zap/configs_list.html:325:            .then(response => response.json().then(data => ({status: response.status, data: data})))
+./templates/admin/zap/configs_list.html:370:            .then(response => response.json())
+./templates/admin/zap/configs_list.html:431:            .then(response => response.json().then(data => ({status: response.status, data: data})))
+./templates/admin/zap/configs_list.html:481:            .then(response => response.json().then(data => ({status: response.status, data: data})))
+./templates/admin/zap/configs_list.html:531:            .then(response => response.json().then(data => ({status: response.status, data: data})))
+./templates/admin/zap/configs_list.html:573:            .then(response => response.json().then(data => ({status: response.status, data: data})))
+./templates/admin/zap/config_form.html:752:            const data = await response.json();
+./templates/admin/zap/config_form.html:800:            const data = await response.json();
+./templates/scan_detail.html:14:        .then(response => response.json())
+./templates/scan_detail.html:253:        .then(response => response.json())
+./templates/scan_detail.html:933:        .then(response => response.json())
+./templates/scan_detail.html:1001:        .then(response => response.json())
+./tasks.py:665:            # Specifically check for katana.txt
+./tasks.py:666:            katana_file = output_dir / "katana.txt"
+./tasks.py:667:            current_app.logger.info(f"katana.txt exists in output dir: {katana_file.exists()}")
+./tasks.py:671:                cwd_katana = Path(os.getcwd()) / "katana.txt"
+./tasks.py:672:                current_app.logger.info(f"katana.txt exists in CWD ({os.getcwd()}): {cwd_katana.exists()}")
+./tasks.py:675:                tmp_katana = Path("/tmp") / "katana.txt"
+./tasks.py:676:                current_app.logger.info(f"katana.txt exists in /tmp: {tmp_katana.exists()}")
+./tasks.py:685:                current_app.logger.info(f"katana.txt size: {stat_info.st_size} bytes")
+./tasks.py:686:                current_app.logger.info(f"katana.txt mtime: {datetime.fromtimestamp(stat_info.st_mtime)}")
+./tasks.py:833:        for json_file in output_path.glob("*_processed.json"):
+./tasks.py:955:        progress_file = output_path / 'zap_scan_progress.json'
+./tasks.py:956:        final_progress_file = output_path / 'zap_scan_final_progress.json'
+./routes/scans.py:125:        # Only use _processed.json files as they are the source of truth
+./routes/scans.py:128:        for json_file in output_dir.glob("*_processed.json"):
+./routes/scans.py:130:            if json_file.name == 'kast_report.json':
+./routes/scans.py:163:            processed_file = output_dir / f"{plugin}_processed.json"
+./routes/scans.py:164:            raw_file = output_dir / f"{plugin}.json"
+./routes/scans.py:517:    if extension == '.json':
+./routes/scans.py:521:    elif extension == '.txt':
+./routes/zap_admin.py:261:    yaml_content = request.json.get('yaml', '')
+./routes/api.py:103:        # Only look for files matching the pattern: plugin.json or plugin_processed.json
+./routes/api.py:106:        for json_file in output_dir.glob("*.json"):
+./routes/api.py:110:            if filename == 'kast_report.json':
+./routes/api.py:111:                logger.debug(f"  -> Skipping kast_report.json")
+./routes/api.py:113:            # Only consider files ending with .json or _processed.json
+./routes/api.py:114:            if filename.endswith('_processed.json'):
+./routes/api.py:115:                plugin_name = filename[:-len('_processed.json')]
+./routes/api.py:117:            elif filename.endswith('.json') and not '_' in filename[:-5]:
+./routes/api.py:118:                # Only accept simple plugin.json files (no underscores before .json)
+./routes/api.py:119:                plugin_name = filename[:-len('.json')]
+./routes/api.py:122:                # Skip files with other patterns (like subfinder_tmp.json)
+./routes/api.py:146:            processed_file = output_dir / f"{plugin}_processed.json"
+./routes/api.py:147:            raw_file = output_dir / f"{plugin}.json"
+./routes/api.py:148:            txt_file = output_dir / f"{plugin}.txt"
+./routes/api.py:154:                zap_progress_file = output_dir / 'zap_scan_progress.json'
+./routes/api.py:208:        progress_file = output_dir / 'zap_scan_progress.json'
+./routes/api.py:209:        final_progress_file = output_dir / 'zap_scan_final_progress.json'
+./routes/config_profiles.py:248:        yaml_content = request.json.get('yaml_content', '')
+./utils.py:206:        for json_file in output_path.glob("*_processed.json"):
+./utils.py:489:        katana_processed.json -> katana
+./utils.py:490:        subfinder.json -> subfinder
+./utils.py:497:    # Remove _processed.json or .json extension
+./utils.py:498:    if filename.endswith('_processed.json'):
+./utils.py:499:        return filename[:-len('_processed.json')]
+./utils.py:500:    elif filename.endswith('.json'):
+./utils.py:501:        return filename[:-len('.json')]
