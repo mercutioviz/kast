@@ -272,27 +272,24 @@ class ScannerOrchestrator:
                         completed_plugins[plugin.name] = error_result
                     break
                 
-                # Wait for at least one plugin to complete
+                # Block until at least one future completes, then process it
                 if futures:
-                    done, _ = as_completed(futures), None
-                    for future in list(futures.keys()):
-                        if future.done():
-                            plugin_cls, plugin = futures[future]
-                            plugin_name = plugin.name
-                            
-                            try:
-                                result = future.result()
-                                results.append(result)
-                                completed_plugins[plugin_name] = result
-                                self.log.info(f"Plugin {plugin_name} completed with disposition: {result.get('disposition')}")
-                            except Exception as e:
-                                self.log.error(f"Plugin {plugin_name} raised an exception: {e}")
-                                error_result = plugin.get_result_dict("fail", f"Future exception: {str(e)}")
-                                results.append(error_result)
-                                completed_plugins[plugin_name] = error_result
-                            
-                            del futures[future]
-                            break  # Break to check for newly submittable plugins
+                    # Use next(as_completed(futures)) to block on the first
+                    # completion without iterating the entire iterator.
+                    done_future = next(as_completed(futures))
+                    plugin_cls, plugin = futures[done_future]
+                    plugin_name = plugin.name
+                    try:
+                        result = done_future.result()
+                        results.append(result)
+                        completed_plugins[plugin_name] = result
+                        self.log.info(f"Plugin {plugin_name} completed with disposition: {result.get('disposition')}")
+                    except Exception as e:
+                        self.log.error(f"Plugin {plugin_name} raised an exception: {e}")
+                        error_result = plugin.get_result_dict("fail", f"Future exception: {str(e)}")
+                        results.append(error_result)
+                        completed_plugins[plugin_name] = error_result
+                    del futures[done_future]
         
         return results
     
