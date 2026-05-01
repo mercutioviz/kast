@@ -1,3 +1,4 @@
+{% import "_macros.html" as kast %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -236,7 +237,7 @@
 
     <h2><span class="section-icon">🔍</span> Detailed Results by Tool</h2>
     {% for tool, result in detailed_results.items() %}
-    <div class="tool-section" id="tool-{{ tool|lower|replace(' ', '-')|replace('.', '-') }}">
+    <div class="tool-section" id="tool-{{ kast.tool_anchor(tool) }}">
         <h3>
         {% if result.website_url %}
             <a href="{{ result.website_url }}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">

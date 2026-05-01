@@ -1,3 +1,4 @@
+{% import "_macros.html" as kast %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -88,7 +89,7 @@
         <div class="summary-block">
             <div class="summary-plugin">
                 {{ summary.plugin_name }}
-                <a href="#tool-{{ summary.tool_name|lower|replace(' ', '-')|replace('.', '-') }}" class="inline-nav-link">View Details →</a>
+                <a href="#tool-{{ kast.tool_anchor(summary.tool_name) }}" class="inline-nav-link">View Details →</a>
             </div>
             {{ summary.summary|safe }}
         </div>
@@ -242,7 +243,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
-                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                    <a href="#tool-{{ kast.tool_anchor(issue.reported_by_tool) }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -269,7 +270,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
-                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                    <a href="#tool-{{ kast.tool_anchor(issue.reported_by_tool) }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -296,7 +297,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
-                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                    <a href="#tool-{{ kast.tool_anchor(issue.reported_by_tool) }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -323,7 +324,7 @@
                 </div>
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
-                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                    <a href="#tool-{{ kast.tool_anchor(issue.reported_by_tool) }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -354,7 +355,7 @@
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
                     <strong>Issue ID:</strong> {{ issue.id }}
-                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                    <a href="#tool-{{ kast.tool_anchor(issue.reported_by_tool) }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -374,7 +375,7 @@
                 <div class="issue-meta">
                     <strong>Reported by:</strong> {{ issue.reported_by }}
                     <strong>Issue ID:</strong> {{ issue.id }}
-                    <a href="#tool-{{ issue.reported_by_tool|lower|replace(' ', '-')|replace('.', '-') }}" class="issue-tool-link">View tool details →</a>
+                    <a href="#tool-{{ kast.tool_anchor(issue.reported_by_tool) }}" class="issue-tool-link">View tool details →</a>
                 </div>
                 {% if issue.description and issue.description != issue.id %}
                 <div class="issue-description">{{ issue.description }}</div>
@@ -406,7 +407,7 @@
             <div class="tool-index-grid">
                 {% for tool_name, tool in detailed_results.items() %}
                 <div class="tool-index-item">
-                    <a href="#tool-{{ tool_name|lower|replace(' ', '-')|replace('.', '-') }}" class="tool-index-link">
+                    <a href="#tool-{{ kast.tool_anchor(tool_name) }}" class="tool-index-link">
                         <div class="tool-index-name">{{ tool.display_name if tool.display_name else tool_name }}</div>
                         {% if tool.purpose %}
                         <div class="tool-index-purpose">{{ tool.purpose }}</div>
@@ -423,15 +424,15 @@
     <!-- Detailed Tool Results -->
     <div class="section">
         {% for tool_name, tool in detailed_results.items() %}
-        <div class="tool" id="tool-{{ tool_name|lower|replace(' ', '-')|replace('.', '-') }}">
+        <div class="tool" id="tool-{{ kast.tool_anchor(tool_name) }}">
             <div class="tool-nav-header">
                 <a href="#tool-index" class="tool-nav-link">← Back to Tool Index</a>
                 <a href="#home" class="tool-nav-link">↑ Home</a>
                 {% if not loop.first %}
-                <a href="#tool-{{ loop.previtem[0]|lower|replace(' ', '-')|replace('.', '-') }}" class="tool-nav-link">← Previous</a>
+                <a href="#tool-{{ kast.tool_anchor(loop.previtem[0]) }}" class="tool-nav-link">← Previous</a>
                 {% endif %}
                 {% if not loop.last %}
-                <a href="#tool-{{ loop.nextitem[0]|lower|replace(' ', '-')|replace('.', '-') }}" class="tool-nav-link">Next →</a>
+                <a href="#tool-{{ kast.tool_anchor(loop.nextitem[0]) }}" class="tool-nav-link">Next →</a>
                 {% endif %}
             </div>
             <h2 class="tool-name">{{ tool.display_name if tool.display_name else tool_name }}</h2>

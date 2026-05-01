@@ -1,0 +1,25 @@
+{#
+  Shared Jinja macros for the kast report templates.
+
+  Phase A8 introduced this file as the home for rendering primitives
+  that should behave the same way in HTML and PDF reports. Both
+  templates import it via:
+
+      {% import "_macros.html" as kast %}
+
+  …and call macros as ``kast.macro_name(args)``.
+
+  Macros are deliberately small — anything that would force a
+  template-wide rewrite belongs in a partial under ``partials/``,
+  not here. Add new macros only when the same logic is duplicated
+  in HTML and PDF templates.
+#}
+
+{# Generate a tool anchor ID: lowercase, spaces and dots → hyphens.
+   Mirrors kast.report.helpers.generate_tool_anchor_id (the Python
+   version used at data-collection time, e.g., for inline links from
+   plugin executive summaries). Both must agree on the algorithm or
+   anchor links break silently. #}
+{%- macro tool_anchor(name) -%}
+{{ name|lower|replace(' ', '-')|replace('.', '-') }}
+{%- endmacro -%}
