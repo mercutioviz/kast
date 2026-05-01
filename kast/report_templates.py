@@ -50,6 +50,12 @@ def get_category(issue_id):
     issue = get_issue_metadata(issue_id)
     if issue:
         return issue.get("category", "Uncategorized")
+        severity = issue.get("severity","Unknown")
+        # Registry stores "Informational"; reports and templates use "Info".
+        # Normalize here so badge counts, sort order, and templates all agree.
+        if severity == "Informational":
+            severity = "Info"
+        return
     return "Issue ID not found."
 
 # Function to format an issue for inclusion in a report
