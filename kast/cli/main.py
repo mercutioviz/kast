@@ -41,6 +41,7 @@ from kast.cli.doctor import doctor
 from kast.cli.plugins import plugins
 from kast.cli.registry import registry as registry_cmd
 from kast.cli.scan import scan
+from kast.cli.self_update import self_update
 from kast.config_manager import ConfigManager
 from kast.registry import PluginRegistry
 
@@ -91,6 +92,7 @@ cli.add_command(plugins)
 cli.add_command(doctor)
 cli.add_command(scan)
 cli.add_command(registry_cmd)
+cli.add_command(self_update)
 
 
 # ---------------------------------------------------------------------------
