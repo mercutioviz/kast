@@ -59,7 +59,7 @@ If you see the old code patterns (e.g., `severity == "Info"` only; `done, _ = as
 
 This section starts thin and accumulates as foundation work ships. **Until each item ships, follow whatever pattern exists in current code; once shipped, follow the new pattern everywhere.** Each Phase A deliverable should append to this section in the same PR.
 
-- **TBD: Severity enum at `kast/core/severity.py`** — once landed, replace all severity string literals (in plugins, report code, registry-consuming code).
+- **Severity enum at `kast/core/severity.py`** — LANDED (Phase A6). Use `Severity.HIGH | MEDIUM | LOW | INFORMATIONAL | UNKNOWN`; never write bare severity strings. The registry stores `"Informational"` (not `"Info"`); `Severity.from_registry(value)` normalizes legacy `"Info"` and the `"Issue ID not found."` sentinel. `severity_counts` dicts in report code now key on `"Informational"`, not `"Info"`. Templates reference `severity_counts.Informational`. The badge *label text* is still rendered as "Info" for visual brevity — that's a display-only abbreviation, not a data value.
 - **TBD: PluginRegistry at `kast/registry.py`** — once landed, replace direct calls to `discover_plugins()` and the duplicated "instantiate-just-to-get-metadata" try/except pattern (5 sites today).
 - **TBD: ExternalToolPlugin base at `kast/plugins/external_tool.py`** — once landed, new tool-wrapper plugins inherit from it; legacy plugins migrate one-by-one through Phase B.
 - **TBD: Unified report pipeline at `kast/report/`** (`data.py` + `html.py` + `pdf.py`) — once landed, never re-introduce parallel HTML/PDF code paths.

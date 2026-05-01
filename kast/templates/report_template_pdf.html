@@ -56,14 +56,14 @@
             </a>
             {% endif %}
             
-            {% if scan_metadata.severity_counts.Info > 0 %}
+            {% if scan_metadata.severity_counts.Informational > 0 %}
             <a href="#issues-info" class="severity-box-link">
             {% endif %}
                 <div class="severity-box info">
-                    <div class="severity-count">{{ scan_metadata.severity_counts.Info }}</div>
+                    <div class="severity-count">{{ scan_metadata.severity_counts.Informational }}</div>
                     <div class="severity-label">Info</div>
                 </div>
-            {% if scan_metadata.severity_counts.Info > 0 %}
+            {% if scan_metadata.severity_counts.Informational > 0 %}
             </a>
             {% endif %}
             
@@ -227,7 +227,7 @@
         {% set high_issues = issues|selectattr("severity", "equalto", "High")|list %}
         {% set medium_issues = issues|selectattr("severity", "equalto", "Medium")|list %}
         {% set low_issues = issues|selectattr("severity", "equalto", "Low")|list %}
-        {% set info_issues = issues|selectattr("severity", "equalto", "Info")|list %}
+        {% set info_issues = issues|selectattr("severity", "equalto", "Informational")|list %}
         {% set unknown_issues = issues|selectattr("severity", "equalto", "Unknown")|list %}
         {% set missing_issues = issues|selectattr("severity", "equalto", "Issue ID not found.")|list %}
         

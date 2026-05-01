@@ -1,6 +1,8 @@
 import json
 import os
 
+from kast.core.severity import Severity
+
 # Path to the issue registry JSON file
 ISSUE_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), 'data', 'issue_registry.json')
 
@@ -35,12 +37,16 @@ def get_talking_point(issue_id):
 # Function to get the severity level
 def get_severity(issue_id):
     """
-    Returns the severity level for a given issue ID.
+    Returns the canonical severity string for a given issue ID.
+
+    Always returns one of "High", "Medium", "Low", "Informational", "Unknown"
+    via the Severity enum's normalization. The historical "Info" spelling
+    and the "Issue ID not found." sentinel are normalized to canonical
+    values; downstream code (report builder, templates) sees one vocabulary.
     """
     issue = get_issue_metadata(issue_id)
-    if issue:
-        return issue.get("severity", "Unknown")
-    return "Issue ID not found."
+    raw = issue.get("severity", "Unknown") if issue else "Unknown"
+    return Severity.from_registry(raw).value
 
 # Function to get the issue category
 def get_category(issue_id):
@@ -82,22 +88,22 @@ def generate_executive_summary(issues):
         return "No critical issues were found during the scan."
 
     categories = set()
-    severities = {"Low": 0, "Medium": 0, "High": 0, "Info": 0, "Unknown": 0}
+    # Keys match the canonical Severity enum values exactly.
+    severities = {s.value: 0 for s in Severity}
 
     for issue in issues:
         issue_id = issue.get("id")
         category = get_category(issue_id)
-        severity = get_severity(issue_id)
+        severity = get_severity(issue_id)  # Already canonical via Severity enum
         categories.add(category)
         if severity in severities:
             severities[severity] += 1
         else:
-            # Count any severity not in our standard list as "Unknown"
-            severities["Unknown"] += 1
+            severities[Severity.UNKNOWN.value] += 1
 
-    # Build severity breakdown, excluding counts of 0
+    # Build severity breakdown, excluding counts of 0, in severity order.
     severity_parts = []
-    for sev in ["High", "Medium", "Low", "Info", "Unknown"]:
+    for sev in [s.value for s in Severity]:
         if severities[sev] > 0:
             severity_parts.append(f"{sev}={severities[sev]}")
     

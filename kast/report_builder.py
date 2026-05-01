@@ -4,6 +4,7 @@ import json
 import base64
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from kast.core.severity import Severity, severity_sort_key
 from kast.report_templates import (
     get_talking_point,
     get_severity,
@@ -315,12 +316,12 @@ def calculate_waf_statistics(all_issues):
             metadata = get_issue_metadata(issue_id)
             if metadata and metadata.get('waf_addressable', False):
                 waf_addressable += 1
-                severity = issue.get('severity', 'Unknown')
-                if severity == 'High':
+                severity = Severity.from_registry(issue.get('severity', 'Unknown'))
+                if severity is Severity.HIGH:
                     high_severity_waf += 1
-                elif severity == 'Medium':
+                elif severity is Severity.MEDIUM:
                     medium_severity_waf += 1
-                elif severity == 'Low':
+                elif severity is Severity.LOW:
                     low_severity_waf += 1
     
     return {
@@ -463,22 +464,18 @@ def generate_html_report(plugin_results, output_path='kast_report.html', target=
                 "category": category
             })
 
-    # Define severity order for sorting (highest to lowest)
-    severity_order = {"High": 0, "Medium": 1, "Low": 2, "Info": 3, "Unknown": 4}
-    
-    # Sort issues by severity (highest first)
-    all_issues.sort(key=lambda x: severity_order.get(x.get("severity", "Unknown"), 4))
+    # Sort issues by severity (highest first) using the canonical enum order.
+    all_issues.sort(key=lambda x: severity_sort_key(x.get("severity", Severity.UNKNOWN.value)))
     
     # Generate executive summary
     executive_summary = format_multiline_text_as_list(generate_executive_summary(all_issues))
     
-    # Calculate severity counts for badges
-    severity_counts = {
-        "High": sum(1 for issue in all_issues if issue.get("severity") == "High"),
-        "Medium": sum(1 for issue in all_issues if issue.get("severity") == "Medium"),
-        "Low": sum(1 for issue in all_issues if issue.get("severity") == "Low"),
-        "Info": sum(1 for issue in all_issues if issue.get("severity") == "Info"),
-    }
+    # Calculate severity counts for badges. Keys use canonical Severity values
+    # ("Informational", not "Info") — templates reference these keys directly.
+    severity_counts = {s.value: 0 for s in Severity}
+    for issue in all_issues:
+        sev = Severity.from_registry(issue.get("severity")).value
+        severity_counts[sev] += 1
     
     # Calculate WAF statistics
     waf_stats = calculate_waf_statistics(all_issues)
@@ -796,13 +793,12 @@ def generate_pdf_report(plugin_results, output_path='kast_report.pdf', target=No
     # Generate executive summary
     executive_summary = format_multiline_text_as_list(generate_executive_summary(all_issues))
     
-    # Calculate severity counts
-    severity_counts = {
-        "High": sum(1 for issue in all_issues if issue.get("severity") == "High"),
-        "Medium": sum(1 for issue in all_issues if issue.get("severity") == "Medium"),
-        "Low": sum(1 for issue in all_issues if issue.get("severity") == "Low"),
-        "Info": sum(1 for issue in all_issues if issue.get("severity") == "Info"),
-    }
+    # Calculate severity counts. Keys use canonical Severity values
+    # ("Informational", not "Info") — templates reference these keys directly.
+    severity_counts = {s.value: 0 for s in Severity}
+    for issue in all_issues:
+        sev = Severity.from_registry(issue.get("severity")).value
+        severity_counts[sev] += 1
     
     # Calculate WAF statistics
     waf_stats = calculate_waf_statistics(all_issues)

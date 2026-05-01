@@ -195,7 +195,7 @@
             <a href="#info-issues" class="severity-badge severity-badge-info" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <span class="badge-icon">🔵</span>
                 <div class="badge-content">
-                    <span class="badge-count">{{ scan_metadata.severity_counts.Info }}</span>
+                    <span class="badge-count">{{ scan_metadata.severity_counts.Informational }}</span>
                     <span class="badge-label">Info</span>
                 </div>
             </a>
@@ -211,7 +211,7 @@
         </div>
     </div>
 
-    {% set severity_levels = ['High', 'Medium', 'Low', 'Info', 'Unknown', 'Issue ID not found.'] %}
+    {% set severity_levels = ['High', 'Medium', 'Low', 'Informational', 'Unknown'] %}
     {% for severity in severity_levels %}
         {% set severity_issues = issues | selectattr('severity', 'equalto', severity) | list %}
         {% if severity_issues %}
