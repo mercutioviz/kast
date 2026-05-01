@@ -13,6 +13,7 @@ from urllib.parse import quote_plus
 import requests, tldextract
 from requests.exceptions import Timeout as RequestsTimeout
 from kast.plugins.base import KastPlugin
+from kast.core.atomic import write_json_atomic
 
 try:
     import dns.resolver
@@ -578,8 +579,7 @@ class OrgDiscoveryPlugin(KastPlugin):
         }
 
         json_file = Path(output_dir) / "org_discovery_raw.json"
-        with open(json_file, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+        write_json_atomic(json_file, data, default=str)
 
         return self.get_result_dict("success", {
             "raw_output": str(json_file),
@@ -604,8 +604,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             processed["summary"] = "No results available."
             processed["details"] = "Plugin did not complete successfully."
             out_file = Path(output_dir) / "org_discovery_processed.json"
-            with open(out_file, "w") as f:
-                json.dump(processed, f, indent=2)
+            write_json_atomic(out_file, processed)
             return str(out_file)
 
         try:
@@ -619,8 +618,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             processed["summary"] = f"Error: {e}"
             processed["details"] = f"Failed to read raw output file: {e}"
             out_file = Path(output_dir) / "org_discovery_processed.json"
-            with open(out_file, "w") as f:
-                json.dump(processed, f, indent=2)
+            write_json_atomic(out_file, processed)
             return str(out_file)
 
         domains = data.get("discovered_domains", [])
@@ -665,8 +663,7 @@ class OrgDiscoveryPlugin(KastPlugin):
         processed["custom_html_pdf"] = self._build_html_pdf(data)
 
         out_file = Path(output_dir) / "org_discovery_processed.json"
-        with open(out_file, "w") as f:
-            json.dump(processed, f, indent=2, default=str)
+        write_json_atomic(out_file, processed, default=str)
         return str(out_file)
 
     # ------------------------------------------------------------------

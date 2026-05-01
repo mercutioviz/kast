@@ -64,6 +64,7 @@ This section starts thin and accumulates as foundation work ships. **Until each 
 - **TBD: ExternalToolPlugin base at `kast/plugins/external_tool.py`** — once landed, new tool-wrapper plugins inherit from it; legacy plugins migrate one-by-one through Phase B.
 - **TBD: Unified report pipeline at `kast/report/`** (`data.py` + `html.py` + `pdf.py`) — once landed, never re-introduce parallel HTML/PDF code paths.
 - **TBD: Class-attribute schemas only** — `register_plugin_schema` from `__init__` goes away; schemas are read from the class.
+- **Atomic JSON writes via `kast/core/atomic.py`** — LANDED (Phase A11). All state-bearing writes go through `write_json_atomic(path, data, **dump_kwargs)` rather than `with open(path, "w") as f: json.dump(...)`. The helper writes to `<path>.tmp` and `os.replace`s into place — POSIX rename(2) is atomic, so kast-web watchers never observe a partial file. **Don't introduce raw `json.dump(...)` calls for `*_processed.json`, `zap_scan_progress.json`, `kast_info.json`, or `missing_issue_ids.json`** — they violate the contract documented in `docs/web-integration.md`. Use `write_json_atomic` instead. The helper accepts json.dump kwargs (e.g., `default=str` for non-serializable values).
 
 ## Cloud subsystem is being migrated out of kast
 

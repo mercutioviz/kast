@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from kast.plugins.base import KastPlugin
+from kast.core.atomic import write_json_atomic
 from pprint import pformat
 
 
@@ -160,8 +161,7 @@ class ScriptDetectionPlugin(KastPlugin):
             script_analysis = self._analyze_scripts(html_content, target)
             
             # Save raw results to file
-            with open(output_file, "w") as f:
-                json.dump(script_analysis, f, indent=2)
+            write_json_atomic(output_file, script_analysis)
             
             return self.get_result_dict(
                 disposition="success",
@@ -420,8 +420,7 @@ class ScriptDetectionPlugin(KastPlugin):
         
         # Save processed results
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-        with open(processed_path, "w") as f:
-            json.dump(processed, f, indent=2)
+        write_json_atomic(processed_path, processed)
         
         return processed_path
 

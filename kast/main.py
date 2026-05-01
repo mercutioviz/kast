@@ -17,6 +17,7 @@ from rich.logging import RichHandler
 from kast.orchestrator import ScannerOrchestrator
 from kast.config_manager import ConfigManager
 from kast.registry import PluginRegistry
+from kast.core.atomic import write_json_atomic
 
 # Set up rich console for CLI output
 console = Console()
@@ -217,8 +218,7 @@ def write_kast_info(output_dir, kast_info):
     """
     try:
         info_file = output_dir / "kast_info.json"
-        with open(info_file, 'w') as f:
-            json.dump(kast_info, f, indent=2)
+        write_json_atomic(info_file, kast_info)
         logging.getLogger("kast").info(f"Kast info written to {info_file}")
     except Exception as e:
         logging.getLogger("kast").error(f"Failed to write kast_info.json: {e}")

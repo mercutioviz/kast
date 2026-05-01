@@ -16,6 +16,7 @@ import json
 import os
 from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
+from kast.core.atomic import write_json_atomic
 from pprint import pformat
 
 class FtapPlugin(KastPlugin):
@@ -369,8 +370,7 @@ class FtapPlugin(KastPlugin):
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-        with open(processed_path, "w") as f:
-            json.dump(processed, f, indent=2)
+        write_json_atomic(processed_path, processed)
 
         return processed_path
 

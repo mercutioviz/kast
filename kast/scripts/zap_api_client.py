@@ -6,6 +6,7 @@ Handles interaction with OWASP ZAP REST API
 import requests
 import time
 import json
+from kast.core.atomic import write_json_atomic
 from pathlib import Path
 
 
@@ -426,8 +427,7 @@ class ZAPAPIClient:
                 output_path = Path(output_path)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 
-                with open(output_path, 'w') as f:
-                    json.dump(report, f, indent=2)
+                write_json_atomic(output_path, report)
                 
                 self.debug(f"Report saved to {output_path}")
                 return str(output_path)
@@ -561,8 +561,7 @@ class ZAPAPIClient:
             
             # Write to file
             output_path = Path(output_dir) / 'zap_scan_progress.json'
-            with open(output_path, 'w') as f:
-                json.dump(snapshot, f, indent=2)
+            write_json_atomic(output_path, snapshot)
             
             # Log summary on first and final writes
             if elapsed_seconds == 0 or final:

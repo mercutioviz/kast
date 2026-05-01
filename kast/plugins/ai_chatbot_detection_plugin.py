@@ -9,6 +9,7 @@ import re
 import json
 from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
+from kast.core.atomic import write_json_atomic
 
 
 # ---------------------------------------------------------------------------
@@ -467,8 +468,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
 
         out_path = os.path.join(output_dir, f"{self.name}_processed.json")
         try:
-            with open(out_path, "w") as f:
-                json.dump(processed, f, indent=2)
+            write_json_atomic(out_path, processed)
             self.debug(f"Processed JSON written to {out_path}")
         except Exception as e:
             self.debug(f"Error writing processed JSON: {e}")

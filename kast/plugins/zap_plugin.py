@@ -11,6 +11,7 @@ from pathlib import Path
 
 from kast.plugins.base import KastPlugin
 from kast.scripts.zap_provider_factory import ZapProviderFactory
+from kast.core.atomic import write_json_atomic
 
 
 class ZapPlugin(KastPlugin):
@@ -991,7 +992,6 @@ class ZapPlugin(KastPlugin):
         }
         
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-        with open(processed_path, "w") as f:
-            json.dump(processed, f, indent=2)
+        write_json_atomic(processed_path, processed)
         
         return processed_path

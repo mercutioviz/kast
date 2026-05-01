@@ -9,6 +9,7 @@ import os
 import json
 from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
+from kast.core.atomic import write_json_atomic
 from pprint import pformat
 
 class SubfinderPlugin(KastPlugin):
@@ -235,8 +236,7 @@ class SubfinderPlugin(KastPlugin):
             
             # Write out as proper JSON array
             output_file = os.path.join(output_dir, "subfinder.json")
-            with open(output_file, "w") as f:
-                json.dump(results, f, indent=2)
+            write_json_atomic(output_file, results)
 
             return self.get_result_dict(
                 disposition="success",
@@ -329,8 +329,7 @@ class SubfinderPlugin(KastPlugin):
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-        with open(processed_path, "w") as f:
-            json.dump(processed, f, indent=2)
+        write_json_atomic(processed_path, processed)
 
         return processed_path
 

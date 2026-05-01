@@ -12,6 +12,7 @@ from kast.report_templates import (
     generate_executive_summary,
     get_issue_metadata
 )
+from kast.core.atomic import write_json_atomic
 
 # Suppress verbose output from PDF generation libraries
 logging.getLogger('weasyprint').setLevel(logging.WARNING)
@@ -156,8 +157,7 @@ def write_missing_issues_report(missing_issues, output_dir, target=None):
     # Write to file
     output_path = os.path.join(output_dir, "missing_issue_ids.json")
     try:
-        with open(output_path, 'w') as f:
-            json.dump(report, f, indent=2)
+        write_json_atomic(output_path, report)
         logger.info(f"Missing issue IDs documented in {output_path}")
         print(f"Missing issue IDs documented in {output_path}")
     except Exception as e:

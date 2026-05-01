@@ -206,32 +206,30 @@ absence does NOT mean the scan failed mid-flight.
 
 ---
 
-## Surface 4 — Known implementation gaps (NOT contract changes)
+## Surface 4 — Implementation history (gaps closed against the contract)
 
-The following are **discrepancies between the contract above and the
-v2.14 implementation**. They are documented here so that v3 work can
-fix them without confusing them for contract changes; the surfaces
-themselves remain frozen.
+This section tracks contract-violating implementation details that
+existed in v2 and have since been brought into compliance. Keep the
+entries here so future work doesn't re-introduce the violations.
 
-### Atomic-write requirement is not currently met
+### Atomic-write requirement (RESOLVED in v3 Phase A11)
 
 The contract requires atomic writes for `_processed.json` (state
 machine § Invariants 3) and for `zap_scan_progress.json` (ZAP § Invariant
-2). Current v2.14 code writes both directly via `with open(path, 'w')
-... json.dump(...)`, which means a kast-web reader can in principle
-observe a partial write. Specific sites:
+2). v2.14 wrote both directly via `with open(path, 'w') ... json.dump(...)`,
+which left a window where a kast-web reader could observe a partial write.
 
-- Plugin post-processors writing `<plugin>_processed.json` (every
-  plugin in `kast/plugins/*_plugin.py`).
-- ZAP progress writer at `kast/scripts/zap_api_client.py:563-565`.
+**v3 fix:** `kast/core/atomic.py:write_json_atomic(path, data, **kwargs)`
+writes to `<path>.tmp` then `os.replace`s into place. Migration of all
+27 v2 call sites in `kast/plugins/*`, `kast/main.py`,
+`kast/report_builder.py`, and `kast/scripts/zap_api_client.py` was the
+A11 commit. Plugin authoring docs (`kast/plugins/README.md`) updated
+to teach the new pattern.
 
-In practice this race has been tolerable because `json.dump` on the
-small files involved is fast enough that the window is rarely hit, but
-it is a latent bug. v3 Phase A should land the atomic-write pattern
-(write to `<path>.tmp`, then `os.replace(<path>.tmp, <path>)`) as a
-shared helper used by all writers. This is a behavior fix that brings
-the implementation into compliance with the contract — it is NOT a
-surface change.
+**Excluded from migration (deliberately):** `kast/scripts/zap_providers.py`
+and `kast/scripts/cleanup_orphaned_resources.py` are part of the cloud
+subsystem migrating to kast-web in Phase D; their writes go with the
+subsystem.
 
 ---
 

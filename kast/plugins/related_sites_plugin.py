@@ -14,6 +14,7 @@ import os
 import json
 from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
+from kast.core.atomic import write_json_atomic
 from pprint import pformat
 import tldextract
 
@@ -584,8 +585,7 @@ class RelatedSitesPlugin(KastPlugin):
         
         # Save results
         output_file = os.path.join(output_dir, f"{self.name}.json")
-        with open(output_file, 'w') as f:
-            json.dump(final_results, f, indent=2)
+        write_json_atomic(output_file, final_results)
         
         self.debug(f"Results saved to {output_file}")
         
@@ -628,8 +628,7 @@ class RelatedSitesPlugin(KastPlugin):
             }
             
             processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-            with open(processed_path, 'w') as f:
-                json.dump(processed, f, indent=2)
+            write_json_atomic(processed_path, processed)
             
             self.debug(f"Minimal processed output saved to {processed_path}")
             return processed_path
@@ -669,8 +668,7 @@ class RelatedSitesPlugin(KastPlugin):
         }
         
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-        with open(processed_path, 'w') as f:
-            json.dump(processed, f, indent=2)
+        write_json_atomic(processed_path, processed)
         
         self.debug(f"Processed output saved to {processed_path}")
         
