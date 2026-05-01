@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 
@@ -202,7 +202,7 @@ class KatanaPlugin(KastPlugin):
         """
         Run the tool and return standardized result dict.
         """
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "katana.txt")
         
         # Build command dynamically based on configuration
@@ -400,7 +400,7 @@ class KatanaPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": {"urls": parsed_urls},
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",

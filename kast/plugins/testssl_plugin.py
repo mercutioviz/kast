@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 
@@ -102,7 +102,7 @@ class TestsslPlugin(KastPlugin):
         Run testssl and return standardized result dict.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
         
         # Build command dynamically based on configuration
@@ -246,7 +246,7 @@ class TestsslPlugin(KastPlugin):
                 "plugin-description": self.description,
                 "plugin-display-name": getattr(self, 'display_name', None),
                 "plugin-website-url": getattr(self, 'website_url', None),
-                "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 "findings": findings,
                 "summary": summary or f"{self.name} did not produce any findings",
                 "details": f"Unable to complete SSL/TLS scan:\n\n{scan_problem_msg}",
@@ -352,7 +352,7 @@ class TestsslPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",

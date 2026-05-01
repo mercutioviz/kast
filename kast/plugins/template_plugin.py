@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 
@@ -45,7 +45,7 @@ class TemplatePlugin(KastPlugin):
         Run the tool and return standardized result dict.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
         
         # Example command structure
@@ -158,7 +158,7 @@ class TemplatePlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,  # Count of primary findings
             "summary": summary or f"{self.name} did not produce any findings",

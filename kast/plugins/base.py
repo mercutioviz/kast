@@ -4,7 +4,7 @@ Description: Base class for all KAST plugins. Provides required interface and pr
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 import shutil
 
 class KastPlugin(ABC):
@@ -162,7 +162,7 @@ class KastPlugin(ABC):
         """
         return {
             "name": self.name,
-            "timestamp": timestamp or datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": timestamp or datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "disposition": disposition,
             "results": results,
         }

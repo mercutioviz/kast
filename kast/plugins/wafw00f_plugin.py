@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 
@@ -111,7 +111,7 @@ class Wafw00fPlugin(KastPlugin):
         Returns a standardized result dictionary.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "wafw00f.json")
         
         # Build command dynamically based on configuration
@@ -272,7 +272,7 @@ class Wafw00fPlugin(KastPlugin):
                 "plugin-name": self.name,
                 "plugin-description": self.description,
                 "plugin-display-name": getattr(self, 'display_name', None),
-                "timestamp": raw_output.get('timestamp', datetime.utcnow().isoformat(timespec="milliseconds")),
+                "timestamp": raw_output.get('timestamp', datetime.now(timezone.utc).isoformat(timespec="milliseconds")),
                 "findings": {},
                 "summary": f"Plugin failed: {error_message}",
                 "details": f"The {self.name} plugin encountered an error: {error_message}",
@@ -404,7 +404,7 @@ class Wafw00fPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",

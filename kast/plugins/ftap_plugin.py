@@ -14,7 +14,7 @@ import subprocess
 import shutil
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 
@@ -161,7 +161,7 @@ class FtapPlugin(KastPlugin):
         Builds command dynamically based on configuration.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         
         # Determine output filename based on export format
         if self.export_format == "json":
@@ -355,7 +355,7 @@ class FtapPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",

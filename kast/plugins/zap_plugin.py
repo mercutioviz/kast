@@ -6,7 +6,7 @@ Description: KAST plugin for OWASP ZAP with multi-mode support (local, remote, c
 import json
 import os
 import yaml
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from kast.plugins.base import KastPlugin
@@ -609,7 +609,7 @@ class ZapPlugin(KastPlugin):
         # Normalize target URL (add https:// if no scheme provided)
         target = self._normalize_target_url(target)
         
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         
         if report_only:
             # In report-only mode, check for existing results
@@ -978,7 +978,7 @@ class ZapPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
             "plugin-website-url": self.website_url,
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "disposition": disposition,
             "findings": findings,
             "findings_count": findings_count,

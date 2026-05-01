@@ -12,7 +12,7 @@ import subprocess
 import shutil
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 import tldextract
@@ -463,7 +463,7 @@ class RelatedSitesPlugin(KastPlugin):
         :param report_only: If True, skip execution and load existing results
         :return: Standardized result dictionary
         """
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         
         # Handle report-only mode
         if report_only:
@@ -614,7 +614,7 @@ class RelatedSitesPlugin(KastPlugin):
                 "plugin-description": self.description,
                 "plugin-display-name": self.display_name,
                 "plugin-website-url": self.website_url,
-                "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 "findings": {},
                 "findings_count": 0,
                 "summary": f"Plugin failed: {error_message}",
@@ -655,7 +655,7 @@ class RelatedSitesPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
             "plugin-website-url": self.website_url,
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary,

@@ -7,7 +7,7 @@ Description: Analyzes output from passive plugins (katana, whatweb, script_detec
 import os
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 
 
@@ -188,7 +188,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def run(self, target, output_dir, report_only):
-        ts = datetime.utcnow().isoformat(timespec="milliseconds")
+        ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
         if not self.enabled:
             return self.get_result_dict(
@@ -409,7 +409,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
         :param output_dir: Directory to write processed JSON
         :return: Path to the processed JSON file
         """
-        ts = raw_output.get("timestamp", datetime.utcnow().isoformat(timespec="milliseconds"))
+        ts = raw_output.get("timestamp", datetime.now(timezone.utc).isoformat(timespec="milliseconds"))
         results_data = raw_output.get("results", {})
         target = results_data.get("target", "unknown")
         detections = results_data.get("detections", [])

@@ -6,7 +6,7 @@ Description: Detects and analyzes external JavaScript files loaded by target web
 import os
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from kast.plugins.base import KastPlugin
@@ -125,7 +125,7 @@ class ScriptDetectionPlugin(KastPlugin):
         Fetch target HTML and detect external scripts.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
         
         if report_only:

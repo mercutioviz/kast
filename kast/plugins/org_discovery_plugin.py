@@ -7,7 +7,7 @@ internet exposure search.
 """
 
 import json, os, re, shutil, subprocess, time, socket
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 import requests, tldextract
@@ -513,7 +513,7 @@ class OrgDiscoveryPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def run(self, target, output_dir, report_only=False):
-        start_time = datetime.utcnow().isoformat(timespec="milliseconds")
+        start_time = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
         if report_only:
             json_file = Path(output_dir) / "org_discovery_raw.json"
@@ -521,13 +521,13 @@ class OrgDiscoveryPlugin(KastPlugin):
                 return self.get_result_dict("success", {
                     "raw_output": str(json_file),
                     "start_time": start_time,
-                    "end_time": datetime.utcnow().isoformat(timespec="milliseconds"),
+                    "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 })
             else:
                 return self.get_result_dict("fail", {
                     "error": "No previous data",
                     "start_time": start_time,
-                    "end_time": datetime.utcnow().isoformat(timespec="milliseconds"),
+                    "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 })
 
         apex = self._apex(target.replace("https://", "").replace("http://", "").split("/")[0])
@@ -535,7 +535,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             return self.get_result_dict("fail", {
                 "error": f"Cannot extract apex domain from '{target}'",
                 "start_time": start_time,
-                "end_time": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             })
         self.debug(f"Target apex: {apex}")
 
@@ -574,7 +574,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             "discovered_domains": correlated,
             "sources_used": sorted(set(s for d in correlated for s in d["sources"])),
             "command_executed": {k: v for k, v in self.command_executed.items() if v},
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
         }
 
         json_file = Path(output_dir) / "org_discovery_raw.json"
@@ -584,7 +584,7 @@ class OrgDiscoveryPlugin(KastPlugin):
         return self.get_result_dict("success", {
             "raw_output": str(json_file),
             "start_time": start_time,
-            "end_time": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
         })
 
     def post_process(self, raw_output, output_dir):
@@ -592,7 +592,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
         }
 
         raw_results = raw_output.get("results", {})

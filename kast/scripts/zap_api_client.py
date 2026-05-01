@@ -493,7 +493,7 @@ class ZAPAPIClient:
         :param final: Whether this is the final snapshot
         """
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone
             
             # Collect additional metrics (with error handling for each)
             alerts_summary = {}
@@ -540,7 +540,7 @@ class ZAPAPIClient:
             # Build snapshot
             snapshot = {
                 "scan_started": scan_start_time,
-                "last_updated": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "last_updated": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 "elapsed_seconds": elapsed_seconds,
                 "plan_id": plan_id,
                 "status": "completed" if progress.get('finished') else "running",

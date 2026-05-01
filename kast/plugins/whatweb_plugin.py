@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from pprint import pformat
 from collections import defaultdict
@@ -99,7 +99,7 @@ class WhatWebPlugin(KastPlugin):
         Run WhatWeb against the target and save output to a file.
         Returns a result dictionary.
         """
-        timestamp = datetime.utcnow().isoformat(timespec="milliseconds")
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "whatweb.json")
         
         # Build command dynamically based on configuration
@@ -195,7 +195,7 @@ class WhatWebPlugin(KastPlugin):
                 "plugin-description": self.description,
                 "plugin-display-name": getattr(self, 'display_name', None),
                 "plugin-website-url": getattr(self, 'website_url', None),
-                "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+                "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
                 "findings": {"disposition": "fail", "results": error_message},
                 "summary": [{"Error": f"Plugin execution failed: {error_message}"}],
                 "details": "",
@@ -252,7 +252,7 @@ class WhatWebPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.utcnow().isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": structured_findings,
             "findings_count": findings_count,
             "summary": self._generate_summary(findings),
