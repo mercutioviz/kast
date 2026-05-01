@@ -15,16 +15,16 @@ from pprint import pformat
 class TemplatePlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
 
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
-        self.name = "template_tool"
-        self.display_name = "Template Tool"  # Human-readable name for reports
-        self.description = "Description of tool"
-        self.website_url = "https://example.com/subfinder"  # Replace with actual website
-        self.description = "Template plugin for new KAST integrations."
-        self.scan_type = "passive"  # or "active"
-        self.output_type = "file"    # or "stdout"
-        self.command_executed = None 
+    name = "template_tool"
+    display_name = "Template Tool"  # Human-readable name for reports
+    description = "Template plugin for new KAST integrations."
+    website_url = "https://example.com/subfinder"  # Replace with actual website
+    scan_type = "passive"  # or "active"
+    output_type = "file"    # or "stdout"
+
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
+        self.command_executed = None
 
     def setup(self, target, output_dir):
         """

@@ -10,9 +10,38 @@ import shutil
 class KastPlugin(ABC):
     """
     Abstract base class for all KAST plugins.
+
+    Plugin identity is declared as class attributes (not set in ``__init__``).
+    This eliminates the v2 "set self.name BEFORE calling super().__init__()"
+    sequencing footgun (audit § 4.2). Subclasses override at the class level:
+
+        class MyPlugin(KastPlugin):
+            name = "my_plugin"
+            display_name = "My Plugin"
+            description = "What this plugin does"
+            scan_type = "passive"  # or "active"
+            output_type = "file"   # or "stdout"
+
+            config_schema = {...}
+
+            def __init__(self, cli_args, config_manager=None):
+                super().__init__(cli_args, config_manager)
+                # ...runtime state initialization...
+
+    Schemas are also class attributes, so ``ConfigManager.collect_schemas_from_classes``
+    can register every plugin's schema without instantiation.
     """
-    priority = 100  # Default priority (lower number = higher priority)
-    
+
+    # Default identity (override in subclasses)
+    priority = 100  # lower number = higher priority
+    name = "BasePlugin"
+    display_name = "Base Plugin"
+    description = "Abstract base class for KAST plugins."
+    website_url = None
+    scan_type = "passive"
+    output_type = "stdout"
+    dependencies: list = []
+
     # Plugin configuration schema (override in subclasses)
     config_schema = {
         "type": "object",
@@ -29,23 +58,12 @@ class KastPlugin(ABC):
         """
         self.cli_args = cli_args
         self.config_manager = config_manager
-        
-        # Only set defaults if child class hasn't set them
-        # Child classes should set these BEFORE calling super().__init__()
-        if not hasattr(self, 'name'):
-            self.name = "BasePlugin"
-        if not hasattr(self, 'display_name'):
-            self.display_name = "Base Plugin"
-        if not hasattr(self, 'description'):
-            self.description = "Abstract base class for KAST plugins."
-        if not hasattr(self, 'scan_type'):
-            self.scan_type = "passive"
-        if not hasattr(self, 'output_type'):
-            self.output_type = "stdout"
-        if not hasattr(self, 'dependencies'):
-            self.dependencies = []
-        
-        # Register schema and load configuration
+
+        # Schema registration is idempotent — config_manager dedups by name.
+        # Most __config-*__ paths register schemas via
+        # ConfigManager.collect_schemas_from_classes() before any plugin is
+        # instantiated; this call covers the orchestrator path where
+        # instantiation happens regardless.
         if self.config_manager:
             self.config_manager.register_plugin_schema(self.name, self.config_schema)
             self.config = self._load_config()

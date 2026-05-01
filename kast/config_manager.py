@@ -225,12 +225,35 @@ class ConfigManager:
     def register_plugin_schema(self, plugin_name: str, schema: Dict[str, Any]) -> None:
         """
         Register a plugin's configuration schema.
-        
+
         :param plugin_name: Name of the plugin
         :param schema: JSON Schema dictionary defining config structure
         """
         self.plugin_schemas[plugin_name] = schema
         self.logger.debug(f"Registered schema for plugin: {plugin_name}")
+
+    def collect_schemas_from_classes(self, plugin_classes) -> None:
+        """
+        Register plugin schemas by reading class attributes — no instantiation.
+
+        Use this from ``kast --config-schema``, ``--config-init``, and
+        ``--config-show`` paths to enumerate every plugin's schema without
+        the cost (or side effects) of constructing each plugin.
+
+        :param plugin_classes: Iterable of plugin classes (subclasses of
+            ``KastPlugin``). Each must declare ``name`` and ``config_schema``
+            as class attributes.
+        """
+        for cls in plugin_classes:
+            name = getattr(cls, "name", None)
+            schema = getattr(cls, "config_schema", None)
+            if not name or not schema:
+                self.logger.warning(
+                    f"Plugin class {cls.__name__} is missing name or config_schema; "
+                    f"skipping schema registration"
+                )
+                continue
+            self.register_plugin_schema(name, schema)
     
     def get_plugin_config(self, plugin_name: str) -> Dict[str, Any]:
         """

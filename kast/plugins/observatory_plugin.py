@@ -50,17 +50,15 @@ class ObservatoryPlugin(KastPlugin):
         }
     }
 
+    name = "mozilla_observatory"
+    display_name = "Mozilla Observatory"
+    description = "Runs Mozilla Observatory to analyze web application security."
+    website_url = "https://developer.mozilla.org/en-US/blog/mdn-http-observatory-launch/"
+    scan_type = "passive"
+    output_type = "stdout"
+
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "mozilla_observatory"
-        self.display_name = "Mozilla Observatory"
-        self.description = "Runs Mozilla Observatory to analyze web application security."
-        self.website_url = "https://developer.mozilla.org/en-US/blog/mdn-http-observatory-launch/"
-        self.scan_type = "passive"
-        self.output_type = "stdout"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         self.command_executed = None  # Store the command for reporting

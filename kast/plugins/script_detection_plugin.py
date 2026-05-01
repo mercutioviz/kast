@@ -13,7 +13,6 @@ from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
 from pprint import pformat
 
-
 class ScriptDetectionPlugin(KastPlugin):
     priority = 10  # Run after Observatory (priority 5)
     
@@ -67,17 +66,15 @@ class ScriptDetectionPlugin(KastPlugin):
         }
     }
 
+    name = "script_detection"
+    display_name = "External Script Detection"
+    description = "Detects and analyzes external JavaScript files loaded by the target."
+    website_url = "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script"
+    scan_type = "passive"
+    output_type = "stdout"
+
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "script_detection"
-        self.display_name = "External Script Detection"
-        self.description = "Detects and analyzes external JavaScript files loaded by the target."
-        self.website_url = "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script"
-        self.scan_type = "passive"
-        self.output_type = "stdout"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         # Dependency: wait for Observatory to complete for correlation

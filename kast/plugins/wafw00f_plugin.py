@@ -58,17 +58,15 @@ class Wafw00fPlugin(KastPlugin):
         }
     }
 
+    name = "wafw00f"
+    display_name = "Wafw00f"
+    description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
+    website_url = "https://github.com/EnableSecurity/wafw00f"
+    scan_type = "passive"
+    output_type = "file"
+
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "wafw00f"
-        self.display_name = "Wafw00f"
-        self.description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
-        self.website_url = "https://github.com/EnableSecurity/wafw00f"
-        self.scan_type = "passive"
-        self.output_type = "file"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         self.command_executed = None  # Store the command for reporting
@@ -418,7 +416,6 @@ class Wafw00fPlugin(KastPlugin):
         write_json_atomic(processed_path, processed)
 
         return processed_path
-
 
     def _format_command_for_report(self):
         """

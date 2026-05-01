@@ -87,18 +87,16 @@ class SubfinderPlugin(KastPlugin):
             }
         }
     }
+
+    name = "subfinder"
+    description = "Subdomain finder."
+    display_name = "Subfinder"
+    website_url = "https://github.com/projectdiscovery/subfinder"
+    scan_type = "passive"  # or "active"
+    output_type = "file"  # or "stdout"
     
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "subfinder"
-        self.description = "Subdomain finder."
-        self.display_name = "Subfinder"
-        self.website_url = "https://github.com/projectdiscovery/subfinder"
-        self.scan_type = "passive"  # or "active"
-        self.output_type = "file"    # or "stdout"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         self.command_executed = None  # Store the command for reporting

@@ -53,17 +53,15 @@ class TestsslPlugin(KastPlugin):
         }
     }
 
+    name = "testssl"
+    display_name = "Test SSL"
+    description = "Tests SSL and TLS posture"
+    website_url = "https://testssl.sh/"
+    scan_type = "passive"
+    output_type = "file"
+
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin attributes BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "testssl"
-        self.display_name = "Test SSL"
-        self.description = "Tests SSL and TLS posture"
-        self.website_url = "https://testssl.sh/"
-        self.scan_type = "passive"
-        self.output_type = "file"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         self.command_executed = None

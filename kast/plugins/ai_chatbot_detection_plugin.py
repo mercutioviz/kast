@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
 
-
 # ---------------------------------------------------------------------------
 # Indicator databases
 # ---------------------------------------------------------------------------
@@ -119,7 +118,6 @@ WHATWEB_CHAT_INDICATORS = [
 # Confidence level ordering
 CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
 
-
 class AiChatbotDetectionPlugin(KastPlugin):
     """
     Analyzes data collected by passive plugins to detect indicators of
@@ -152,13 +150,14 @@ class AiChatbotDetectionPlugin(KastPlugin):
         }
     }
 
+    name = "ai_chatbot_detection"
+    display_name = "AI Chatbot Detection"
+    description = "Detects indicators of agentic AI chatbots from passive scan data."
+    website_url = "https://github.com/mercutioviz/kast"
+    scan_type = "passive"
+    output_type = "analysis"
+
     def __init__(self, cli_args, config_manager=None):
-        self.name = "ai_chatbot_detection"
-        self.display_name = "AI Chatbot Detection"
-        self.description = "Detects indicators of agentic AI chatbots from passive scan data."
-        self.website_url = "https://github.com/mercutioviz/kast"
-        self.scan_type = "passive"
-        self.output_type = "analysis"
         # Declare dependencies so the orchestrator waits for data-source
         # plugins to finish before running this analysis plugin (important
         # for --parallel mode).  condition=lambda r: True means "just wait

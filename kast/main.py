@@ -269,21 +269,19 @@ def main():
             args.set = []
         args.set.append(f"zap.zap_config.automation_plan={profile_path}")
     
-    # Handle config-only commands (exit after execution, no target required).
-    # Each of these needs plugin schemas registered with the config manager;
-    # PluginRegistry.all_instances() forces instantiation, which (via base.py)
-    # registers each plugin's schema. Phase A5 will move schemas to class
-    # attributes so this implicit "instantiate to register" step goes away.
+    # Handle config-only commands. Schemas are read directly from plugin
+    # CLASSES (no instantiation) — Phase A5 moved identity to class attributes
+    # so config_manager.collect_schemas_from_classes() is the canonical path.
     if args.config_schema:
-        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
-        registry.all_instances()  # registers schemas as a side-effect of __init__
+        registry = PluginRegistry(log)
+        config_manager.collect_schemas_from_classes(registry.discover())
         schema = config_manager.export_schema(format="json")
         console.print(schema)
         sys.exit(0)
 
     if args.config_init:
-        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
-        registry.all_instances()
+        registry = PluginRegistry(log)
+        config_manager.collect_schemas_from_classes(registry.discover())
         config_path = config_manager.create_default_config()
         console.print(f"[green]Created default configuration at:[/green] {config_path}")
         console.print("[cyan]Edit this file to customize plugin settings.[/cyan]")
@@ -291,8 +289,8 @@ def main():
 
     if args.config_show:
         config_manager.load(args.config)
-        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
-        registry.all_instances()
+        registry = PluginRegistry(log)
+        config_manager.collect_schemas_from_classes(registry.discover())
         config_yaml = config_manager.show_current_config()
         console.print("[bold cyan]Current Configuration:[/bold cyan]")
         console.print(config_yaml)

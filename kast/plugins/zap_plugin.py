@@ -13,7 +13,6 @@ from kast.plugins.base import KastPlugin
 from kast.scripts.zap_provider_factory import ZapProviderFactory
 from kast.core.atomic import write_json_atomic
 
-
 class ZapPlugin(KastPlugin):
     priority = 200  # Run later (higher number = lower priority)
     
@@ -174,17 +173,15 @@ class ZapPlugin(KastPlugin):
         }
     }
 
+    name = "zap"
+    display_name = "OWASP ZAP"
+    description = "OWASP ZAP Active Scanner (Multi-Mode)"
+    website_url = "https://www.zaproxy.org/"
+    scan_type = "active"
+    output_type = "file"
+
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "zap"
-        self.display_name = "OWASP ZAP"
-        self.description = "OWASP ZAP Active Scanner (Multi-Mode)"
-        self.website_url = "https://www.zaproxy.org/"
-        self.scan_type = "active"
-        self.output_type = "file"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         # Provider components

@@ -143,19 +143,13 @@ class PluginRegistry:
         self._loaded = True
 
     def _instantiate(self, cls: type[KastPlugin]) -> Optional[KastPlugin]:
-        """Construct a plugin instance, tolerating the legacy ``__init__`` shape.
+        """Construct a plugin instance with the registry's cli_args/config_manager.
 
-        v2 introduced ``__init__(self, cli_args, config_manager=None)`` but
-        ``template_plugin.py`` still uses ``__init__(self, cli_args)``. This
-        try/except handles both. Phase A5 removes the fallback once all
-        plugins are migrated to the new signature.
+        Phase A5 unified all plugins on ``__init__(self, cli_args, config_manager=None)``,
+        so the legacy TypeError fallback is no longer needed.
         """
         try:
-            try:
-                return cls(self.cli_args, self.config_manager)
-            except TypeError:
-                # Old-style plugin without config_manager parameter.
-                return cls(self.cli_args)
+            return cls(self.cli_args, self.config_manager)
         except Exception as e:
             self.logger.error(
                 f"Error instantiating plugin {cls.__name__}: {e}"

@@ -95,8 +95,9 @@ class FtapPlugin(KastPlugin):
         }
     }
 
+    name = "ftap"  # Set name before calling parent __init__
+
     def __init__(self, cli_args, config_manager=None):
-        self.name = "ftap"  # Set name before calling parent __init__
         super().__init__(cli_args, config_manager)
         self.display_name = "Find The Admin Panel"  # Human-readable name for reports
         self.description = "Scans target for exposed admin login pages"

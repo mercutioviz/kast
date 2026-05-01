@@ -33,7 +33,6 @@ try:
 except ImportError:
     HAS_SHODAN = False
 
-
 class OrgDiscoveryPlugin(KastPlugin):
     """Discovers public-facing web domains belonging to the same organization."""
 
@@ -74,12 +73,13 @@ class OrgDiscoveryPlugin(KastPlugin):
     _CA_SKIP = {"let's encrypt", "digicert inc", "sectigo limited", "globalsign", "comodo ca limited",
                 "google trust services llc", "amazon", "microsoft corporation", "cloudflare, inc."}
 
+    name = "org_discovery"
+    display_name = "Organization Domain Discovery"
+    description = "Discovers public-facing web domains belonging to the same organization"
+    scan_type = "passive"
+    output_type = "file"
+
     def __init__(self, cli_args, config_manager=None):
-        self.name = "org_discovery"
-        self.display_name = "Organization Domain Discovery"
-        self.description = "Discovers public-facing web domains belonging to the same organization"
-        self.scan_type = "passive"
-        self.output_type = "file"
         super().__init__(cli_args, config_manager)
         self.command_executed = {
             "crtsh_queries": [], "dns_queries": [], "whois_queries": [],
@@ -783,4 +783,3 @@ class OrgDiscoveryPlugin(KastPlugin):
                 f"({'key set' if self.shodan_api_key else 'no key'})",
             ],
         }
-

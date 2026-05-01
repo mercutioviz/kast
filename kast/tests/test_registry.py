@@ -180,10 +180,46 @@ class _OldStylePlugin:
         self.cli_args = cli_args
 
 
-def test_instantiate_falls_back_to_old_style(logger):
-    """Plugins that don't accept config_manager still load via TypeError fallback."""
+def test_old_style_plugins_no_longer_load(logger, caplog):
+    """Phase A5 removed the TypeError fallback — old-style plugins now fail.
+
+    All v3 plugins use ``__init__(self, cli_args, config_manager=None)``.
+    A plugin that still uses the legacy single-arg signature is treated as
+    a broken plugin: its instantiation error is logged and it's excluded
+    from the registry's cached instances.
+    """
     registry = PluginRegistry(logger, config_manager=object())
     registry._classes = [_OldStylePlugin]
-    instances = registry.all_instances()
-    assert len(instances) == 1
-    assert instances[0].name == "oldstyle"
+    with caplog.at_level(logging.ERROR):
+        instances = registry.all_instances()
+    assert instances == []
+    assert any("_OldStylePlugin" in r.message for r in caplog.records)
+
+
+# -- class-level identity (post-A5) ------------------------------------------
+
+
+def test_plugin_classes_expose_name_as_class_attribute():
+    """Phase A5: every plugin's ``name`` is a class attribute, readable
+    without instantiation. Used by ConfigManager.collect_schemas_from_classes.
+    """
+    import logging
+    registry = PluginRegistry(logging.getLogger("test"))
+    for cls in registry.discover():
+        # Read directly from the class — no instance involvement
+        name = cls.__dict__.get("name") or getattr(cls, "name", None)
+        assert name is not None, f"{cls.__name__} has no class-level name"
+        assert isinstance(name, str) and name.strip(), (
+            f"{cls.__name__}.name must be a non-empty string"
+        )
+
+
+def test_plugin_classes_expose_config_schema_as_class_attribute():
+    """Phase A5: config_schema is a class attribute on every plugin."""
+    import logging
+    registry = PluginRegistry(logging.getLogger("test"))
+    for cls in registry.discover():
+        schema = getattr(cls, "config_schema", None)
+        assert isinstance(schema, dict), (
+            f"{cls.__name__}.config_schema must be a dict (got {type(schema).__name__})"
+        )

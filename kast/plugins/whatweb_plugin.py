@@ -52,17 +52,15 @@ class WhatWebPlugin(KastPlugin):
         }
     }
 
+    name = "whatweb"
+    display_name = "WhatWeb"
+    description = "Identifies technologies used by a website."
+    website_url = "https://github.com/urbanadventurer/whatweb"
+    scan_type = "passive"
+    output_type = "file"
+
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "whatweb"
-        self.display_name = "WhatWeb"
-        self.description = "Identifies technologies used by a website."
-        self.website_url = "https://github.com/urbanadventurer/whatweb"
-        self.scan_type = "passive"
-        self.output_type = "file"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         self.command_executed = None  # Store the command for reporting

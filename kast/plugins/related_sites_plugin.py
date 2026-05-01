@@ -69,18 +69,16 @@ class RelatedSitesPlugin(KastPlugin):
             }
         }
     }
+
+    name = "related_sites"
+    display_name = "Related Sites Discovery"
+    description = "Discovers related subdomains and probes for live web services"
+    website_url = "https://github.com/mercutioviz/kast"
+    scan_type = "passive"  # Makes HTTP requests
+    output_type = "file"
     
     def __init__(self, cli_args, config_manager=None):
-        # IMPORTANT: Set plugin name BEFORE calling super().__init__()
-        # so that schema registration uses the correct plugin name
-        self.name = "related_sites"
-        self.display_name = "Related Sites Discovery"
-        self.description = "Discovers related subdomains and probes for live web services"
-        self.website_url = "https://github.com/mercutioviz/kast"
-        self.scan_type = "passive"  # Makes HTTP requests
-        self.output_type = "file"
         
-        # Now call parent init (this will register our schema under correct name)
         super().__init__(cli_args, config_manager)
         
         self.command_executed = {
