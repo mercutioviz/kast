@@ -31,6 +31,7 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
+from kast.cli.doctor import doctor
 from kast.cli.plugins import plugins
 from kast.config_manager import ConfigManager
 from kast.core.atomic import write_json_atomic
@@ -128,10 +129,11 @@ def version() -> None:
 
 
 # ---------------------------------------------------------------------------
-# plugins (group lives in kast/cli/plugins.py)
+# subcommands defined in their own modules under kast/cli/
 # ---------------------------------------------------------------------------
 
 cli.add_command(plugins)
+cli.add_command(doctor)
 
 
 # ---------------------------------------------------------------------------
