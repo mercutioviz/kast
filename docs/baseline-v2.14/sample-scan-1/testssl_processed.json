@@ -1,0 +1,17 @@
+{
+  "plugin-name": "testssl",
+  "plugin-description": "Tests SSL and TLS posture",
+  "plugin-display-name": "Test SSL",
+  "plugin-website-url": "https://testssl.sh/",
+  "timestamp": "2026-04-29T17:30:46.333",
+  "findings": {
+    "raw_data": ""
+  },
+  "findings_count": 0,
+  "summary": "No vulnerabilities or cipher issues detected.",
+  "details": "No SSL/TLS vulnerabilities or cipher issues detected.",
+  "issues": [],
+  "executive_summary": "SSL/TLS configuration appears secure. No vulnerabilities or weak ciphers detected in TLS 1.2+.",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">testssl -U -E --connect-timeout 10 --warnings=batch -oJ /home/mscollins/baseline/sample-scan-1/testssl.json insecure.democuda.org</code>",
+  "results_message": "Scan completed successfully. No vulnerabilities or cipher issues detected."
+}

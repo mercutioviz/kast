@@ -1,0 +1,69 @@
+{
+  "plugin-name": "script_detection",
+  "plugin-description": "Detects and analyzes external JavaScript files loaded by the target.",
+  "plugin-display-name": "External Script Detection",
+  "plugin-website-url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script",
+  "timestamp": "2026-04-29T17:29:27.359",
+  "findings": {
+    "name": "script_detection",
+    "timestamp": "2026-04-29T17:29:27.359",
+    "disposition": "success",
+    "results": {
+      "target_url": "https://insecure.democuda.org",
+      "target_origin": "https://insecure.democuda.org",
+      "total_scripts": 1,
+      "total_scripts_found": 1,
+      "scripts_analyzed": 1,
+      "limited_by_config": false,
+      "same_origin_count": 1,
+      "cross_origin_count": 0,
+      "scripts_with_sri": 0,
+      "scripts_without_sri": 1,
+      "insecure_http_scripts": 0,
+      "unique_origins": [
+        "https://insecure.democuda.org"
+      ],
+      "unique_origin_count": 1,
+      "scripts": [
+        {
+          "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+          "origin": "https://insecure.democuda.org",
+          "hostname": "insecure.democuda.org",
+          "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+          "is_same_origin": true,
+          "is_cross_origin": false,
+          "has_sri": false,
+          "integrity": null,
+          "crossorigin": null,
+          "is_https": true,
+          "is_secure": true
+        }
+      ],
+      "scripts_by_origin": {
+        "https://insecure.democuda.org": [
+          {
+            "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+            "origin": "https://insecure.democuda.org",
+            "hostname": "insecure.democuda.org",
+            "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+            "is_same_origin": true,
+            "is_cross_origin": false,
+            "has_sri": false,
+            "integrity": null,
+            "crossorigin": null,
+            "is_https": true,
+            "is_secure": true
+          }
+        ]
+      }
+    }
+  },
+  "findings_count": 1,
+  "summary": "Detected 1 external scripts: 0 cross-origin from 1 unique origins, 1 without SRI protection",
+  "details": "https://insecure.democuda.org: 1 scripts (1 without SRI)",
+  "issues": [],
+  "executive_summary": "Website loads 1 external JavaScript files\n\u26a0\ufe0f 1 scripts lack Subresource Integrity (SRI) protection",
+  "report": "Analyzed 1 external JavaScript files",
+  "custom_html": "<div class=\"script-analysis-widget\">\n<h4>\ud83d\udcca External JavaScript Analysis</h4>\n<p><strong>Total Scripts:</strong> 1</p>\n<p><strong>Cross-Origin:</strong> 0 from 1 origins</p>\n<p><strong>Without SRI:</strong> 1</p>\n<div class=\"script-groups\">\n<div class=\"script-group\">\n<h5>\ud83c\udfe0 https://insecure.democuda.org (1 scripts)</h5>\n<ul class=\"script-list\">\n<li>\u26a0\ufe0f \ud83d\udd12 /bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=</li>\n</ul>\n</div>\n</div>\n</div>",
+  "observatory_correlation": null
+}

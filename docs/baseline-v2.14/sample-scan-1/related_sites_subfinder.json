@@ -1,0 +1,10 @@
+{"host":"dvwa-insecure.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"dvwa-secure.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"insecure.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"insecure-js.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"lab.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"secure.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"secure-js.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"test01.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"crapi.democuda.org","input":"democuda.org","source":"submd"}
+{"host":"dvwa.democuda.org","input":"democuda.org","source":"submd"}

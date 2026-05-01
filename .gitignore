@@ -1,2 +1,24 @@
-*__init__.py
-*__pycache__*
+# Python bytecode
+*.pyc
+__pycache__/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor swap and backup files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local test artifacts
+missing_issue_ids.json
+test_navigation_report.pdf
+test_*_report.html
+test_*_report.pdf
+
+# OS / IDE
+.idea/
+.vscode/

@@ -1,0 +1,178 @@
+{
+  "target": "insecure.democuda.org",
+  "apex_domain": "democuda.org",
+  "scanned_domain": "democuda.org",
+  "total_subdomains": 10,
+  "subdomains": [
+    "dvwa-secure.democuda.org",
+    "dvwa.democuda.org",
+    "secure.democuda.org",
+    "test01.democuda.org",
+    "dvwa-insecure.democuda.org",
+    "insecure.democuda.org",
+    "lab.democuda.org",
+    "insecure-js.democuda.org",
+    "secure-js.democuda.org",
+    "crapi.democuda.org"
+  ],
+  "filtered_target_duplicates": 1,
+  "related_subdomains": [
+    "dvwa-secure.democuda.org",
+    "dvwa.democuda.org",
+    "secure.democuda.org",
+    "test01.democuda.org",
+    "dvwa-insecure.democuda.org",
+    "lab.democuda.org",
+    "insecure-js.democuda.org",
+    "secure-js.democuda.org",
+    "crapi.democuda.org"
+  ],
+  "live_hosts": [
+    {
+      "host": "crapi.democuda.org",
+      "ports": [
+        80
+      ],
+      "port_responses": [
+        {
+          "port": 80,
+          "url": "http://crapi.democuda.org:80",
+          "status_code": 404,
+          "title": "",
+          "technologies": [],
+          "cdn": "",
+          "websocket": false
+        },
+        {
+          "port": 80,
+          "url": "http://crapi.democuda.org:80",
+          "status_code": 404,
+          "title": "",
+          "technologies": [],
+          "cdn": "",
+          "websocket": false
+        }
+      ],
+      "technologies": [],
+      "has_cdn": false,
+      "has_websocket": false
+    },
+    {
+      "host": "insecure-js.democuda.org",
+      "ports": [
+        80,
+        443
+      ],
+      "port_responses": [
+        {
+          "port": 443,
+          "url": "https://insecure-js.democuda.org:443",
+          "status_code": 503,
+          "title": "",
+          "technologies": [],
+          "cdn": "",
+          "websocket": false
+        },
+        {
+          "port": 80,
+          "url": "http://insecure-js.democuda.org:80",
+          "status_code": 503,
+          "title": "",
+          "technologies": [],
+          "cdn": "",
+          "websocket": false
+        }
+      ],
+      "technologies": [],
+      "has_cdn": false,
+      "has_websocket": false
+    },
+    {
+      "host": "secure-js.democuda.org",
+      "ports": [
+        80,
+        443
+      ],
+      "port_responses": [
+        {
+          "port": 443,
+          "url": "https://secure-js.democuda.org:443",
+          "status_code": 503,
+          "title": "",
+          "technologies": [],
+          "cdn": "",
+          "websocket": false
+        },
+        {
+          "port": 80,
+          "url": "http://secure-js.democuda.org:80",
+          "status_code": 503,
+          "title": "",
+          "technologies": [],
+          "cdn": "",
+          "websocket": false
+        }
+      ],
+      "technologies": [],
+      "has_cdn": false,
+      "has_websocket": false
+    },
+    {
+      "host": "secure.democuda.org",
+      "ports": [
+        80,
+        443
+      ],
+      "port_responses": [
+        {
+          "port": 443,
+          "url": "https://secure.democuda.org:443",
+          "status_code": 200,
+          "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+          "technologies": [
+            "HSTS",
+            "PHP"
+          ],
+          "cdn": "",
+          "websocket": false
+        },
+        {
+          "port": 80,
+          "url": "http://secure.democuda.org:80",
+          "status_code": 200,
+          "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+          "technologies": [
+            "HSTS",
+            "PHP"
+          ],
+          "cdn": "",
+          "websocket": false
+        }
+      ],
+      "technologies": [
+        "HSTS",
+        "PHP"
+      ],
+      "has_cdn": false,
+      "has_websocket": false
+    }
+  ],
+  "dead_hosts": [
+    "dvwa-secure.democuda.org",
+    "dvwa.democuda.org",
+    "test01.democuda.org",
+    "dvwa-insecure.democuda.org",
+    "lab.democuda.org"
+  ],
+  "statistics": {
+    "total_discovered": 10,
+    "filtered_duplicates": 1,
+    "total_related": 9,
+    "total_live": 4,
+    "total_dead": 5,
+    "response_rate": 44.44444444444444,
+    "unique_technologies": 2,
+    "cdn_protected": 0,
+    "websocket_enabled": 0
+  }
+}

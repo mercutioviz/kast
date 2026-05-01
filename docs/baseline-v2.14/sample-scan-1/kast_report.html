@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KAST Scan Report - insecure.democuda.org</title>
+    <link rel="stylesheet" href="kast_style.css">
+    
+    <style>
+        /* Quick test background: only set the image so you can see the raw result */
+        body { background-image: url('../assets/background.png'); }
+    </style>
+    
+</head>
+<body>
+    <!-- Header with Logo and Metadata -->
+    <div class="report-header">
+        <div class="header-content">
+            <div class="logo-section">
+                
+                <img src="../assets/kast-logo.png" alt="KAST Logo" class="kast-logo">
+                
+                <div class="title-section">
+                    <h1>KAST Security Scan Report</h1>
+                    
+                    <div class="target-badge">
+                        <span class="target-icon">🎯</span>
+                        <span class="target-url">insecure.democuda.org</span>
+                    </div>
+                    
+                </div>
+            </div>
+            <div class="metadata-box">
+                <div class="metadata-item">
+                    <span class="metadata-label">Scan Date:</span>
+                    <span class="metadata-value">2026-04-29 17:30:46</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Total Issues:</span>
+                    <span class="metadata-value">2</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Plugins Run:</span>
+                    <span class="metadata-value">10</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2><span class="section-icon">🛡️</span> Executive Summary</h2>
+    
+    <h4>Scan Findings</h4>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-related_sites" style="color: inherit; text-decoration: underline; cursor: pointer;">Discovered 10 related subdomain(s), 4 responding to HTTP requests (44.4% response rate)</a></li>
+<li><a href="#tool-related_sites" style="color: inherit; text-decoration: underline; cursor: pointer;">2 successful HTTP response(s) (200 OK) across all hosts</a></li>
+<li><a href="#tool-related_sites" style="color: inherit; text-decoration: underline; cursor: pointer;">Most common technologies: HSTS (1), PHP (1)</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-org_discovery" style="color: inherit; text-decoration: underline; cursor: pointer;">Discovered 0 domain(s) potentially belonging to the same organization via passive sources.</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-subfinder" style="color: inherit; text-decoration: underline; cursor: pointer;">No subdomains detected.</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-katana" style="color: inherit; text-decoration: underline; cursor: pointer;">Detected 5 URLs.</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-script_detection" style="color: inherit; text-decoration: underline; cursor: pointer;">Website loads 1 external JavaScript files</a></li>
+<li><a href="#tool-script_detection" style="color: inherit; text-decoration: underline; cursor: pointer;">⚠️ 1 scripts lack Subresource Integrity (SRI) protection</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-ai_chatbot_detection" style="color: inherit; text-decoration: underline; cursor: pointer;">No AI chatbot indicators were detected on the target website.</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-whatweb" style="color: inherit; text-decoration: underline; cursor: pointer;">Recommend running a scan on , which was the target redirection location from insecure.democuda.org</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-wafw00f" style="color: inherit; text-decoration: underline; cursor: pointer;">No WAFs were detected.</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-ftap" style="color: inherit; text-decoration: underline; cursor: pointer;">Found 1 admin panel.</a></li>
+</ul>
+    </div>
+    
+    <div class="plugin-executive-summary">
+        
+        <ul class="executive-summary-list">
+<li><a href="#tool-testssl" style="color: inherit; text-decoration: underline; cursor: pointer;">SSL/TLS configuration appears secure. No vulnerabilities or weak ciphers detected in TLS 1.2+.</a></li>
+</ul>
+    </div>
+    
+    
+    
+    <h4>Potential Issues</h4>
+    <ul class="executive-summary-list">
+<li>2 potential issues were identified.</li>
+<li>Categories involved: Access Control, WAF Detection.</li>
+<li>Severity breakdown: High=2.</li>
+</ul>
+
+    <!-- WAF Impact Analysis Section -->
+    
+    <div class="waf-impact-section">
+        <h2><span class="section-icon">🛡️</span> WAF Impact Analysis</h2>
+        
+        <div class="waf-stats-grid">
+            <div class="waf-stat-card waf-addressable">
+                <div class="stat-icon">✓</div>
+                <div class="stat-content">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">Issues Addressable by WAF</div>
+                    <div class="stat-percentage">2 of 2 (100.0%)</div>
+                </div>
+            </div>
+            
+            <div class="waf-stat-card waf-high">
+                <div class="stat-icon">🔴</div>
+                <div class="stat-content">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">High Severity (WAF)</div>
+                    <div class="stat-sublabel">Immediate protection available</div>
+                </div>
+            </div>
+            
+            <div class="waf-stat-card waf-deployment">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-content">
+                    <div class="stat-number">1-2</div>
+                    <div class="stat-label">Days to Deploy WAF</div>
+                    <div class="stat-sublabel">vs 4-6 weeks for code fixes</div>
+                </div>
+            </div>
+            
+            <div class="waf-stat-card waf-coverage">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-content">
+                    <div class="stat-number">100.0%</div>
+                    <div class="stat-label">Risk Reduction</div>
+                    <div class="stat-sublabel">With immediate WAF deployment</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="waf-benefits-callout">
+            <h3>🎯 Why Deploy a Web Application Firewall?</h3>
+            <div class="benefit-grid">
+                <div class="benefit-card">
+                    <div class="benefit-header">
+                        <span class="benefit-icon">⚡</span>
+                        <h4>Immediate Protection</h4>
+                    </div>
+                    <p>Deploy in 1-2 days versus weeks of development time for code-level fixes</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-header">
+                        <span class="benefit-icon">🛡️</span>
+                        <h4>Defense in Depth</h4>
+                    </div>
+                    <p>Add an additional security layer while code updates are being developed and tested</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-header">
+                        <span class="benefit-icon">🔒</span>
+                        <h4>Header Injection</h4>
+                    </div>
+                    <p>Automatically inject missing security headers (CSP, HSTS, X-Frame-Options) without code changes</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-header">
+                        <span class="benefit-icon">📊</span>
+                        <h4>Traffic Intelligence</h4>
+                    </div>
+                    <p>Monitor and analyze attack patterns to identify threats before they reach your application</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-header">
+                        <span class="benefit-icon">🔧</span>
+                        <h4>Virtual Patching</h4>
+                    </div>
+                    <p>Protect against known vulnerabilities while permanent fixes are being implemented</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-header">
+                        <span class="benefit-icon">⏱️</span>
+                        <h4>Reduced Time-to-Protection</h4>
+                    </div>
+                    <p>Close security gaps in days instead of the weeks or months required for code refactoring</p>
+                </div>
+            </div>
+            
+            <div class="recommendation-box">
+                <strong>💡 Recommended Approach:</strong> Deploy a WAF immediately to address 100.0% of identified issues, 
+                then implement code-level fixes as a second layer of defense for comprehensive, long-term security.
+            </div>
+        </div>
+    </div>
+    
+
+    <!-- Issues Found Section with Integrated Severity Navigation -->
+    <div class="issues-header-container">
+        <h2><span class="section-icon">⚠️</span> Issues Found</h2>
+        <div id="severity-navigation" class="severity-badges">
+            <a href="#high-issues" class="severity-badge severity-badge-high" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🔴</span>
+                <div class="badge-content">
+                    <span class="badge-count">2</span>
+                    <span class="badge-label">High</span>
+                </div>
+            </a>
+            <a href="#medium-issues" class="severity-badge severity-badge-medium" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🟠</span>
+                <div class="badge-content">
+                    <span class="badge-count">0</span>
+                    <span class="badge-label">Medium</span>
+                </div>
+            </a>
+            <a href="#low-issues" class="severity-badge severity-badge-low" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🟡</span>
+                <div class="badge-content">
+                    <span class="badge-count">0</span>
+                    <span class="badge-label">Low</span>
+                </div>
+            </a>
+            <a href="#info-issues" class="severity-badge severity-badge-info" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🔵</span>
+                <div class="badge-content">
+                    <span class="badge-count">0</span>
+                    <span class="badge-label">Info</span>
+                </div>
+            </a>
+            
+        </div>
+    </div>
+
+    
+    
+        
+        
+        <h3 id="high-issues" style="margin-top: 1.5em; color: #1e40af;">
+            High Severity Issues
+            
+        </h3>
+        
+        <div class="issue severity-high">
+            <strong>No WAF Detected</strong> (High, WAF Detection)<br>
+        <em>Reported by: Wafw00f (issue id: No WAF Detected)</em><br>
+        <span>Remediation: Deploy a WAF in front of the application to provide an additional layer of security against common web attacks.</span>
+        
+        </div>
+        
+        <div class="issue severity-high">
+            <strong>Exposed Admin Panel</strong> (High, Access Control)<br>
+        <em>Reported by: Find The Admin Panel (issue id: exposed_admin_panel)</em><br>
+        <span>Remediation: Restrict access to admin panels using IP allowlisting, VPN requirements, or move to a non-public subdomain. Implement strong authentication, rate limiting, and monitor for unauthorized access attempts. A WAF can restrict access to admin panels using IP allow-listing and other access control policies to provide immediate protection.</span>
+        
+        </div>
+        
+        
+    
+        
+        
+    
+        
+        
+    
+        
+        
+    
+        
+        
+    
+        
+        
+    
+
+    <h2><span class="section-icon">🔍</span> Detailed Results by Tool</h2>
+    
+    <div class="tool-section" id="tool-related_sites">
+        <h3>
+        
+            <a href="https://github.com/mercutioviz/kast" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Related Sites Discovery
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Discovers related subdomains and probes for live web services</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Discovered 10 subdomain(s), 4 responding to HTTP requests (44.4% response rate)</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:30:24.386</div>
+                <div><strong>Disposition:</strong> None</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Target: insecure.democuda.org</p>
+<p class="report-paragraph">Apex Domain: democuda.org</p>
+<p class="report-paragraph">Scanned Domain: democuda.org</p>
+<p class="report-paragraph">Total Subdomains Discovered: 10</p>
+<p class="report-paragraph">Live Hosts: 4</p>
+<p class="report-paragraph">Dead Hosts: 5</p>
+<p class="report-paragraph">Response Rate: 44.4%</p>
+<p class="report-paragraph">Unique Technologies: 2</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">See live and dead host information below</div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                
+        <div class="related-sites-widget">
+            <div class="stats-summary">
+                <div class="stat-card">
+                    <div class="stat-value">10</div>
+                    <div class="stat-label">Total Subdomains</div>
+                </div>
+                <div class="stat-card stat-success">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">Live Hosts (44.4%)</div>
+                </div>
+                <div class="stat-card stat-dead">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Dead Hosts (55.6%)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Technologies</div>
+                </div>
+            </div>
+            
+            <!-- Live Hosts Section -->
+            <div class="hosts-section">
+                <div class="section-header" onclick="toggleSection('live-hosts-section')">
+                    <h3>▼ Live Hosts (4)</h3>
+                </div>
+                <div class="section-content" id="live-hosts-section">
+                    <div class="pagination-controls">
+                        <button onclick="setLivePageSize(25)">Show 25</button>
+                        <button onclick="setLivePageSize(50)">Show 50</button>
+                        <button onclick="setLivePageSize(100)">Show 100</button>
+                        <button onclick="setLivePageSize(-1)">Show All</button>
+                        <span id="live-pagination-info"></span>
+                    </div>
+                    <div id="live-hosts-container"></div>
+                    <div class="pagination-nav" id="live-pagination-nav"></div>
+                </div>
+            </div>
+            
+            <!-- Dead Hosts Section -->
+            <div class="hosts-section">
+                <div class="section-header" onclick="toggleSection('dead-hosts-section')">
+                    <h3>▶ Dead Hosts (5)</h3>
+                </div>
+                <div class="section-content" id="dead-hosts-section" style="display: none;">
+                    <div class="pagination-controls">
+                        <button onclick="setDeadPageSize(25)">Show 25</button>
+                        <button onclick="setDeadPageSize(50)">Show 50</button>
+                        <button onclick="setDeadPageSize(100)">Show 100</button>
+                        <button onclick="setDeadPageSize(-1)">Show All</button>
+                        <span id="dead-pagination-info"></span>
+                    </div>
+                    <div id="dead-hosts-container"></div>
+                    <div class="pagination-nav" id="dead-pagination-nav"></div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        // Data
+        const liveHostsData = [{"host": "crapi.democuda.org", "ports": [80], "port_responses": [{"port": 80, "url": "http://crapi.democuda.org:80", "status_code": 404, "title": "", "technologies": [], "cdn": "", "websocket": false}, {"port": 80, "url": "http://crapi.democuda.org:80", "status_code": 404, "title": "", "technologies": [], "cdn": "", "websocket": false}], "technologies": [], "has_cdn": false, "has_websocket": false}, {"host": "insecure-js.democuda.org", "ports": [80, 443], "port_responses": [{"port": 443, "url": "https://insecure-js.democuda.org:443", "status_code": 503, "title": "", "technologies": [], "cdn": "", "websocket": false}, {"port": 80, "url": "http://insecure-js.democuda.org:80", "status_code": 503, "title": "", "technologies": [], "cdn": "", "websocket": false}], "technologies": [], "has_cdn": false, "has_websocket": false}, {"host": "secure-js.democuda.org", "ports": [80, 443], "port_responses": [{"port": 443, "url": "https://secure-js.democuda.org:443", "status_code": 503, "title": "", "technologies": [], "cdn": "", "websocket": false}, {"port": 80, "url": "http://secure-js.democuda.org:80", "status_code": 503, "title": "", "technologies": [], "cdn": "", "websocket": false}], "technologies": [], "has_cdn": false, "has_websocket": false}, {"host": "secure.democuda.org", "ports": [80, 443], "port_responses": [{"port": 443, "url": "https://secure.democuda.org:443", "status_code": 200, "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*", "technologies": ["HSTS", "PHP"], "cdn": "", "websocket": false}, {"port": 80, "url": "http://secure.democuda.org:80", "status_code": 200, "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*", "technologies": ["HSTS", "PHP"], "cdn": "", "websocket": false}], "technologies": ["HSTS", "PHP"], "has_cdn": false, "has_websocket": false}];
+        const deadHostsData = ["dvwa-secure.democuda.org", "dvwa.democuda.org", "test01.democuda.org", "dvwa-insecure.democuda.org", "lab.democuda.org"];
+        
+        // State
+        let livePageSize = 25;
+        let liveCurrentPage = 1;
+        let deadPageSize = 25;
+        let deadCurrentPage = 1;
+        
+        // Toggle section visibility
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const header = section.previousElementSibling;
+            const h3 = header.querySelector('h3');
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                h3.textContent = h3.textContent.replace('▶', '▼');
+            } else {
+                section.style.display = 'none';
+                h3.textContent = h3.textContent.replace('▼', '▶');
+            }
+        }
+        
+        // Live hosts pagination
+        function setLivePageSize(size) {
+            livePageSize = size;
+            liveCurrentPage = 1;
+            renderLiveHosts();
+        }
+        
+        function renderLiveHosts() {
+            const container = document.getElementById('live-hosts-container');
+            const paginationNav = document.getElementById('live-pagination-nav');
+            const paginationInfo = document.getElementById('live-pagination-info');
+            
+            const totalHosts = liveHostsData.length;
+            const itemsPerPage = livePageSize === -1 ? totalHosts : livePageSize;
+            const totalPages = Math.ceil(totalHosts / itemsPerPage);
+            const start = (liveCurrentPage - 1) * itemsPerPage;
+            const end = livePageSize === -1 ? totalHosts : Math.min(start + itemsPerPage, totalHosts);
+            
+            // Render hosts
+            let html = '<div class="hosts-list">';
+            for (let i = start; i < end; i++) {
+                const host = liveHostsData[i];
+                html += renderLiveHost(host);
+            }
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Render pagination info
+            paginationInfo.textContent = `Showing ${start + 1}-${end} of ${totalHosts}`;
+            
+            // Render pagination controls
+            if (totalPages > 1) {
+                let navHtml = '';
+                if (liveCurrentPage > 1) {
+                    navHtml += '<button onclick="changeLivePage(-1)">Previous</button>';
+                }
+                navHtml += ` Page ${liveCurrentPage} of ${totalPages} `;
+                if (liveCurrentPage < totalPages) {
+                    navHtml += '<button onclick="changeLivePage(1)">Next</button>';
+                }
+                paginationNav.innerHTML = navHtml;
+            } else {
+                paginationNav.innerHTML = '';
+            }
+        }
+        
+        function changeLivePage(delta) {
+            liveCurrentPage += delta;
+            renderLiveHosts();
+        }
+        
+        function renderLiveHost(host) {
+            let html = `
+                <div class="host-card">
+                    <div class="host-name">${host.host}</div>
+                    <div class="host-ports">Ports: ${host.ports.join(', ')}</div>
+            `;
+            
+            // Render each port response
+            for (const resp of host.port_responses) {
+                const statusClass = resp.status_code >= 200 && resp.status_code < 300 ? 'status-success' : 
+                                  resp.status_code >= 300 && resp.status_code < 400 ? 'status-redirect' : 'status-error';
+                html += `
+                    <div class="port-response">
+                        <div class="port-header">
+                            <span class="port-number">Port ${resp.port}</span>
+                            <span class="status-badge ${statusClass}">${resp.status_code}</span>
+                        </div>
+                        <div class="port-url"><a href="${resp.url}" target="_blank">${resp.url}</a></div>
+                        <div class="port-title">${resp.title || 'No title'}</div>
+                `;
+                
+                if (resp.technologies && resp.technologies.length > 0) {
+                    html += `<div class="port-tech">🔧 ${resp.technologies.join(', ')}</div>`;
+                }
+                if (resp.cdn) {
+                    html += `<div class="port-cdn">🛡️ CDN: ${resp.cdn}</div>`;
+                }
+                if (resp.websocket) {
+                    html += `<div class="port-websocket">🔌 WebSocket Enabled</div>`;
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // Dead hosts pagination
+        function setDeadPageSize(size) {
+            deadPageSize = size;
+            deadCurrentPage = 1;
+            renderDeadHosts();
+        }
+        
+        function renderDeadHosts() {
+            const container = document.getElementById('dead-hosts-container');
+            const paginationNav = document.getElementById('dead-pagination-nav');
+            const paginationInfo = document.getElementById('dead-pagination-info');
+            
+            const totalHosts = deadHostsData.length;
+            const itemsPerPage = deadPageSize === -1 ? totalHosts : deadPageSize;
+            const totalPages = Math.ceil(totalHosts / itemsPerPage);
+            const start = (deadCurrentPage - 1) * itemsPerPage;
+            const end = deadPageSize === -1 ? totalHosts : Math.min(start + itemsPerPage, totalHosts);
+            
+            // Render hosts
+            let html = '<div class="dead-hosts-list">';
+            for (let i = start; i < end; i++) {
+                html += `<div class="dead-host-item">${deadHostsData[i]}</div>`;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Render pagination info
+            paginationInfo.textContent = `Showing ${start + 1}-${end} of ${totalHosts}`;
+            
+            // Render pagination controls
+            if (totalPages > 1) {
+                let navHtml = '';
+                if (deadCurrentPage > 1) {
+                    navHtml += '<button onclick="changeDeadPage(-1)">Previous</button>';
+                }
+                navHtml += ` Page ${deadCurrentPage} of ${totalPages} `;
+                if (deadCurrentPage < totalPages) {
+                    navHtml += '<button onclick="changeDeadPage(1)">Next</button>';
+                }
+                paginationNav.innerHTML = navHtml;
+            } else {
+                paginationNav.innerHTML = '';
+            }
+        }
+        
+        function changeDeadPage(delta) {
+            deadCurrentPage += delta;
+            renderDeadHosts();
+        }
+        
+        // Initial render
+        renderLiveHosts();
+        renderDeadHosts();
+        </script>
+        
+        <style>
+        .related-sites-widget {
+            margin: 2em 0;
+        }
+        
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1em;
+            margin-bottom: 2em;
+        }
+        
+        .stat-card {
+            padding: 1.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-card.stat-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .stat-card.stat-dead {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 0.25em;
+        }
+        
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.95;
+        }
+        
+        .hosts-section {
+            margin: 2em 0;
+            border: 1px solid #e6eef6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #f8fbfd;
+            padding: 1em 1.5em;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .section-header:hover {
+            background: #e6f0fa;
+        }
+        
+        .section-header h3 {
+            margin: 0;
+            color: #075985;
+        }
+        
+        .section-content {
+            padding: 1.5em;
+            background: white;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            gap: 0.5em;
+            align-items: center;
+            margin-bottom: 1em;
+            padding: 1em;
+            background: #f8fbfd;
+            border-radius: 4px;
+        }
+        
+        .pagination-controls button {
+            padding: 0.5em 1em;
+            background: #075985;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .pagination-controls button:hover {
+            background: #0c4a6e;
+        }
+        
+        #live-pagination-info, #dead-pagination-info {
+            margin-left: auto;
+            color: #075985;
+            font-weight: 500;
+        }
+        
+        .hosts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }
+        
+        .host-card {
+            border: 1px solid #e6eef6;
+            border-radius: 8px;
+            padding: 1.5em;
+            background: #fafbfc;
+        }
+        
+        .host-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #075985;
+            margin-bottom: 0.5em;
+        }
+        
+        .host-ports {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 1em;
+        }
+        
+        .port-response {
+            margin: 1em 0;
+            padding: 1em;
+            background: white;
+            border-left: 3px solid #075985;
+            border-radius: 4px;
+        }
+        
+        .port-header {
+            display: flex;
+            align-items: center;
+            gap: 1em;
+            margin-bottom: 0.5em;
+        }
+        
+        .port-number {
+            font-weight: bold;
+            color: #075985;
+        }
+        
+        .status-badge {
+            padding: 0.25em 0.75em;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-redirect {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .port-url a {
+            color: #075985;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .port-url a:hover {
+            text-decoration: underline;
+        }
+        
+        .port-title {
+            color: #666;
+            font-size: 0.9em;
+            margin: 0.5em 0;
+        }
+        
+        .port-tech, .port-cdn, .port-websocket {
+            font-size: 0.85em;
+            color: #666;
+            margin: 0.25em 0;
+        }
+        
+        .dead-hosts-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 0.5em;
+        }
+        
+        .dead-host-item {
+            padding: 0.75em;
+            background: #f8fbfd;
+            border-radius: 4px;
+            color: #666;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .pagination-nav {
+            margin-top: 1em;
+            padding: 1em;
+            text-align: center;
+            background: #f8fbfd;
+            border-radius: 4px;
+        }
+        
+        .pagination-nav button {
+            padding: 0.5em 1.5em;
+            background: #075985;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 0.5em;
+        }
+        
+        .pagination-nav button:hover {
+            background: #0c4a6e;
+        }
+        </style>
+        
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "apex_domain": "democuda.org",
+  "dead_hosts": [
+    "dvwa-secure.democuda.org",
+    "dvwa.democuda.org",
+    "test01.democuda.org",
+    "dvwa-insecure.democuda.org",
+    "lab.democuda.org"
+  ],
+  "filtered_target_duplicates": 1,
+  "live_hosts": [
+    {
+      "has_cdn": false,
+      "has_websocket": false,
+      "host": "crapi.democuda.org",
+      "port_responses": [
+        {
+          "cdn": "",
+          "port": 80,
+          "status_code": 404,
+          "technologies": [],
+          "title": "",
+          "url": "http://crapi.democuda.org:80",
+          "websocket": false
+        },
+        {
+          "cdn": "",
+          "port": 80,
+          "status_code": 404,
+          "technologies": [],
+          "title": "",
+          "url": "http://crapi.democuda.org:80",
+          "websocket": false
+        }
+      ],
+      "ports": [
+        80
+      ],
+      "technologies": []
+    },
+    {
+      "has_cdn": false,
+      "has_websocket": false,
+      "host": "insecure-js.democuda.org",
+      "port_responses": [
+        {
+          "cdn": "",
+          "port": 443,
+          "status_code": 503,
+          "technologies": [],
+          "title": "",
+          "url": "https://insecure-js.democuda.org:443",
+          "websocket": false
+        },
+        {
+          "cdn": "",
+          "port": 80,
+          "status_code": 503,
+          "technologies": [],
+          "title": "",
+          "url": "http://insecure-js.democuda.org:80",
+          "websocket": false
+        }
+      ],
+      "ports": [
+        80,
+        443
+      ],
+      "technologies": []
+    },
+    {
+      "has_cdn": false,
+      "has_websocket": false,
+      "host": "secure-js.democuda.org",
+      "port_responses": [
+        {
+          "cdn": "",
+          "port": 443,
+          "status_code": 503,
+          "technologies": [],
+          "title": "",
+          "url": "https://secure-js.democuda.org:443",
+          "websocket": false
+        },
+        {
+          "cdn": "",
+          "port": 80,
+          "status_code": 503,
+          "technologies": [],
+          "title": "",
+          "url": "http://secure-js.democuda.org:80",
+          "websocket": false
+        }
+      ],
+      "ports": [
+        80,
+        443
+      ],
+      "technologies": []
+    },
+    {
+      "has_cdn": false,
+      "has_websocket": false,
+      "host": "secure.democuda.org",
+      "port_responses": [
+        {
+          "cdn": "",
+          "port": 443,
+          "status_code": 200,
+          "technologies": [
+            "HSTS",
+            "PHP"
+          ],
+          "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+          "url": "https://secure.democuda.org:443",
+          "websocket": false
+        },
+        {
+          "cdn": "",
+          "port": 80,
+          "status_code": 200,
+          "technologies": [
+            "HSTS",
+            "PHP"
+          ],
+          "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+          "url": "http://secure.democuda.org:80",
+          "websocket": false
+        }
+      ],
+      "ports": [
+        80,
+        443
+      ],
+      "technologies": [
+        "HSTS",
+        "PHP"
+      ]
+    }
+  ],
+  "related_subdomains": [
+    "dvwa-secure.democuda.org",
+    "dvwa.democuda.org",
+    "secure.democuda.org",
+    "test01.democuda.org",
+    "dvwa-insecure.democuda.org",
+    "lab.democuda.org",
+    "insecure-js.democuda.org",
+    "secure-js.democuda.org",
+    "crapi.democuda.org"
+  ],
+  "scanned_domain": "democuda.org",
+  "statistics": {
+    "cdn_protected": 0,
+    "filtered_duplicates": 1,
+    "response_rate": 44.44444444444444,
+    "total_dead": 5,
+    "total_discovered": 10,
+    "total_live": 4,
+    "total_related": 9,
+    "unique_technologies": 2,
+    "websocket_enabled": 0
+  },
+  "subdomains": [
+    "dvwa-secure.democuda.org",
+    "dvwa.democuda.org",
+    "secure.democuda.org",
+    "test01.democuda.org",
+    "dvwa-insecure.democuda.org",
+    "insecure.democuda.org",
+    "lab.democuda.org",
+    "insecure-js.democuda.org",
+    "secure-js.democuda.org",
+    "crapi.democuda.org"
+  ],
+  "target": "insecure.democuda.org",
+  "total_subdomains": 10
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+    <div class="tool-section" id="tool-org_discovery">
+        <h3>
+        
+            Organization Domain Discovery
+        
+        </h3>
+        <p><strong>Purpose:</strong> Discovers public-facing web domains belonging to the same organization</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">No findings were produced by org_discovery.</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:19.393</div>
+                <div><strong>Disposition:</strong> None</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Organization: None</p>
+<p class="report-paragraph">Apex domain: democuda.org</p>
+<p class="report-paragraph">Domains discovered: 0</p>
+<p class="report-paragraph">High confidence: 0</p>
+<p class="report-paragraph">Sources: passive sources</p>
+<p class="report-paragraph">Exposed services (Shodan): 0</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #6b7280; font-style: italic;">No results data available</div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                <div class="org-discovery-widget">
+<p><strong>Target:</strong> democuda.org &nbsp; <strong>Org:</strong> Not detected</p>
+</div>
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "amass_available": true,
+  "apex_domain": "democuda.org",
+  "command_executed": {
+    "amass_commands": [
+      "amass enum -passive -d democuda.org -json /home/mscollins/baseline/sample-scan-1/amass_output.json -timeout 5"
+    ],
+    "crtsh_queries": [
+      "https://crt.sh/?q=democuda.org\u0026output=json",
+      "https://crt.sh/?q=democuda.org\u0026output=json"
+    ],
+    "dns_queries": [
+      "TXT democuda.org (SPF)",
+      "TXT _dmarc.democuda.org (DMARC)"
+    ]
+  },
+  "discovered_domains": [],
+  "org_name": null,
+  "org_source": "502 Server Error: Bad Gateway for url: https://crt.sh/?q=democuda.org\u0026output=json",
+  "shodan_available": false,
+  "shodan_enabled": false,
+  "shodan_exposure": [],
+  "sources_used": [],
+  "target": "insecure.democuda.org",
+  "timestamp": "2026-04-29T17:29:19.370",
+  "whois": {
+    "email": null,
+    "org": null,
+    "status": "disabled"
+  }
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+    <div class="tool-section" id="tool-subfinder">
+        <h3>
+        
+            <a href="https://github.com/projectdiscovery/subfinder" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Subfinder
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Subdomain finder.</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">No subdomains were found.</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:26.520</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Detected 0 unique subdomain(s).</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">📋 View subdomain details below</div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                <p>No subdomains found.</p>
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success",
+  "name": "subfinder",
+  "results": [],
+  "timestamp": "2026-04-29T17:29:26.490"
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph"><code style="color: #00008B; font-family: Consolas, 'Courier New', monospace;">subfinder -<wbr>v -<wbr>d insecure.<wbr>democuda.<wbr>org -<wbr>o /<wbr>home/<wbr>mscollins/<wbr>baseline/<wbr>sample-<wbr>scan-<wbr>1/<wbr>subfinder_<wbr>tmp.<wbr>json -<wbr>cs -<wbr>oJ</code></p></p>
+    </div>
+    
+    <div class="tool-section" id="tool-katana">
+        <h3>
+        
+            <a href="https://github.com/projectdiscovery/katana" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Katana
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Site crawler and URL finder.</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Detected 5 unique URL(s).</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:40.334</div>
+                <div><strong>Disposition:</strong> None</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Detected 5 unique URL(s).</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">📋 View URL details below</div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                
+        <div class="url-display-widget" id="katana-url-widget-140153815033296">
+            <div class="url-search-container">
+                <input type="text" 
+                       class="url-search-input" 
+                       placeholder="🔍 Search URLs (e.g., /api, .js, admin)..."
+                       onkeyup="filterKatanaUrls('katana-url-widget-140153815033296')">
+                <span class="url-count-badge">Total: 5 URLs</span>
+            </div>
+            
+            <div class="url-groups-container">
+        
+        <div class="url-group" data-group="katana-url-widget-140153815033296-Other">
+            <div class="url-group-header" onclick="toggleUrlGroup('katana-url-widget-140153815033296-Other')">
+                <span class="url-group-icon">📦</span>
+                <span class="url-group-title">Other</span>
+                <span class="url-group-count">3 URLs</span>
+                <span class="url-group-toggle">▼</span>
+            </div>
+            <div class="url-group-content" id="katana-url-widget-140153815033296-Other-content" style="display: none;">
+                <div class="url-list" id="katana-url-widget-140153815033296-Other-list">
+        
+                    <div class="url-item" data-page="1" data-url="[get] https://insecure.democuda.org [depth:0]" style="">
+                        <code class="url-path">[GET] https://insecure.democuda.org [depth:0]</code>
+                    </div>
+                
+                    <div class="url-item" data-page="1" data-url="[header] [get] https://insecure.democuda.org/login.php [depth:1]" style="">
+                        <code class="url-path">[header] [GET] https://insecure.democuda.org/login.php [depth:1]</code>
+                    </div>
+                
+                    <div class="url-item" data-page="1" data-url="[link] [get] https://insecure.democuda.org/dvwa/css/login.css [depth:1]" style="">
+                        <code class="url-path">[link] [GET] https://insecure.democuda.org/dvwa/css/login.css [depth:1]</code>
+                    </div>
+                
+                </div>
+        
+            </div>
+        </div>
+        
+        <div class="url-group" data-group="katana-url-widget-140153815033296-Endpoints">
+            <div class="url-group-header" onclick="toggleUrlGroup('katana-url-widget-140153815033296-Endpoints')">
+                <span class="url-group-icon">🔗</span>
+                <span class="url-group-title">Endpoints</span>
+                <span class="url-group-count">2 URLs</span>
+                <span class="url-group-toggle">▼</span>
+            </div>
+            <div class="url-group-content" id="katana-url-widget-140153815033296-Endpoints-content" style="display: none;">
+                <div class="url-list" id="katana-url-widget-140153815033296-Endpoints-list">
+        
+                    <div class="url-item" data-page="1" data-url="[script] [get] https://insecure.democuda.org/bnith__a5hb0grmlwemmyr5qvw93nhcqmtsth86shilolhuwbouzrnkf8lfrgdfa-ex9uz8xskzbzpka1m= [depth:1]" style="">
+                        <code class="url-path">[script] [GET] https://insecure.democuda.org/bnith__a5HB0grmlWEMmYR5qvW93nhCQMTstH86shiLOlhuWboUzrNkf8lFRGDFA-ex9Uz8xSkzBzpKa1M= [depth:1]</code>
+                    </div>
+                
+                    <div class="url-item" data-page="1" data-url="[script] [get] https://insecure.democuda.org/bnith__a5hb0grmlwfai6hianyiczlhb8kze4ywctweexj6i9qlq9ooor3lpvbs4peo3nrhh7taycy3nyy= [depth:2]" style="">
+                        <code class="url-path">[script] [GET] https://insecure.democuda.org/bnith__a5HB0grmlWFAI6HIaNYIczlHB8KzE4YwctWeEXj6I9qlq9oOOr3LpvBs4peO3NRHH7taYCY3NYY= [depth:2]</code>
+                    </div>
+                
+                </div>
+        
+            </div>
+        </div>
+        
+            </div>
+        </div>
+        
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "urls": [
+    "[GET] https://insecure.democuda.org [depth:0]",
+    "[header] [GET] https://insecure.democuda.org/login.php [depth:1]",
+    "[link] [GET] https://insecure.democuda.org/dvwa/css/login.css [depth:1]",
+    "[script] [GET] https://insecure.democuda.org/bnith__a5HB0grmlWEMmYR5qvW93nhCQMTstH86shiLOlhuWboUzrNkf8lFRGDFA-ex9Uz8xSkzBzpKa1M= [depth:1]",
+    "[script] [GET] https://insecure.democuda.org/bnith__a5HB0grmlWFAI6HIaNYIczlHB8KzE4YwctWeEXj6I9qlq9oOOr3LpvBs4peO3NRHH7taYCY3NYY= [depth:2]"
+  ]
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph"><code style="color: #00008B; font-family: Consolas, 'Courier New', monospace;">katana -<wbr>v -<wbr>silent -<wbr>u insecure.<wbr>democuda.<wbr>org -<wbr>o /<wbr>home/<wbr>mscollins/<wbr>baseline/<wbr>sample-<wbr>scan-<wbr>1/<wbr>katana.<wbr>txt -<wbr>ob</code></p></p>
+    </div>
+    
+    <div class="tool-section" id="tool-script_detection">
+        <h3>
+        
+            <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                External Script Detection
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Detects and analyzes external JavaScript files loaded by the target.</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Detected 1 external scripts:<wbr> 0 cross-<wbr>origin from 1 unique origins,<wbr> 1 without SRI protection</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:27.359</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">https://insecure.democuda.org: 1 scripts (1 without SRI)</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div class="tree-json" data-json='{"cross_origin_count": 0, "insecure_http_scripts": 0, "limited_by_config": false, "same_origin_count": 1, "scripts": [{"crossorigin": null, "has_sri": false, "hostname": "insecure.democuda.org", "integrity": null, "is_cross_origin": false, "is_https": true, "is_same_origin": true, "is_secure": true, "origin": "https://insecure.democuda.org", "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=", "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE="}], "scripts_analyzed": 1, "scripts_by_origin": {"https://insecure.democuda.org": [{"crossorigin": null, "has_sri": false, "hostname": "insecure.democuda.org", "integrity": null, "is_cross_origin": false, "is_https": true, "is_same_origin": true, "is_secure": true, "origin": "https://insecure.democuda.org", "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=", "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE="}]}, "scripts_with_sri": 0, "scripts_without_sri": 1, "target_origin": "https://insecure.democuda.org", "target_url": "https://insecure.democuda.org", "total_scripts": 1, "total_scripts_found": 1, "unique_origin_count": 1, "unique_origins": ["https://insecure.democuda.org"]}'></div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                <div class="script-analysis-widget">
+<h4>📊 External JavaScript Analysis</h4>
+<p><strong>Total Scripts:</strong> 1</p>
+<p><strong>Cross-Origin:</strong> 0 from 1 origins</p>
+<p><strong>Without SRI:</strong> 1</p>
+<div class="script-groups">
+<div class="script-group">
+<h5>🏠 https://insecure.democuda.org (1 scripts)</h5>
+<ul class="script-list">
+<li>⚠️ 🔒 /bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=</li>
+</ul>
+</div>
+</div>
+</div>
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success",
+  "name": "script_detection",
+  "results": {
+    "cross_origin_count": 0,
+    "insecure_http_scripts": 0,
+    "limited_by_config": false,
+    "same_origin_count": 1,
+    "scripts": [
+      {
+        "crossorigin": null,
+        "has_sri": false,
+        "hostname": "insecure.democuda.org",
+        "integrity": null,
+        "is_cross_origin": false,
+        "is_https": true,
+        "is_same_origin": true,
+        "is_secure": true,
+        "origin": "https://insecure.democuda.org",
+        "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+        "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE="
+      }
+    ],
+    "scripts_analyzed": 1,
+    "scripts_by_origin": {
+      "https://insecure.democuda.org": [
+        {
+          "crossorigin": null,
+          "has_sri": false,
+          "hostname": "insecure.democuda.org",
+          "integrity": null,
+          "is_cross_origin": false,
+          "is_https": true,
+          "is_same_origin": true,
+          "is_secure": true,
+          "origin": "https://insecure.democuda.org",
+          "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+          "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE="
+        }
+      ]
+    },
+    "scripts_with_sri": 0,
+    "scripts_without_sri": 1,
+    "target_origin": "https://insecure.democuda.org",
+    "target_url": "https://insecure.democuda.org",
+    "total_scripts": 1,
+    "total_scripts_found": 1,
+    "unique_origin_count": 1,
+    "unique_origins": [
+      "https://insecure.democuda.org"
+    ]
+  },
+  "timestamp": "2026-04-29T17:29:27.359"
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph">Analyzed 1 external JavaScript files</p></p>
+    </div>
+    
+    <div class="tool-section" id="tool-ai_chatbot_detection">
+        <h3>
+        
+            AI Chatbot Detection
+        
+        </h3>
+        <p><strong>Purpose:</strong> Detects indicators of agentic AI chatbots from passive scan data.</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">No AI chatbot indicators detected.</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:40.380</div>
+                <div><strong>Disposition:</strong> None</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">No AI chatbot indicators detected.</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #6b7280; font-style: italic;">No results data available</div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                <p>No AI chatbot indicators detected.</p>
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "detections": []
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> </p>
+    </div>
+    
+    <div class="tool-section" id="tool-whatweb">
+        <h3>
+        
+            <a href="https://github.com/urbanadventurer/whatweb" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                WhatWeb
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Identifies technologies used by a website.</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">{'http:<wbr>/<wbr>/<wbr>insecure.<wbr>democuda.<wbr>org -<wbr> HTTP 302':<wbr> 'Cookies [PHPSESSID,<wbr> security];<wbr> Country [UNITED STATES];<wbr> IP [4.<wbr>152.<wbr>87.<wbr>222];<wbr> RedirectLocation [login.<wbr>php];<wbr> X-<wbr>Frame-<wbr>Options [SAMEORIGIN]'}</p>
+<p class="report-paragraph">{'http:<wbr>/<wbr>/<wbr>insecure.<wbr>democuda.<wbr>org/<wbr>login.<wbr>php -<wbr> HTTP 200':<wbr> 'Cookies [PHPSESSID,<wbr> security];<wbr> Country [UNITED STATES];<wbr> IP [4.<wbr>152.<wbr>87.<wbr>222];<wbr> PasswordField [password];<wbr> Script [text/<wbr>javascript];<wbr> Title [Login :<wbr>:<wbr> Damn Vulnerable Web Application (DVWA) v1.<wbr>10 *Development*];<wbr> X-<wbr>Frame-<wbr>Options [SAMEORIGIN]'}</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:27.295</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div class="tree-json" data-json='{"disposition": "success", "name": "whatweb", "results": [{"http_status": 302, "plugins": {"Cookies": {"string": ["PHPSESSID", "security"]}, "Country": {"module": ["US"], "string": ["UNITED STATES"]}, "IP": {"string": ["4.152.87.222"]}, "RedirectLocation": {"string": ["login.php"]}, "X-Frame-Options": {"string": ["SAMEORIGIN"]}}, "request_config": {"headers": {"User-Agent": "WhatWeb/0.5.5"}}, "target": "http://insecure.democuda.org"}, {"http_status": 200, "plugins": {"Cookies": {"string": ["PHPSESSID", "security"]}, "Country": {"module": ["US"], "string": ["UNITED STATES"]}, "DVWA": {}, "IP": {"string": ["4.152.87.222"]}, "PasswordField": {"string": ["password"]}, "Script": {"string": ["text/javascript"]}, "Title": {"string": ["Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*"]}, "X-Frame-Options": {"string": ["SAMEORIGIN"]}}, "request_config": {"headers": {"User-Agent": "WhatWeb/0.5.5"}}, "target": "http://insecure.democuda.org/login.php"}], "timestamp": "2026-04-29T17:29:12.543"}'></div>
+                    
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success",
+  "results": {
+    "disposition": "success",
+    "name": "whatweb",
+    "results": [
+      {
+        "http_status": 302,
+        "plugins": {
+          "Cookies": {
+            "string": [
+              "PHPSESSID",
+              "security"
+            ]
+          },
+          "Country": {
+            "module": [
+              "US"
+            ],
+            "string": [
+              "UNITED STATES"
+            ]
+          },
+          "IP": {
+            "string": [
+              "4.152.87.222"
+            ]
+          },
+          "RedirectLocation": {
+            "string": [
+              "login.php"
+            ]
+          },
+          "X-Frame-Options": {
+            "string": [
+              "SAMEORIGIN"
+            ]
+          }
+        },
+        "request_config": {
+          "headers": {
+            "User-Agent": "WhatWeb/0.5.5"
+          }
+        },
+        "target": "http://insecure.democuda.org"
+      },
+      {
+        "http_status": 200,
+        "plugins": {
+          "Cookies": {
+            "string": [
+              "PHPSESSID",
+              "security"
+            ]
+          },
+          "Country": {
+            "module": [
+              "US"
+            ],
+            "string": [
+              "UNITED STATES"
+            ]
+          },
+          "DVWA": {},
+          "IP": {
+            "string": [
+              "4.152.87.222"
+            ]
+          },
+          "PasswordField": {
+            "string": [
+              "password"
+            ]
+          },
+          "Script": {
+            "string": [
+              "text/javascript"
+            ]
+          },
+          "Title": {
+            "string": [
+              "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*"
+            ]
+          },
+          "X-Frame-Options": {
+            "string": [
+              "SAMEORIGIN"
+            ]
+          }
+        },
+        "request_config": {
+          "headers": {
+            "User-Agent": "WhatWeb/0.5.5"
+          }
+        },
+        "target": "http://insecure.democuda.org/login.php"
+      }
+    ],
+    "timestamp": "2026-04-29T17:29:12.543"
+  }
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph"><code style="color: #00008B; font-family: Consolas, 'Courier New', monospace;">whatweb -<wbr>a 3 -<wbr>-<wbr>read-<wbr>timeout 30 -<wbr>-<wbr>max-<wbr>redirects 2 -<wbr>-<wbr>log-<wbr>json /<wbr>home/<wbr>mscollins/<wbr>baseline/<wbr>sample-<wbr>scan-<wbr>1/<wbr>whatweb.<wbr>json insecure.<wbr>democuda.<wbr>org</code></p></p>
+    </div>
+    
+    <div class="tool-section" id="tool-wafw00f">
+        <h3>
+        
+            <a href="https://github.com/EnableSecurity/wafw00f" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Wafw00f
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Detects and identifies Web Application Firewalls (WAFs) on the target.</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">No WAF detected</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:29:16.802</div>
+                <div><strong>Disposition:</strong> success</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">No WAF detected.</p>
+<p class="report-paragraph">Test URL:<wbr> /<wbr>?<wbr>cisgshjh=<wbr>%3Cscript%3Ealert%28%22XSS%22%29%3B%3C%2Fscript%3E&<wbr>kbnwveul=<wbr>UNION+SELECT+ALL+FROM+information_<wbr>schema+AND+%22+or+SLEEP%285%29+or+%22&<wbr>xxrtwudh=<wbr>.<wbr>.<wbr>%2F.<wbr>.<wbr>%2Fetc%2Fpasswd</p>
+<p class="report-paragraph">Test URL: /?jtxdihfp=%3Cscript%3Ealert%28%22XSS%22%29%3B%3C%2Fscript%3E</p>
+<p class="report-paragraph">Test URL:<wbr> /<wbr>?<wbr>hkhtifef=<wbr>UNION+SELECT+ALL+FROM+information_<wbr>schema+AND+%22+or+SLEEP%285%29+or+%22</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div class="tree-json" data-json='[{"detected": false, "firewall": "None", "manufacturer": "None", "trigger_url": null, "url": "https://insecure.democuda.org"}]'></div>
+                    
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "disposition": "success",
+  "name": "wafw00f",
+  "results": [
+    {
+      "detected": false,
+      "firewall": "None",
+      "manufacturer": "None",
+      "trigger_url": null,
+      "url": "https://insecure.democuda.org"
+    }
+  ],
+  "timestamp": "2026-04-29T17:29:16.771"
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph"><code style="color: #00008B; font-family: Consolas, 'Courier New', monospace;">wafw00f insecure.<wbr>democuda.<wbr>org -<wbr>a -<wbr>vvv -<wbr>T 30 -<wbr>f json -<wbr>o /<wbr>home/<wbr>mscollins/<wbr>baseline/<wbr>sample-<wbr>scan-<wbr>1/<wbr>wafw00f.<wbr>json</code></p></p>
+    </div>
+    
+    <div class="tool-section" id="tool-ftap">
+        <h3>
+        
+            <a href="https://github.com/DV64/Find-The-Admin-Panel" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Find The Admin Panel
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Scans target for exposed admin login pages</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">Found 1 exposed admin panel.</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:30:01.684</div>
+                <div><strong>Disposition:</strong> None</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">Exposed Admin Panels:</p>
+<p class="report-paragraph">Panel #1:</p>
+<p class="report-paragraph">  URL: http://insecure.democuda.org/#admin/</p>
+<p class="report-paragraph">  Title: Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</p>
+<p class="report-paragraph">  Confidence: 100.0%</p>
+<p class="report-paragraph">  Status Code: 200</p>
+<p class="report-paragraph">  Login Form Detected: Yes</p>
+<p class="report-paragraph">  Technologies: Laravel, PHP</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">📋 View panel details below</div>
+                    
+                </div>
+                
+                <div class="custom-html-section" style="margin-top: 1em;">
+                
+        <div class="url-display-widget" id="ftap-panel-widget-140153815034576">
+            <div class="url-search-container">
+                <input type="text" 
+                       class="url-search-input" 
+                       placeholder="🔍 Search panels (e.g., admin, login, dashboard)..."
+                       onkeyup="filterFtapPanels('ftap-panel-widget-140153815034576')">
+                <span class="url-count-badge">Total: 1 URL(s) Tested</span>
+            </div>
+            
+            <div class="url-groups-container">
+        
+        <div class="url-group" data-group="ftap-panel-widget-140153815034576-exposed">
+            <div class="url-group-header" onclick="toggleUrlGroup('ftap-panel-widget-140153815034576-exposed')">
+                <span class="url-group-icon">🔐</span>
+                <span class="url-group-title">Exposed Admin Panels</span>
+                <span class="url-group-count">1 Panel(s)</span>
+                <span class="url-group-toggle">▼</span>
+            </div>
+            <div class="url-group-content" id="ftap-panel-widget-140153815034576-exposed-content" style="display: none;">
+                <div class="ftap-panels-list" id="ftap-panel-widget-140153815034576-exposed-list">
+        
+        <div class="url-item" data-page="1" data-url="http://insecure.democuda.org/#admin/ login :: damn vulnerable web application (dvwa) v1.10 *development* laravel php" style="">
+            <div style="padding: 0.8em; background: #f8fbfd; border-radius: 6px; border: 1px solid #e6eef6; margin: 0.3em 0;">
+                <div style="display: flex; align-items: center; gap: 0.8em; margin-bottom: 0.6em;">
+                    <span style="background: #075985; color: white; padding: 0.25em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600;">#1</span>
+                    <span style="flex: 1; font-weight: 600; color: #083344; font-size: 0.95em;">Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</span>
+                    <span style="background-color: #28a74520; color: #28a745; border: 1px solid #28a745; padding: 0.3em 0.7em; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
+                        100.0%
+                    </span>
+                </div>
+                <div style="padding-left: 2.5em;">
+                    <div style="margin: 0.4em 0;">
+                        <span style="font-weight: 600; color: #075985; font-size: 0.85em;">URL:</span>
+                        <a href="http://insecure.democuda.org/#admin/" target="_blank" style="color: #0284c7; text-decoration: none; margin-left: 0.5em; font-family: 'Courier New', Consolas, monospace; font-size: 0.85em; word-break: break-all;">http://insecure.democuda.org/#admin/</a>
+                    </div>
+                    <div style="margin: 0.4em 0;">
+                        <span style="font-weight: 600; color: #075985; font-size: 0.85em;">Status Code:</span>
+                        <span style="margin-left: 0.5em; color: #083344; font-size: 0.85em;">200</span>
+                    </div>
+                    <div style="margin: 0.4em 0;">
+                        <span style="font-weight: 600; color: #075985; font-size: 0.85em;">Login Form:</span>
+                        <span style="margin-left: 0.5em; color: #083344; font-size: 0.85em;">✓ Yes</span>
+                    </div>
+        
+                    <div style="margin: 0.4em 0;">
+                        <span style="font-weight: 600; color: #075985; font-size: 0.85em;">Technologies:</span>
+                        <div style="display: inline-flex; flex-wrap: wrap; gap: 0.4em; margin-left: 0.5em;">
+            <span style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #0369a1; padding: 0.2em 0.6em; border-radius: 10px; font-size: 0.75em; font-weight: 500; border: 1px solid #93c5fd;">Laravel</span><span style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #0369a1; padding: 0.2em 0.6em; border-radius: 10px; font-size: 0.75em; font-weight: 500; border: 1px solid #93c5fd;">PHP</span>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+                </div>
+        
+            </div>
+        </div>
+        
+            </div>
+        </div>
+        
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "export_time": "2026-04-29T17:30:01.445686",
+  "found_count": 1,
+  "results": [
+    {
+      "confidence": 1.0,
+      "content_length": 3128,
+      "forms": [],
+      "found": true,
+      "has_login_form": true,
+      "headers": {
+        "Cache-Control": "no-cache, must-revalidate",
+        "Content-Type": "text/html;charset=utf-8",
+        "Date": "Wed, 29 Apr 2026 17:29:21 GMT",
+        "Expires": "Tue, 23 Jun 2009 12:00:00 GMT",
+        "Pragma": "no-cache",
+        "Transfer-Encoding": "chunked",
+        "Vary": "Accept-Encoding",
+        "x-frame-options": "SAMEORIGIN"
+      },
+      "inputs": [],
+      "scan_time": "2026-04-29T17:29:21.844389",
+      "server": "Unknown",
+      "status_code": 200,
+      "technologies": [
+        "Laravel",
+        "PHP"
+      ],
+      "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+      "url": "http://insecure.democuda.org/#admin/"
+    }
+  ],
+  "scan_info": {
+    "concurrency": 3,
+    "detection_mode": "stealth",
+    "duration": 41.651012659072876,
+    "end_time": 1777483801.4447381,
+    "found_count": 1,
+    "mode": "stealth",
+    "mode_details": {
+      "CONFIDENCE_THRESHOLD": 0.65,
+      "CONNECTION_TIMEOUT": 10,
+      "DELAY_BETWEEN_REQUESTS": 2.0,
+      "DESCRIPTION": "Slow scanning to avoid detection, with advanced evasion techniques",
+      "MAX_CONCURRENT_TASKS": 3,
+      "MAX_RETRIES": 0,
+      "READ_TIMEOUT": 15,
+      "REQUEST_RANDOMIZATION": true,
+      "USE_RANDOM_USER_AGENTS": true,
+      "VERIFY_FOUND_URLS": true
+    },
+    "paths_count": 500,
+    "rejected_count": 0,
+    "scan_mode": "default",
+    "scan_time": 41.651962,
+    "start_time": 1777483759.7937255,
+    "success_rate": 0.002,
+    "target_url": "http://insecure.democuda.org/",
+    "total_count": 1,
+    "total_paths": 500,
+    "url": "http://insecure.democuda.org/",
+    "verified_count": 1
+  },
+  "total_count": 1
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph"><code style="color: #00008B; font-family: Consolas, 'Courier New', monospace;">ftap -<wbr>-<wbr>url insecure.<wbr>democuda.<wbr>org -<wbr>-<wbr>detection-<wbr>mode stealth -<wbr>d /<wbr>home/<wbr>mscollins/<wbr>baseline/<wbr>sample-<wbr>scan-<wbr>1 -<wbr>e json -<wbr>f ftap.<wbr>json</code></p></p>
+    </div>
+    
+    <div class="tool-section" id="tool-testssl">
+        <h3>
+        
+            <a href="https://testssl.sh/" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                Test SSL
+            </a>
+        
+        </h3>
+        <p><strong>Purpose:</strong> Tests SSL and TLS posture</p>
+        <p><strong>Summary:</strong> <p class="report-paragraph">No vulnerabilities or cipher issues detected.</p></p>
+        <div>
+            <button class="details-toggle" type="button" onclick="toggleDetails(this)">Show details</button>
+            <div class="details-collapsible" style="display:none; margin-top:0.5em;">
+                <div><strong>Timestamp:</strong> 2026-04-29T17:30:46.333</div>
+                <div><strong>Disposition:</strong> None</div>
+                
+                <div><strong>Details:</strong> <p class="report-paragraph">No SSL/TLS vulnerabilities or cipher issues detected.</p></div>
+                
+                <div><strong>Results:</strong>
+                    
+                    <div style="padding: 0.5em 0; color: #075985; font-weight: 500;">Scan completed successfully. No vulnerabilities or cipher issues detected.</div>
+                    
+                </div>
+                
+                <button class="raw-toggle" type="button" onclick="toggleRaw(this)">Show raw JSON</button>
+                <pre class="raw-collapsible" style="display:none; background:#f4f4f4; border:1px solid #e0e0e0; border-radius:4px; padding:0.5em; max-height:400px; overflow:auto;">{
+  "raw_data": ""
+}</pre>
+            </div>
+        </div>
+        <p></p><p><strong>Report Notes:</strong> <p class="report-paragraph"><code style="color: #00008B; font-family: Consolas, 'Courier New', monospace;">testssl -<wbr>U -<wbr>E -<wbr>-<wbr>connect-<wbr>timeout 10 -<wbr>-<wbr>warnings=<wbr>batch -<wbr>oJ /<wbr>home/<wbr>mscollins/<wbr>baseline/<wbr>sample-<wbr>scan-<wbr>1/<wbr>testssl.<wbr>json insecure.<wbr>democuda.<wbr>org</code></p></p>
+    </div>
+    
+
+    <script>
+    function toggleDetails(btn) {
+        var section = btn.nextElementSibling;
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            btn.textContent = 'Hide details';
+        } else {
+            section.style.display = 'none';
+            btn.textContent = 'Show details';
+        }
+    }
+    function toggleRaw(btn) {
+        var pre = btn.nextElementSibling;
+        if (pre.style.display === 'none') {
+            pre.style.display = 'block';
+            btn.textContent = 'Hide raw JSON';
+        } else {
+            pre.style.display = 'none';
+            btn.textContent = 'Show raw JSON';
+        }
+    }
+    
+    // URL Display Widget Functions
+    function toggleUrlGroup(groupId) {
+        var content = document.getElementById(groupId + '-content');
+        var header = document.querySelector('[data-group="' + groupId + '"] .url-group-toggle');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            header.textContent = '▲';
+        } else {
+            content.style.display = 'none';
+            header.textContent = '▼';
+        }
+    }
+    
+    function changeUrlPage(groupId, direction) {
+        var list = document.getElementById(groupId + '-list');
+        var currentPageSpan = document.getElementById(groupId + '-current-page');
+        var currentPage = parseInt(currentPageSpan.textContent);
+        var items = list.querySelectorAll('.url-item');
+        
+        // Calculate total pages
+        var totalPages = 0;
+        items.forEach(function(item) {
+            var page = parseInt(item.getAttribute('data-page'));
+            if (page > totalPages) totalPages = page;
+        });
+        
+        // Calculate new page
+        var newPage = currentPage + direction;
+        if (newPage < 1) newPage = 1;
+        if (newPage > totalPages) newPage = totalPages;
+        
+        // Update display
+        items.forEach(function(item) {
+            var itemPage = parseInt(item.getAttribute('data-page'));
+            if (itemPage === newPage) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        currentPageSpan.textContent = newPage;
+    }
+    
+    function filterKatanaUrls(widgetId) {
+        var widget = document.getElementById(widgetId);
+        var input = widget.querySelector('.url-search-input');
+        var filter = input.value.toLowerCase();
+        var groups = widget.querySelectorAll('.url-group');
+        var totalVisible = 0;
+        
+        groups.forEach(function(group) {
+            var items = group.querySelectorAll('.url-item');
+            var visibleInGroup = 0;
+            
+            items.forEach(function(item) {
+                var url = item.getAttribute('data-url');
+                if (url.indexOf(filter) > -1) {
+                    item.style.display = 'block';
+                    visibleInGroup++;
+                    totalVisible++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Hide group if no matches
+            if (visibleInGroup === 0) {
+                group.style.display = 'none';
+            } else {
+                group.style.display = 'block';
+            }
+            
+            // Reset pagination when filtering
+            if (filter) {
+                var pagination = group.querySelector('.url-pagination');
+                if (pagination) {
+                    pagination.style.display = 'none';
+                }
+            } else {
+                var pagination = group.querySelector('.url-pagination');
+                if (pagination) {
+                    pagination.style.display = 'flex';
+                }
+                // Reset to page 1 when clearing filter
+                var groupId = group.getAttribute('data-group');
+                var currentPageSpan = document.getElementById(groupId + '-current-page');
+                if (currentPageSpan) {
+                    currentPageSpan.textContent = '1';
+                    // Show only page 1 items
+                    items.forEach(function(item) {
+                        var itemPage = parseInt(item.getAttribute('data-page'));
+                        item.style.display = (itemPage === 1) ? 'block' : 'none';
+                    });
+                }
+            }
+        });
+        
+        // Update count badge
+        var badge = widget.querySelector('.url-count-badge');
+        if (filter) {
+            badge.textContent = 'Showing: ' + totalVisible + ' URLs';
+        } else {
+            var allItems = widget.querySelectorAll('.url-item');
+            badge.textContent = 'Total: ' + allItems.length + ' URLs';
+        }
+    }
+    
+    // FTAP Panel Functions
+    function toggleFtapPanel(panelId) {
+        var content = document.getElementById(panelId + '-content');
+        var panel = document.querySelector('[data-panel-id="' + panelId + '"]');
+        var toggle = panel.querySelector('.ftap-panel-toggle');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            toggle.textContent = '▼';
+        } else {
+            content.style.display = 'none';
+            toggle.textContent = '▶';
+        }
+    }
+    
+    function toggleFtapRawJson(widgetId) {
+        var jsonDiv = document.getElementById(widgetId + '-raw-json');
+        var button = document.querySelector('[onclick*="toggleFtapRawJson(\'' + widgetId + '\')"]');
+        
+        if (jsonDiv.style.display === 'none') {
+            jsonDiv.style.display = 'block';
+            button.textContent = '📋 Hide Raw JSON';
+        } else {
+            jsonDiv.style.display = 'none';
+            button.textContent = '📋 Show Raw JSON';
+        }
+    }
+    
+    function filterFtapPanels(widgetId) {
+        var widget = document.getElementById(widgetId);
+        var input = widget.querySelector('.url-search-input');
+        var filter = input.value.toLowerCase();
+        var groups = widget.querySelectorAll('.url-group');
+        var totalVisible = 0;
+        
+        groups.forEach(function(group) {
+            var panels = group.querySelectorAll('.ftap-panel');
+            var visibleInGroup = 0;
+            
+            panels.forEach(function(panel) {
+                var searchText = panel.getAttribute('data-search');
+                if (searchText && searchText.indexOf(filter) > -1) {
+                    panel.style.display = 'block';
+                    visibleInGroup++;
+                    totalVisible++;
+                } else {
+                    panel.style.display = 'none';
+                }
+            });
+            
+            // Hide group if no matches
+            if (visibleInGroup === 0) {
+                group.style.display = 'none';
+            } else {
+                group.style.display = 'block';
+            }
+        });
+        
+        // Update count badge
+        var badge = widget.querySelector('.url-count-badge');
+        if (filter) {
+            badge.textContent = 'Showing: ' + totalVisible + ' Panel(s)';
+        } else {
+            var allPanels = widget.querySelectorAll('.ftap-panel');
+            badge.textContent = 'Total: ' + allPanels.length + ' Panel(s)';
+        }
+    }
+    </script>
+    <!-- Tree-view CSS moved to kast_style.css -->
+    <script>
+    function toggleTreeNode(el) {
+        var parent = el.parentNode;
+        parent.classList.toggle('tree-collapsed');
+        el.textContent = parent.classList.contains('tree-collapsed') ? '[+]' : '[-]';
+    }
+    function renderTree(obj) {
+        function createNode(key, value, depth) {
+            var type = typeof value;
+            if (value && type === 'object') {
+                var isArray = Array.isArray(value);
+                var node = document.createElement('div');
+                node.className = 'tree-node';
+                var toggle = document.createElement('span');
+                toggle.className = 'tree-toggle';
+                toggle.onclick = function() { toggleTreeNode(toggle); };
+                node.appendChild(toggle);
+                var keySpan = document.createElement('span');
+                keySpan.className = 'tree-key';
+                keySpan.textContent = key + (isArray ? ' [ ]' : '');
+                node.appendChild(keySpan);
+                var children = document.createElement('div');
+                children.className = 'tree-children';
+                for (var k in value) {
+                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                        children.appendChild(createNode(k, value[k], depth + 1));
+                    }
+                }
+                node.appendChild(children);
+                // Collapse nodes deeper than top-level by default and set initial toggle symbol
+                if (depth > 0) {
+                    node.classList.add('tree-collapsed');
+                    toggle.textContent = '[+]';
+                } else {
+                    toggle.textContent = '[-]';
+                }
+                return node;
+            } else {
+                var leaf = document.createElement('div');
+                leaf.className = 'tree-leaf';
+                leaf.innerHTML = '<span class="tree-key">' + key + ':</span> ' + escapeHtml(String(value));
+                return leaf;
+            }
+        }
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(c) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c];
+            });
+        }
+        var root = document.createElement('div');
+        root.className = 'tree-view';
+        if (obj && typeof obj === 'object') {
+            for (var k in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                    root.appendChild(createNode(k, obj[k], 0));
+                }
+            }
+        } else {
+            root.textContent = String(obj);
+        }
+        return root;
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.tree-json').forEach(function(el) {
+            var data = el.getAttribute('data-json');
+            if (data) {
+                try {
+                    var obj = JSON.parse(data);
+                    var tree = renderTree(obj);
+                    el.appendChild(tree);
+                } catch (e) {
+                    el.textContent = 'Error rendering tree: ' + e;
+                }
+            }
+        });
+    });
+    </script>
+
+    <!-- Footer -->
+    <footer class="report-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                
+                <img src="../assets/kast-logo.png" alt="KAST" class="footer-logo">
+                
+                <span class="footer-text">KAST Security Scanner</span>
+            </div>
+            <div class="footer-right">
+                <span class="footer-text">Generated on 2026-04-29 17:30:46</span>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

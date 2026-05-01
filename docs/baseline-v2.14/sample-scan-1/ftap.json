@@ -1,0 +1,65 @@
+{
+    "scan_info": {
+        "url": "http://insecure.democuda.org/",
+        "mode": "stealth",
+        "start_time": 1777483759.7937255,
+        "paths_count": 500,
+        "concurrency": 3,
+        "mode_details": {
+            "MAX_CONCURRENT_TASKS": 3,
+            "CONNECTION_TIMEOUT": 10,
+            "READ_TIMEOUT": 15,
+            "DELAY_BETWEEN_REQUESTS": 2.0,
+            "REQUEST_RANDOMIZATION": true,
+            "CONFIDENCE_THRESHOLD": 0.65,
+            "MAX_RETRIES": 0,
+            "USE_RANDOM_USER_AGENTS": true,
+            "VERIFY_FOUND_URLS": true,
+            "DESCRIPTION": "Slow scanning to avoid detection, with advanced evasion techniques"
+        },
+        "end_time": 1777483801.4447381,
+        "duration": 41.651012659072876,
+        "found_count": 1,
+        "total_count": 1,
+        "success_rate": 0.002,
+        "verified_count": 1,
+        "rejected_count": 0,
+        "scan_time": 41.651962,
+        "target_url": "http://insecure.democuda.org/",
+        "scan_mode": "default",
+        "detection_mode": "stealth",
+        "total_paths": 500
+    },
+    "results": [
+        {
+            "url": "http://insecure.democuda.org/#admin/",
+            "status_code": 200,
+            "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+            "confidence": 1.0,
+            "found": true,
+            "has_login_form": true,
+            "technologies": [
+                "Laravel",
+                "PHP"
+            ],
+            "headers": {
+                "Date": "Wed, 29 Apr 2026 17:29:21 GMT",
+                "Expires": "Tue, 23 Jun 2009 12:00:00 GMT",
+                "Cache-Control": "no-cache, must-revalidate",
+                "Pragma": "no-cache",
+                "Vary": "Accept-Encoding",
+                "Content-Type": "text/html;charset=utf-8",
+                "x-frame-options": "SAMEORIGIN",
+                "Transfer-Encoding": "chunked"
+            },
+            "content_length": 3128,
+            "scan_time": "2026-04-29T17:29:21.844389",
+            "server": "Unknown",
+            "forms": [],
+            "inputs": []
+        }
+    ],
+    "total_count": 1,
+    "found_count": 1,
+    "export_time": "2026-04-29T17:30:01.445686"
+}

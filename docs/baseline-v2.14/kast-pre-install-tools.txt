@@ -1,0 +1,5 @@
+nmap not found
+nikto not found
+gobuster not found
+sqlmap not found
+nuclei not found

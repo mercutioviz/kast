@@ -1,0 +1,63 @@
+usage: main.py [-h] [-V] [-ls] [--show-deps] [--run-only RUN_ONLY] [-v]
+               [-o OUTPUT_DIR] [--report-only REPORT_ONLY]
+               [--format {html,pdf,both}] [--dry-run]
+               [-m {active,passive,both}] [-t TARGET] [-p]
+               [--max-workers MAX_WORKERS] [-l LOG_DIR] [--logo LOGO]
+               [--httpx-rate-limit HTTPX_RATE_LIMIT]
+               [--zap-profile {quick,standard,thorough,api,passive}]
+               [--config CONFIG] [--config-init] [--config-show]
+               [--config-schema] [--set SET]
+
+KAST - Kali Automated Scan Tool
+
+options:
+  -h, --help            show this help message and exit
+  -V, --version         Display the version of KAST and exit
+  -ls, --list-plugins   List all available plugins and exit
+  --show-deps           Display plugin dependency tree filtered by scan mode
+                        and exit
+  --run-only RUN_ONLY   Run only specified plugins (comma-separated list of
+                        plugin names)
+  -v, --verbose         Enable verbose mode
+  -o, --output-dir OUTPUT_DIR
+                        Target output directory (default:
+                        ~/kast_results/www.target.com-YYYYMMDD-hhmmss/)
+  --report-only REPORT_ONLY
+                        Report only mode (specify the output directory
+                        containing raw JSON files)
+  --format {html,pdf,both}
+                        Output format for the report (default: html)
+  --dry-run             Dry run mode (show what would be done, but don't
+                        execute)
+  -m, --mode {active,passive,both}
+                        Scan mode: active, passive, or both (default: passive)
+  -t, --target TARGET   Target domain name to scan
+  -p, --parallel        Parallel mode: run tools simultaneously
+  --max-workers MAX_WORKERS
+                        Maximum number of parallel workers (default: 5, only
+                        used with --parallel)
+  -l, --log-dir LOG_DIR
+                        Log directory (default: /var/log/kast/)
+  --logo LOGO           Custom logo file (PNG or JPG) to use in reports
+                        (optional)
+  --httpx-rate-limit HTTPX_RATE_LIMIT
+                        (DEPRECATED: use --set
+                        related_sites.httpx_rate_limit=N) Rate limit for httpx
+                        requests per second (default: 10, used by
+                        related_sites plugin)
+  --zap-profile {quick,standard,thorough,api,passive}
+                        ZAP scan profile shortcut: quick (~20min), standard
+                        (~45min), thorough (~90min), api (~30min), passive
+                        (~15min, safe for production)
+  --config CONFIG       Path to configuration file. If not specified, searches
+                        in order: ./kast_config.yaml (project),
+                        ~/.config/kast/config.yaml (user),
+                        /etc/kast/config.yaml (system)
+  --config-init         Create default configuration file with all plugin
+                        options
+  --config-show         Display current configuration (merged from file + CLI
+                        overrides)
+  --config-schema       Export JSON schema for all plugins (for GUI tools like
+                        kast-web)
+  --set SET             Override config value: --set plugin.key=value (can be
+                        used multiple times)

@@ -1,0 +1,201 @@
+{
+  "plugin-name": "related_sites",
+  "plugin-description": "Discovers related subdomains and probes for live web services",
+  "plugin-display-name": "Related Sites Discovery",
+  "plugin-website-url": "https://github.com/mercutioviz/kast",
+  "timestamp": "2026-04-29T17:30:24.386",
+  "findings": {
+    "target": "insecure.democuda.org",
+    "apex_domain": "democuda.org",
+    "scanned_domain": "democuda.org",
+    "total_subdomains": 10,
+    "subdomains": [
+      "dvwa-secure.democuda.org",
+      "dvwa.democuda.org",
+      "secure.democuda.org",
+      "test01.democuda.org",
+      "dvwa-insecure.democuda.org",
+      "insecure.democuda.org",
+      "lab.democuda.org",
+      "insecure-js.democuda.org",
+      "secure-js.democuda.org",
+      "crapi.democuda.org"
+    ],
+    "filtered_target_duplicates": 1,
+    "related_subdomains": [
+      "dvwa-secure.democuda.org",
+      "dvwa.democuda.org",
+      "secure.democuda.org",
+      "test01.democuda.org",
+      "dvwa-insecure.democuda.org",
+      "lab.democuda.org",
+      "insecure-js.democuda.org",
+      "secure-js.democuda.org",
+      "crapi.democuda.org"
+    ],
+    "live_hosts": [
+      {
+        "host": "crapi.democuda.org",
+        "ports": [
+          80
+        ],
+        "port_responses": [
+          {
+            "port": 80,
+            "url": "http://crapi.democuda.org:80",
+            "status_code": 404,
+            "title": "",
+            "technologies": [],
+            "cdn": "",
+            "websocket": false
+          },
+          {
+            "port": 80,
+            "url": "http://crapi.democuda.org:80",
+            "status_code": 404,
+            "title": "",
+            "technologies": [],
+            "cdn": "",
+            "websocket": false
+          }
+        ],
+        "technologies": [],
+        "has_cdn": false,
+        "has_websocket": false
+      },
+      {
+        "host": "insecure-js.democuda.org",
+        "ports": [
+          80,
+          443
+        ],
+        "port_responses": [
+          {
+            "port": 443,
+            "url": "https://insecure-js.democuda.org:443",
+            "status_code": 503,
+            "title": "",
+            "technologies": [],
+            "cdn": "",
+            "websocket": false
+          },
+          {
+            "port": 80,
+            "url": "http://insecure-js.democuda.org:80",
+            "status_code": 503,
+            "title": "",
+            "technologies": [],
+            "cdn": "",
+            "websocket": false
+          }
+        ],
+        "technologies": [],
+        "has_cdn": false,
+        "has_websocket": false
+      },
+      {
+        "host": "secure-js.democuda.org",
+        "ports": [
+          80,
+          443
+        ],
+        "port_responses": [
+          {
+            "port": 443,
+            "url": "https://secure-js.democuda.org:443",
+            "status_code": 503,
+            "title": "",
+            "technologies": [],
+            "cdn": "",
+            "websocket": false
+          },
+          {
+            "port": 80,
+            "url": "http://secure-js.democuda.org:80",
+            "status_code": 503,
+            "title": "",
+            "technologies": [],
+            "cdn": "",
+            "websocket": false
+          }
+        ],
+        "technologies": [],
+        "has_cdn": false,
+        "has_websocket": false
+      },
+      {
+        "host": "secure.democuda.org",
+        "ports": [
+          80,
+          443
+        ],
+        "port_responses": [
+          {
+            "port": 443,
+            "url": "https://secure.democuda.org:443",
+            "status_code": 200,
+            "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+            "technologies": [
+              "HSTS",
+              "PHP"
+            ],
+            "cdn": "",
+            "websocket": false
+          },
+          {
+            "port": 80,
+            "url": "http://secure.democuda.org:80",
+            "status_code": 200,
+            "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+            "technologies": [
+              "HSTS",
+              "PHP"
+            ],
+            "cdn": "",
+            "websocket": false
+          }
+        ],
+        "technologies": [
+          "HSTS",
+          "PHP"
+        ],
+        "has_cdn": false,
+        "has_websocket": false
+      }
+    ],
+    "dead_hosts": [
+      "dvwa-secure.democuda.org",
+      "dvwa.democuda.org",
+      "test01.democuda.org",
+      "dvwa-insecure.democuda.org",
+      "lab.democuda.org"
+    ],
+    "statistics": {
+      "total_discovered": 10,
+      "filtered_duplicates": 1,
+      "total_related": 9,
+      "total_live": 4,
+      "total_dead": 5,
+      "response_rate": 44.44444444444444,
+      "unique_technologies": 2,
+      "cdn_protected": 0,
+      "websocket_enabled": 0
+    }
+  },
+  "findings_count": 4,
+  "summary": "Discovered 10 subdomain(s), 4 responding to HTTP requests (44.4% response rate)",
+  "details": "Target: insecure.democuda.org\nApex Domain: democuda.org\nScanned Domain: democuda.org\n\nTotal Subdomains Discovered: 10\nLive Hosts: 4\nDead Hosts: 5\nResponse Rate: 44.4%\nUnique Technologies: 2",
+  "issues": [],
+  "executive_summary": [
+    "Discovered 10 related subdomain(s), 4 responding to HTTP requests (44.4% response rate)",
+    "2 successful HTTP response(s) (200 OK) across all hosts",
+    "Most common technologies: HSTS (1), PHP (1)"
+  ],
+  "custom_html": "\n        <div class=\"related-sites-widget\">\n            <div class=\"stats-summary\">\n                <div class=\"stat-card\">\n                    <div class=\"stat-value\">10</div>\n                    <div class=\"stat-label\">Total Subdomains</div>\n                </div>\n                <div class=\"stat-card stat-success\">\n                    <div class=\"stat-value\">4</div>\n                    <div class=\"stat-label\">Live Hosts (44.4%)</div>\n                </div>\n                <div class=\"stat-card stat-dead\">\n                    <div class=\"stat-value\">5</div>\n                    <div class=\"stat-label\">Dead Hosts (55.6%)</div>\n                </div>\n                <div class=\"stat-card\">\n                    <div class=\"stat-value\">2</div>\n                    <div class=\"stat-label\">Technologies</div>\n                </div>\n            </div>\n            \n            <!-- Live Hosts Section -->\n            <div class=\"hosts-section\">\n                <div class=\"section-header\" onclick=\"toggleSection('live-hosts-section')\">\n                    <h3>\u25bc Live Hosts (4)</h3>\n                </div>\n                <div class=\"section-content\" id=\"live-hosts-section\">\n                    <div class=\"pagination-controls\">\n                        <button onclick=\"setLivePageSize(25)\">Show 25</button>\n                        <button onclick=\"setLivePageSize(50)\">Show 50</button>\n                        <button onclick=\"setLivePageSize(100)\">Show 100</button>\n                        <button onclick=\"setLivePageSize(-1)\">Show All</button>\n                        <span id=\"live-pagination-info\"></span>\n                    </div>\n                    <div id=\"live-hosts-container\"></div>\n                    <div class=\"pagination-nav\" id=\"live-pagination-nav\"></div>\n                </div>\n            </div>\n            \n            <!-- Dead Hosts Section -->\n            <div class=\"hosts-section\">\n                <div class=\"section-header\" onclick=\"toggleSection('dead-hosts-section')\">\n                    <h3>\u25b6 Dead Hosts (5)</h3>\n                </div>\n                <div class=\"section-content\" id=\"dead-hosts-section\" style=\"display: none;\">\n                    <div class=\"pagination-controls\">\n                        <button onclick=\"setDeadPageSize(25)\">Show 25</button>\n                        <button onclick=\"setDeadPageSize(50)\">Show 50</button>\n                        <button onclick=\"setDeadPageSize(100)\">Show 100</button>\n                        <button onclick=\"setDeadPageSize(-1)\">Show All</button>\n                        <span id=\"dead-pagination-info\"></span>\n                    </div>\n                    <div id=\"dead-hosts-container\"></div>\n                    <div class=\"pagination-nav\" id=\"dead-pagination-nav\"></div>\n                </div>\n            </div>\n        </div>\n        \n        <script>\n        // Data\n        const liveHostsData = [{\"host\": \"crapi.democuda.org\", \"ports\": [80], \"port_responses\": [{\"port\": 80, \"url\": \"http://crapi.democuda.org:80\", \"status_code\": 404, \"title\": \"\", \"technologies\": [], \"cdn\": \"\", \"websocket\": false}, {\"port\": 80, \"url\": \"http://crapi.democuda.org:80\", \"status_code\": 404, \"title\": \"\", \"technologies\": [], \"cdn\": \"\", \"websocket\": false}], \"technologies\": [], \"has_cdn\": false, \"has_websocket\": false}, {\"host\": \"insecure-js.democuda.org\", \"ports\": [80, 443], \"port_responses\": [{\"port\": 443, \"url\": \"https://insecure-js.democuda.org:443\", \"status_code\": 503, \"title\": \"\", \"technologies\": [], \"cdn\": \"\", \"websocket\": false}, {\"port\": 80, \"url\": \"http://insecure-js.democuda.org:80\", \"status_code\": 503, \"title\": \"\", \"technologies\": [], \"cdn\": \"\", \"websocket\": false}], \"technologies\": [], \"has_cdn\": false, \"has_websocket\": false}, {\"host\": \"secure-js.democuda.org\", \"ports\": [80, 443], \"port_responses\": [{\"port\": 443, \"url\": \"https://secure-js.democuda.org:443\", \"status_code\": 503, \"title\": \"\", \"technologies\": [], \"cdn\": \"\", \"websocket\": false}, {\"port\": 80, \"url\": \"http://secure-js.democuda.org:80\", \"status_code\": 503, \"title\": \"\", \"technologies\": [], \"cdn\": \"\", \"websocket\": false}], \"technologies\": [], \"has_cdn\": false, \"has_websocket\": false}, {\"host\": \"secure.democuda.org\", \"ports\": [80, 443], \"port_responses\": [{\"port\": 443, \"url\": \"https://secure.democuda.org:443\", \"status_code\": 200, \"title\": \"Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*\", \"technologies\": [\"HSTS\", \"PHP\"], \"cdn\": \"\", \"websocket\": false}, {\"port\": 80, \"url\": \"http://secure.democuda.org:80\", \"status_code\": 200, \"title\": \"Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*\", \"technologies\": [\"HSTS\", \"PHP\"], \"cdn\": \"\", \"websocket\": false}], \"technologies\": [\"HSTS\", \"PHP\"], \"has_cdn\": false, \"has_websocket\": false}];\n        const deadHostsData = [\"dvwa-secure.democuda.org\", \"dvwa.democuda.org\", \"test01.democuda.org\", \"dvwa-insecure.democuda.org\", \"lab.democuda.org\"];\n        \n        // State\n        let livePageSize = 25;\n        let liveCurrentPage = 1;\n        let deadPageSize = 25;\n        let deadCurrentPage = 1;\n        \n        // Toggle section visibility\n        function toggleSection(sectionId) {\n            const section = document.getElementById(sectionId);\n            const header = section.previousElementSibling;\n            const h3 = header.querySelector('h3');\n            \n            if (section.style.display === 'none') {\n                section.style.display = 'block';\n                h3.textContent = h3.textContent.replace('\u25b6', '\u25bc');\n            } else {\n                section.style.display = 'none';\n                h3.textContent = h3.textContent.replace('\u25bc', '\u25b6');\n            }\n        }\n        \n        // Live hosts pagination\n        function setLivePageSize(size) {\n            livePageSize = size;\n            liveCurrentPage = 1;\n            renderLiveHosts();\n        }\n        \n        function renderLiveHosts() {\n            const container = document.getElementById('live-hosts-container');\n            const paginationNav = document.getElementById('live-pagination-nav');\n            const paginationInfo = document.getElementById('live-pagination-info');\n            \n            const totalHosts = liveHostsData.length;\n            const itemsPerPage = livePageSize === -1 ? totalHosts : livePageSize;\n            const totalPages = Math.ceil(totalHosts / itemsPerPage);\n            const start = (liveCurrentPage - 1) * itemsPerPage;\n            const end = livePageSize === -1 ? totalHosts : Math.min(start + itemsPerPage, totalHosts);\n            \n            // Render hosts\n            let html = '<div class=\"hosts-list\">';\n            for (let i = start; i < end; i++) {\n                const host = liveHostsData[i];\n                html += renderLiveHost(host);\n            }\n            html += '</div>';\n            container.innerHTML = html;\n            \n            // Render pagination info\n            paginationInfo.textContent = `Showing ${start + 1}-${end} of ${totalHosts}`;\n            \n            // Render pagination controls\n            if (totalPages > 1) {\n                let navHtml = '';\n                if (liveCurrentPage > 1) {\n                    navHtml += '<button onclick=\"changeLivePage(-1)\">Previous</button>';\n                }\n                navHtml += ` Page ${liveCurrentPage} of ${totalPages} `;\n                if (liveCurrentPage < totalPages) {\n                    navHtml += '<button onclick=\"changeLivePage(1)\">Next</button>';\n                }\n                paginationNav.innerHTML = navHtml;\n            } else {\n                paginationNav.innerHTML = '';\n            }\n        }\n        \n        function changeLivePage(delta) {\n            liveCurrentPage += delta;\n            renderLiveHosts();\n        }\n        \n        function renderLiveHost(host) {\n            let html = `\n                <div class=\"host-card\">\n                    <div class=\"host-name\">${host.host}</div>\n                    <div class=\"host-ports\">Ports: ${host.ports.join(', ')}</div>\n            `;\n            \n            // Render each port response\n            for (const resp of host.port_responses) {\n                const statusClass = resp.status_code >= 200 && resp.status_code < 300 ? 'status-success' : \n                                  resp.status_code >= 300 && resp.status_code < 400 ? 'status-redirect' : 'status-error';\n                html += `\n                    <div class=\"port-response\">\n                        <div class=\"port-header\">\n                            <span class=\"port-number\">Port ${resp.port}</span>\n                            <span class=\"status-badge ${statusClass}\">${resp.status_code}</span>\n                        </div>\n                        <div class=\"port-url\"><a href=\"${resp.url}\" target=\"_blank\">${resp.url}</a></div>\n                        <div class=\"port-title\">${resp.title || 'No title'}</div>\n                `;\n                \n                if (resp.technologies && resp.technologies.length > 0) {\n                    html += `<div class=\"port-tech\">\ud83d\udd27 ${resp.technologies.join(', ')}</div>`;\n                }\n                if (resp.cdn) {\n                    html += `<div class=\"port-cdn\">\ud83d\udee1\ufe0f CDN: ${resp.cdn}</div>`;\n                }\n                if (resp.websocket) {\n                    html += `<div class=\"port-websocket\">\ud83d\udd0c WebSocket Enabled</div>`;\n                }\n                \n                html += '</div>';\n            }\n            \n            html += '</div>';\n            return html;\n        }\n        \n        // Dead hosts pagination\n        function setDeadPageSize(size) {\n            deadPageSize = size;\n            deadCurrentPage = 1;\n            renderDeadHosts();\n        }\n        \n        function renderDeadHosts() {\n            const container = document.getElementById('dead-hosts-container');\n            const paginationNav = document.getElementById('dead-pagination-nav');\n            const paginationInfo = document.getElementById('dead-pagination-info');\n            \n            const totalHosts = deadHostsData.length;\n            const itemsPerPage = deadPageSize === -1 ? totalHosts : deadPageSize;\n            const totalPages = Math.ceil(totalHosts / itemsPerPage);\n            const start = (deadCurrentPage - 1) * itemsPerPage;\n            const end = deadPageSize === -1 ? totalHosts : Math.min(start + itemsPerPage, totalHosts);\n            \n            // Render hosts\n            let html = '<div class=\"dead-hosts-list\">';\n            for (let i = start; i < end; i++) {\n                html += `<div class=\"dead-host-item\">${deadHostsData[i]}</div>`;\n            }\n            html += '</div>';\n            container.innerHTML = html;\n            \n            // Render pagination info\n            paginationInfo.textContent = `Showing ${start + 1}-${end} of ${totalHosts}`;\n            \n            // Render pagination controls\n            if (totalPages > 1) {\n                let navHtml = '';\n                if (deadCurrentPage > 1) {\n                    navHtml += '<button onclick=\"changeDeadPage(-1)\">Previous</button>';\n                }\n                navHtml += ` Page ${deadCurrentPage} of ${totalPages} `;\n                if (deadCurrentPage < totalPages) {\n                    navHtml += '<button onclick=\"changeDeadPage(1)\">Next</button>';\n                }\n                paginationNav.innerHTML = navHtml;\n            } else {\n                paginationNav.innerHTML = '';\n            }\n        }\n        \n        function changeDeadPage(delta) {\n            deadCurrentPage += delta;\n            renderDeadHosts();\n        }\n        \n        // Initial render\n        renderLiveHosts();\n        renderDeadHosts();\n        </script>\n        \n        <style>\n        .related-sites-widget {\n            margin: 2em 0;\n        }\n        \n        .stats-summary {\n            display: grid;\n            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));\n            gap: 1em;\n            margin-bottom: 2em;\n        }\n        \n        .stat-card {\n            padding: 1.5em;\n            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n            color: white;\n            border-radius: 8px;\n            text-align: center;\n        }\n        \n        .stat-card.stat-success {\n            background: linear-gradient(135deg, #10b981 0%, #059669 100%);\n        }\n        \n        .stat-card.stat-dead {\n            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);\n        }\n        \n        .stat-value {\n            font-size: 2.5em;\n            font-weight: bold;\n            margin-bottom: 0.25em;\n        }\n        \n        .stat-label {\n            font-size: 0.95em;\n            opacity: 0.95;\n        }\n        \n        .hosts-section {\n            margin: 2em 0;\n            border: 1px solid #e6eef6;\n            border-radius: 8px;\n            overflow: hidden;\n        }\n        \n        .section-header {\n            background: #f8fbfd;\n            padding: 1em 1.5em;\n            cursor: pointer;\n            user-select: none;\n        }\n        \n        .section-header:hover {\n            background: #e6f0fa;\n        }\n        \n        .section-header h3 {\n            margin: 0;\n            color: #075985;\n        }\n        \n        .section-content {\n            padding: 1.5em;\n            background: white;\n        }\n        \n        .pagination-controls {\n            display: flex;\n            gap: 0.5em;\n            align-items: center;\n            margin-bottom: 1em;\n            padding: 1em;\n            background: #f8fbfd;\n            border-radius: 4px;\n        }\n        \n        .pagination-controls button {\n            padding: 0.5em 1em;\n            background: #075985;\n            color: white;\n            border: none;\n            border-radius: 4px;\n            cursor: pointer;\n        }\n        \n        .pagination-controls button:hover {\n            background: #0c4a6e;\n        }\n        \n        #live-pagination-info, #dead-pagination-info {\n            margin-left: auto;\n            color: #075985;\n            font-weight: 500;\n        }\n        \n        .hosts-list {\n            display: flex;\n            flex-direction: column;\n            gap: 1em;\n        }\n        \n        .host-card {\n            border: 1px solid #e6eef6;\n            border-radius: 8px;\n            padding: 1.5em;\n            background: #fafbfc;\n        }\n        \n        .host-name {\n            font-size: 1.2em;\n            font-weight: bold;\n            color: #075985;\n            margin-bottom: 0.5em;\n        }\n        \n        .host-ports {\n            color: #666;\n            font-size: 0.9em;\n            margin-bottom: 1em;\n        }\n        \n        .port-response {\n            margin: 1em 0;\n            padding: 1em;\n            background: white;\n            border-left: 3px solid #075985;\n            border-radius: 4px;\n        }\n        \n        .port-header {\n            display: flex;\n            align-items: center;\n            gap: 1em;\n            margin-bottom: 0.5em;\n        }\n        \n        .port-number {\n            font-weight: bold;\n            color: #075985;\n        }\n        \n        .status-badge {\n            padding: 0.25em 0.75em;\n            border-radius: 4px;\n            font-weight: bold;\n            font-size: 0.9em;\n        }\n        \n        .status-success {\n            background: #dcfce7;\n            color: #166534;\n        }\n        \n        .status-redirect {\n            background: #fef3c7;\n            color: #92400e;\n        }\n        \n        .status-error {\n            background: #fee2e2;\n            color: #991b1b;\n        }\n        \n        .port-url a {\n            color: #075985;\n            text-decoration: none;\n            font-weight: 500;\n        }\n        \n        .port-url a:hover {\n            text-decoration: underline;\n        }\n        \n        .port-title {\n            color: #666;\n            font-size: 0.9em;\n            margin: 0.5em 0;\n        }\n        \n        .port-tech, .port-cdn, .port-websocket {\n            font-size: 0.85em;\n            color: #666;\n            margin: 0.25em 0;\n        }\n        \n        .dead-hosts-list {\n            display: grid;\n            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));\n            gap: 0.5em;\n        }\n        \n        .dead-host-item {\n            padding: 0.75em;\n            background: #f8fbfd;\n            border-radius: 4px;\n            color: #666;\n            font-family: monospace;\n            font-size: 0.9em;\n        }\n        \n        .pagination-nav {\n            margin-top: 1em;\n            padding: 1em;\n            text-align: center;\n            background: #f8fbfd;\n            border-radius: 4px;\n        }\n        \n        .pagination-nav button {\n            padding: 0.5em 1.5em;\n            background: #075985;\n            color: white;\n            border: none;\n            border-radius: 4px;\n            cursor: pointer;\n            margin: 0 0.5em;\n        }\n        \n        .pagination-nav button:hover {\n            background: #0c4a6e;\n        }\n        </style>\n        ",
+  "custom_html_pdf": "<div class=\"pdf-related-sites\"><p><strong>Total Subdomains:</strong> 10</p><p><strong>Live Hosts:</strong> 4 (44.4% response rate)</p><p><strong>Dead Hosts:</strong> 5</p><h4>Live Hosts (Top 25)</h4><table style=\"width:100%; border-collapse: collapse; margin: 1em 0;\"><tr style=\"background: #f0f0f0; border-bottom: 2px solid #333;\"><th style=\"padding: 0.5em; text-align: left;\">Host</th><th style=\"padding: 0.5em; text-align: left;\">Ports</th><th style=\"padding: 0.5em; text-align: left;\">Technologies</th></tr><tr style=\"border-bottom: 1px solid #ddd;\"><td style=\"padding: 0.5em; vertical-align: top;\"><strong>crapi.democuda.org</strong></td><td style=\"padding: 0.5em; vertical-align: top;\">80</td><td style=\"padding: 0.5em; vertical-align: top; font-size: 0.9em;\">Port 80 (404): None<br/>Port 80 (404): None</td></tr><tr style=\"border-bottom: 1px solid #ddd;\"><td style=\"padding: 0.5em; vertical-align: top;\"><strong>insecure-js.democuda.org</strong></td><td style=\"padding: 0.5em; vertical-align: top;\">80, 443</td><td style=\"padding: 0.5em; vertical-align: top; font-size: 0.9em;\">Port 443 (503): None<br/>Port 80 (503): None</td></tr><tr style=\"border-bottom: 1px solid #ddd;\"><td style=\"padding: 0.5em; vertical-align: top;\"><strong>secure-js.democuda.org</strong></td><td style=\"padding: 0.5em; vertical-align: top;\">80, 443</td><td style=\"padding: 0.5em; vertical-align: top; font-size: 0.9em;\">Port 443 (503): None<br/>Port 80 (503): None</td></tr><tr style=\"border-bottom: 1px solid #ddd;\"><td style=\"padding: 0.5em; vertical-align: top;\"><strong>secure.democuda.org</strong></td><td style=\"padding: 0.5em; vertical-align: top;\">80, 443</td><td style=\"padding: 0.5em; vertical-align: top; font-size: 0.9em;\">Port 443 (200): HSTS, PHP<br/>Port 80 (200): HSTS, PHP</td></tr></table><h4>Dead Hosts (5)</h4><p style=\"font-family: monospace; font-size: 0.9em; line-height: 1.6;\">dvwa-secure.democuda.org, dvwa.democuda.org, test01.democuda.org, dvwa-insecure.democuda.org, lab.democuda.org</p></div>",
+  "commands_executed": {
+    "subfinder": "subfinder -v -d democuda.org -o /home/mscollins/baseline/sample-scan-1/related_sites_subfinder.json -json",
+    "httpx": "httpx -l /home/mscollins/baseline/sample-scan-1/related_sites_targets.txt -json -o /home/mscollins/baseline/sample-scan-1/related_sites_httpx.json -silent -timeout 10 -retries 2 -threads 50 -rate-limit 10 -ports 80,443,8080,8443,8000,8888 -follow-redirects -status-code -title -tech-detect -websocket -cdn"
+  },
+  "results_message": "See live and dead host information below"
+}

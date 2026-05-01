@@ -1,0 +1,248 @@
+=== STDOUT ===
+
+                   [1;97m______
+                  [1;97m/      \
+                 [1;97m(  Woof! )
+                  [1;97m\  ____/                      [1;91m)
+                  [1;97m,,                           [1;91m) ([1;93m_
+             [1;93m.-. [1;97m-    [1;92m_______                 [1;91m( [1;93m|__|
+            [1;93m()``; [1;92m|==|_______)                [1;91m.)[1;93m|__|
+            [1;93m/ ('        [1;92m/|\                  [1;91m(  [1;93m|__|
+        [1;93m(  /  )       [1;92m / | \                  [1;91m. [1;93m|__|
+         [1;93m\(_)_))      [1;92m/  |  \                   [1;93m|__|[0m
+
+                    [1;96m~ WAFW00F : [1;94mv2.3.1 ~[1;97m
+    The Web Application Firewall Fingerprinting Toolkit
+    [0m
+[*] Checking https://insecure.democuda.org
+[+] Generic Detection results:
+[-] No WAF detected by the generic detection
+[~] Number of requests: 7
+
+=== STDERR ===
+INFO:wafw00f:The url insecure.democuda.org should start with http:// or https:// .. fixing (might make this unusable)
+INFO:wafw00f:starting wafw00f on https://insecure.democuda.org
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET / HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:14 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'537ea9c6c4d53cee5cb8d2ea8a3d7900\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWFonCQEwcif33EpTFeniLaEqCYAJgmdclnieAABJD0CC-vmWN5RBE-csJbJot3OAyE="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=ajWNmBQJRvSOePpFELmK_dNvAqYl5tAx-Z8D5STNzAQ=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /?cisgshjh=%3Cscript%3Ealert%28%22XSS%22%29%3B%3C%2Fscript%3E&kbnwveul=UNION+SELECT+ALL+FROM+information_schema+AND+%22+or+SLEEP%285%29+or+%22&xxrtwudh=..%2F..%2Fetc%2Fpasswd HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:14 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'af98ff44f624086474f3abe400ac5c45\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWEkBw_TYbMH3-8HBqqpfNc5XyFSwiWE73P0gqDaInuykTwD8d1Euh0tawEfI4Mu6Bg="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=8d89EXUWLjnF4n50FvhH-liH5g6hsfgfS5xtOVtoSoA=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+INFO:wafw00f:Checking for 360WangZhanBao (360 Technologies)
+INFO:wafw00f:Checking for ACE XML Gateway (Cisco)
+INFO:wafw00f:Checking for ASP.NET Generic (Microsoft)
+INFO:wafw00f:Checking for ASPA Firewall (ASPA Engineering Co.)
+INFO:wafw00f:Checking for AWS Elastic Load Balancer (Amazon)
+INFO:wafw00f:Checking for AireeCDN (Airee)
+INFO:wafw00f:Checking for Airlock (Phion/Ergon)
+INFO:wafw00f:Checking for Alert Logic (Alert Logic)
+INFO:wafw00f:Checking for AliYunDun (Alibaba Cloud Computing)
+INFO:wafw00f:Checking for AnYu (AnYu Technologies)
+INFO:wafw00f:Checking for Anquanbao (Anquanbao)
+INFO:wafw00f:Checking for AppWall (Radware)
+INFO:wafw00f:Checking for Approach (Approach)
+INFO:wafw00f:Checking for Armor Defense (Armor)
+INFO:wafw00f:Checking for ArvanCloud (ArvanCloud)
+INFO:wafw00f:Checking for Astra (Czar Securities)
+INFO:wafw00f:Checking for Azion Edge Firewall (Azion)
+INFO:wafw00f:Checking for Azure Application Gateway (Microsoft)
+INFO:wafw00f:Checking for Azure Front Door (Microsoft)
+INFO:wafw00f:Checking for BIG-IP AP Manager (F5 Networks)
+INFO:wafw00f:Checking for BIG-IP AppSec Manager (F5 Networks)
+INFO:wafw00f:Checking for BIG-IP Local Traffic Manager (F5 Networks)
+INFO:wafw00f:Checking for Barikode (Ethic Ninja)
+INFO:wafw00f:Checking for Barracuda (Barracuda Networks)
+INFO:wafw00f:Checking for Bekchy (Faydata Technologies Inc.)
+INFO:wafw00f:Checking for Beluga CDN (Beluga)
+INFO:wafw00f:Checking for BinarySec (BinarySec)
+INFO:wafw00f:Checking for BitNinja (BitNinja)
+INFO:wafw00f:Checking for BlockDoS (BlockDoS)
+INFO:wafw00f:Checking for Bluedon (Bluedon IST)
+INFO:wafw00f:Checking for BulletProof Security Pro (AITpro Security)
+INFO:wafw00f:Checking for CacheFly CDN (CacheFly)
+INFO:wafw00f:Checking for CacheWall (Varnish)
+INFO:wafw00f:Checking for CdnNS Application Gateway (CdnNs/WdidcNet)
+INFO:wafw00f:Checking for ChinaCache Load Balancer (ChinaCache)
+INFO:wafw00f:Checking for Chuang Yu Shield (Yunaq)
+INFO:wafw00f:Checking for Cloud Protector (Rohde & Schwarz CyberSecurity)
+INFO:wafw00f:Checking for Cloudbric (Penta Security)
+INFO:wafw00f:Checking for Cloudflare (Cloudflare Inc.)
+INFO:wafw00f:Checking for Cloudfloor (Cloudfloor DNS)
+INFO:wafw00f:Checking for Cloudfront (Amazon)
+INFO:wafw00f:Checking for Comodo cWatch (Comodo CyberSecurity)
+INFO:wafw00f:Checking for CrawlProtect (Jean-Denis Brun)
+INFO:wafw00f:Checking for DDoS-GUARD (DDOS-GUARD CORP.)
+INFO:wafw00f:Checking for DOSarrest (DOSarrest Internet Security)
+INFO:wafw00f:Checking for DataPower (IBM)
+INFO:wafw00f:Checking for DenyALL (Rohde & Schwarz CyberSecurity)
+INFO:wafw00f:Checking for Distil (Distil Networks)
+INFO:wafw00f:Checking for DotDefender (Applicure Technologies)
+INFO:wafw00f:Checking for DynamicWeb Injection Check (DynamicWeb)
+INFO:wafw00f:Checking for Edgecast (Verizon Digital Media)
+INFO:wafw00f:Checking for Eisoo Cloud Firewall (Eisoo)
+INFO:wafw00f:Checking for Envoy (EnvoyProxy)
+INFO:wafw00f:Checking for Expression Engine (EllisLab)
+INFO:wafw00f:Checking for Fastly (Fastly CDN)
+INFO:wafw00f:Checking for FirePass (F5 Networks)
+INFO:wafw00f:Checking for FortiGate (Fortinet)
+INFO:wafw00f:Checking for FortiGuard (Fortinet)
+INFO:wafw00f:Checking for FortiWeb (Fortinet)
+INFO:wafw00f:Checking for GoDaddy Website Protection (GoDaddy)
+INFO:wafw00f:Checking for Google Cloud App Armor (Google Cloud)
+INFO:wafw00f:Checking for Greywizard (Grey Wizard)
+INFO:wafw00f:Checking for Huawei Cloud Firewall (Huawei)
+INFO:wafw00f:Checking for HyperGuard (Art of Defense)
+INFO:wafw00f:Checking for ISA Server (Microsoft)
+INFO:wafw00f:Checking for Imunify360 (CloudLinux)
+INFO:wafw00f:Checking for Incapsula (Imperva Inc.)
+INFO:wafw00f:Checking for IndusGuard (Indusface)
+INFO:wafw00f:Checking for Instart DX (Instart Logic)
+INFO:wafw00f:Checking for Janusec Application Gateway (Janusec)
+INFO:wafw00f:Checking for Jiasule (Jiasule)
+INFO:wafw00f:Checking for KS-WAF (KnownSec)
+INFO:wafw00f:Checking for Kemp LoadMaster (Progress Software)
+INFO:wafw00f:Checking for KeyCDN (KeyCDN)
+INFO:wafw00f:Checking for Kona SiteDefender (Akamai)
+INFO:wafw00f:Checking for LimeLight CDN (LimeLight)
+INFO:wafw00f:Checking for LiteSpeed (LiteSpeed Technologies)
+INFO:wafw00f:Checking for Malcare (Inactiv)
+INFO:wafw00f:Checking for MaxCDN (MaxCDN)
+INFO:wafw00f:Checking for Mission Control Shield (Mission Control)
+INFO:wafw00f:Checking for ModSecurity (SpiderLabs)
+INFO:wafw00f:Checking for NAXSI (NBS Systems)
+INFO:wafw00f:Checking for NSFocus (NSFocus Global Inc.)
+INFO:wafw00f:Checking for Nemesida (PentestIt)
+INFO:wafw00f:Checking for NetContinuum (Barracuda Networks)
+INFO:wafw00f:Checking for NetScaler AppFirewall (Citrix Systems)
+INFO:wafw00f:Checking for NevisProxy (AdNovum)
+INFO:wafw00f:Checking for Newdefend (NewDefend)
+INFO:wafw00f:Checking for NexusGuard Firewall (NexusGuard)
+INFO:wafw00f:Checking for NinjaFirewall (NinTechNet)
+INFO:wafw00f:Checking for NullDDoS Protection (NullDDoS)
+INFO:wafw00f:Checking for OnMessage Shield (BlackBaud)
+INFO:wafw00f:Checking for Open-Resty Lua Nginx (FLOSS)
+INFO:wafw00f:Checking for Oracle Cloud (Oracle)
+INFO:wafw00f:Checking for PT Application Firewall (Positive Technologies)
+INFO:wafw00f:Checking for Palo Alto Next Gen Firewall (Palo Alto Networks)
+INFO:wafw00f:Checking for PentaWAF (Global Network Services)
+INFO:wafw00f:Checking for PerimeterX (PerimeterX)
+INFO:wafw00f:Checking for PowerCDN (PowerCDN)
+INFO:wafw00f:Checking for Profense (ArmorLogic)
+INFO:wafw00f:Checking for Puhui (Puhui)
+INFO:wafw00f:Checking for Qcloud (Tencent Cloud)
+INFO:wafw00f:Checking for Qiniu (Qiniu CDN)
+INFO:wafw00f:Checking for Qrator (Qrator)
+INFO:wafw00f:Checking for RSFirewall (RSJoomla!)
+INFO:wafw00f:Checking for RayWAF (WebRay Solutions)
+INFO:wafw00f:Checking for Reblaze (Reblaze)
+INFO:wafw00f:Checking for RequestValidationMode (Microsoft)
+INFO:wafw00f:Checking for SEnginx (Neusoft)
+INFO:wafw00f:Checking for Sabre Firewall (Sabre)
+INFO:wafw00f:Checking for Safe3 Web Firewall (Safe3)
+INFO:wafw00f:Checking for Safedog (SafeDog)
+INFO:wafw00f:Checking for Safeline (Chaitin Tech.)
+INFO:wafw00f:Checking for SecKing (SecKing)
+INFO:wafw00f:Checking for SecuPress WP Security (SecuPress)
+INFO:wafw00f:Checking for Secure Entry (United Security Providers)
+INFO:wafw00f:Checking for SecureSphere (Imperva Inc.)
+INFO:wafw00f:Checking for ServerDefender VP (Port80 Software)
+INFO:wafw00f:Checking for Shadow Daemon (Zecure)
+INFO:wafw00f:Checking for Shield Security (One Dollar Plugin)
+INFO:wafw00f:Checking for SiteGround (SiteGround)
+INFO:wafw00f:Checking for SiteGuard (Sakura Inc.)
+INFO:wafw00f:Checking for Sitelock (TrueShield)
+INFO:wafw00f:Checking for SonicWall (Dell)
+INFO:wafw00f:Checking for Squarespace (Squarespace)
+INFO:wafw00f:Checking for SquidProxy IDS (SquidProxy)
+INFO:wafw00f:Checking for StackPath (StackPath)
+INFO:wafw00f:Checking for Sucuri CloudProxy (Sucuri Inc.)
+INFO:wafw00f:Checking for Tencent Cloud Firewall (Tencent Technologies)
+INFO:wafw00f:Checking for Teros (Citrix Systems)
+INFO:wafw00f:Checking for Trafficshield (F5 Networks)
+INFO:wafw00f:Checking for TransIP Web Firewall (TransIP)
+INFO:wafw00f:Checking for UEWaf (UCloud)
+INFO:wafw00f:Checking for URLMaster SecurityCheck (iFinity/DotNetNuke)
+INFO:wafw00f:Checking for URLScan (Microsoft)
+INFO:wafw00f:Checking for UTM Web Protection (Sophos)
+INFO:wafw00f:Checking for Variti (Variti)
+INFO:wafw00f:Checking for Varnish (OWASP)
+INFO:wafw00f:Checking for Viettel (Cloudrity)
+INFO:wafw00f:Checking for VirusDie (VirusDie LLC)
+INFO:wafw00f:Checking for WP Cerber Security (Cerber Tech)
+INFO:wafw00f:Checking for WTS-WAF (WTS)
+INFO:wafw00f:Checking for Wallarm (Wallarm Inc.)
+INFO:wafw00f:Checking for WatchGuard (WatchGuard Technologies)
+INFO:wafw00f:Checking for WebARX (WebARX Security Solutions)
+INFO:wafw00f:Checking for WebKnight (AQTRONIX)
+INFO:wafw00f:Checking for WebLand (WebLand)
+INFO:wafw00f:Checking for WebSEAL (IBM)
+INFO:wafw00f:Checking for WebTotem (WebTotem)
+INFO:wafw00f:Checking for West263 CDN (West263CDN)
+INFO:wafw00f:Checking for Wordfence (Defiant)
+INFO:wafw00f:Checking for XLabs Security WAF (XLabs)
+INFO:wafw00f:Checking for Xuanwudun (Xuanwudun)
+INFO:wafw00f:Checking for YXLink (YxLink Technologies)
+INFO:wafw00f:Checking for Yundun (Yundun)
+INFO:wafw00f:Checking for Yunjiasu (Baidu Cloud Computing)
+INFO:wafw00f:Checking for Yunsuo (Yunsuo)
+INFO:wafw00f:Checking for ZScaler (Accenture)
+INFO:wafw00f:Checking for Zenedge (Zenedge)
+INFO:wafw00f:Checking for aeSecure (aeSecure)
+INFO:wafw00f:Checking for eEye SecureIIS (BeyondTrust)
+INFO:wafw00f:Checking for pkSecurity IDS (pkSec)
+INFO:wafw00f:Checking for wpmudev WAF (Incsub)
+INFO:wafw00f:Checking for Shieldon Firewall (Shieldon.io)
+INFO:wafw00f:Identified WAF: []
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET / HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:14 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'e53805988218e2df3ec9a667cf8d3daa\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWHIANoQyQpxyPT-ST0Cz3nk2X1uxB_MB7PoHEgvU3YpCptSEMsGnsVdPrYvDICUZvE="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=3YGuyHiPmSWFLAoA7lCgdHv5Fynu-afxYOJfLA_E2w4=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET / HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:15 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'cf6abf410f2d94b95b2aa93fe042e792\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWEZ8uwURE_MJbyLVBK67755Q2XlOTkmE9IFTHaDCbgBOueO8o9Gs9yMgtAngZw__tA="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=QHu9d_EQqg0ucD5Iuv4EasmnOe5i7hbjQeyQZ1KIDi4=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /?jtxdihfp=%3Cscript%3Ealert%28%22XSS%22%29%3B%3C%2Fscript%3E HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:15 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'0bfab24a9146a728bbc30689c3ba18b3\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWGG14mnENmKuwSgaaA09S27N83kFT7gYh9f1ztnnfHbaYTOQNZNqb8eda7CWAwWgZ8="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=651xEEv9xgLQknl5pRPUCF55eURsUsU_HzXnQmLEqxA=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET / HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:16 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'31dadc6ef8aef5a6eaa1e9714d15938a\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWGuQeJzUQ6jgheoIIJyYSPeMFhFWc-OQAXxKlEtQCvUyem2ZnJZVp1tVeJ_VuFEpPk="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=HH7U2AwsUULRfQegeZ5VL-Osq5vBtC6OAJlunvKlctU=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): insecure.democuda.org:443
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /?hkhtifef=UNION+SELECT+ALL+FROM+information_schema+AND+%22+or+SLEEP%285%29+or+%22 HTTP/1.1" 302 0
+DEBUG:urllib3.connectionpool:https://insecure.democuda.org:443 "GET /login.php HTTP/1.1" 200 None
+INFO:wafw00f:Request Succeeded
+DEBUG:wafw00f:Headers: {'Date': 'Wed, 29 Apr 2026 17:29:16 GMT', 'Server': 'Apache/2.4.25 (Debian)', 'Expires': 'Tue, 23 Jun 2009 12:00:00 GMT', 'Cache-Control': 'no-cache, must-revalidate', 'Pragma': 'no-cache', 'Vary': 'Accept-Encoding', 'Keep-Alive': 'timeout=5, max=99', 'Connection': 'Keep-Alive', 'Content-Type': 'text/html;charset=utf-8', 'X-FRAME-OPTIONS': 'SAMEORIGIN', 'Transfer-Encoding': 'chunked'}
+
+DEBUG:wafw00f:Content: b'\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n\r\n<html xmlns="http://www.w3.org/1999/xhtml">\r\n\r\n\t<head>\r\n\r\n\t\t<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />\r\n\r\n\t\t<title>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</title>\r\n\r\n\t\t<link rel="stylesheet" type="text/css" href="dvwa/css/login.css" />\r\n\r\n\t</head>\r\n\r\n\t<body>\r\n\r\n\t<div id="wrapper">\r\n\r\n\t<div id="header">\r\n\r\n\t<br />\r\n\r\n\t<p><img src="dvwa/images/login_logo.png" /></p>\r\n\r\n\t<br />\r\n\r\n\t</div> <!--<div id="header">-->\r\n\r\n\t<div id="content">\r\n\r\n\t<form action="login.php" method="post">\r\n\r\n\t<fieldset>\r\n\r\n\t\t\t<label for="user">Username</label> <input type="text" class="loginInput" size="20" name="username"><br />\r\n\r\n\r\n\t\t\t<label for="pass">Password</label> <input type="password" class="loginInput" AUTOCOMPLETE="off" size="20" name="password"><br />\r\n\r\n\t\t\t<br />\r\n\r\n\t\t\t<p class="submit"><input type="submit" value="Login" name="Login"></p>\r\n\r\n\t</fieldset>\r\n\r\n\t<input type=\'hidden\' name=\'user_token\' value=\'436ca002493da3bbcc558fe80e24b5f5\' />\r\n\r\n\t</form>\r\n\r\n\t<br />\r\n\r\n\t\r\n\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\t<br />\r\n\r\n\t<!-- <img src="dvwa/images/RandomStorm.png" /> -->\r\n\t</div > <!--<div id="content">-->\r\n\r\n\t<div id="footer">\r\n\r\n\t<p><a href="http://www.dvwa.co.uk/" target="_blank">Damn Vulnerable Web Application (DVWA)</a></p>\r\n\r\n\t</div> <!--<div id="footer"> -->\r\n\r\n\t</div> <!--<div id="wrapper"> -->\r\n\r\n\t<script type="text/javascript" src="/bnith__a5HB0grmlWFwkr-8SIvR9IjTnJWudCa9pvpOQCFtrH2hBDY7o-JsV0UWzy6q6pP0KcouLExmcuQ="></script> <script language="JavaScript" type="text/javascript">const _0x35e8=[\'visitorId\',\'18127kSXadA\',\'356575NPKVMA\',\'7306axxsAH\',\'get\',\'657833TzFjkt\',\'717302TQdBjl\',\'34lMHocq\',\'x-bni-rncf=vdhesZv6-2kXUe0xXYRSEoI0JIB0nJ41dmv136eBfa4=;expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'61XMWbpU\',\'cookie\',\';expires=Thu, 01 Jan 2037 00:00:00 UTC;path=/;\',\'then\',\'651866OSUgMa\',\'811155xdatvf\',\'x-bni-fpc=\'];function _0x258e(_0x5954fe,_0x43567d){return _0x258e=function(_0x35e81f,_0x258e26){_0x35e81f=_0x35e81f-0x179;let _0x1280dc=_0x35e8[_0x35e81f];return _0x1280dc;},_0x258e(_0x5954fe,_0x43567d);}(function(_0x5674de,_0xdcf1af){const _0x512a29=_0x258e;while(!![]){try{const _0x55f636=parseInt(_0x512a29(0x17b))+-parseInt(_0x512a29(0x179))*parseInt(_0x512a29(0x17f))+-parseInt(_0x512a29(0x183))+-parseInt(_0x512a29(0x184))+parseInt(_0x512a29(0x187))*parseInt(_0x512a29(0x17d))+parseInt(_0x512a29(0x188))+parseInt(_0x512a29(0x17c));if(_0x55f636===_0xdcf1af)break;else _0x5674de[\'push\'](_0x5674de[\'shift\']());}catch(_0xd3a1ce){_0x5674de[\'push\'](_0x5674de[\'shift\']());}}}(_0x35e8,0x6b42d));function getClientIdentity(){const _0x47e86b=_0x258e,_0x448fbc=FingerprintJS[\'load\']();_0x448fbc[_0x47e86b(0x182)](_0x4bb924=>_0x4bb924[_0x47e86b(0x17a)]())[_0x47e86b(0x182)](_0x2f8ca1=>{const _0x44872c=_0x47e86b,_0xa48f50=_0x2f8ca1[_0x44872c(0x186)];document[_0x44872c(0x180)]=_0x44872c(0x185)+_0xa48f50+_0x44872c(0x181),document[_0x44872c(0x180)]=_0x44872c(0x17e);});}getClientIdentity();</script></body>\n\r\n\r\n</html>'
+
+INFO:wafw00f:Found: 1 matches.
+DEBUG:wafw00f:Exporting data in json format to file: /home/mscollins/baseline/sample-scan-1/wafw00f.json
+
