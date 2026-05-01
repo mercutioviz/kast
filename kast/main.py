@@ -270,7 +270,10 @@ def main():
     
     # Handle --zap-profile shortcut
     if args.zap_profile:
-        profile_path = f"kast/config/zap_automation_{args.zap_profile}.yaml"
+        # Resolve relative to the kast package directory, not the cwd.
+        # This makes --zap-profile work regardless of where kast is invoked from.
+        package_dir = Path(__file__).resolve().parent
+        profile_path = str(package_dir / "config" / f"zap_automation_{args.zap_profile}.yaml")
         log.info(f"Using ZAP profile: {args.zap_profile} ({profile_path})")
         console.print(f"[cyan]Using ZAP profile:[/cyan] {args.zap_profile} ({profile_path})")
         
