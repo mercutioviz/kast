@@ -31,6 +31,7 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 
+from kast.cli.plugins import plugins
 from kast.config_manager import ConfigManager
 from kast.core.atomic import write_json_atomic
 from kast.orchestrator import ScannerOrchestrator
@@ -127,78 +128,10 @@ def version() -> None:
 
 
 # ---------------------------------------------------------------------------
-# plugins
+# plugins (group lives in kast/cli/plugins.py)
 # ---------------------------------------------------------------------------
 
-
-@cli.group()
-def plugins() -> None:
-    """Plugin management commands."""
-    pass
-
-
-@plugins.command(name="list")
-@click.option("--json", "json_output", is_flag=True,
-              help="Emit machine-readable JSON instead of formatted text.")
-def plugins_list(json_output: bool) -> None:
-    """List all available plugins."""
-    logging.basicConfig(level=logging.CRITICAL)
-    log = logging.getLogger("kast")
-    registry = PluginRegistry(log)
-
-    instances = registry.all_instances()
-    if json_output:
-        manifest = [
-            {
-                "name": p.name,
-                "display_name": p.display_name,
-                "description": p.description,
-                "scan_type": p.scan_type,
-                "priority": p.priority,
-                "available": p.is_available(),
-                "website_url": getattr(p, "website_url", None),
-            }
-            for p in instances
-        ]
-        click.echo(json.dumps({"kast_version": KAST_VERSION, "plugins": manifest}, indent=2))
-        return
-
-    console.print("[bold cyan]Available KAST Plugins:[/bold cyan]\n")
-    if not instances:
-        console.print("[yellow]No plugins found.[/yellow]")
-        return
-    for p in instances:
-        avail = p.is_available()
-        status = "[green]✓[/green]" if avail else "[red]✗[/red]"
-        console.print(
-            f"{status} [bold]{p.name}[/bold] (priority: {p.priority}, type: {p.scan_type})"
-        )
-        console.print(f"  {p.description}")
-        if not avail:
-            console.print("  [dim red]Tool not available in PATH[/dim red]")
-        console.print()
-
-
-@plugins.command(name="deps")
-@click.option("-m", "--mode", type=click.Choice(["active", "passive", "both"]),
-              default="passive", help="Scan mode filter.")
-@click.option("--config", "config_path", type=click.Path(),
-              help="Path to configuration file.")
-@click.option("--set", "set_overrides", multiple=True,
-              help="Override config value: --set plugin.key=value")
-def plugins_deps(mode: str, config_path: str | None,
-                 set_overrides: tuple[str, ...]) -> None:
-    """Show plugin dependency tree filtered by scan mode."""
-    from kast.utils import show_dependency_tree
-
-    log = logging.getLogger("kast")
-    args = _make_args_namespace(mode=mode, config=config_path, set=list(set_overrides))
-
-    config_manager = ConfigManager(cli_args=args, logger=log)
-    config_manager.load(config_path)
-    registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
-    tree_output = show_dependency_tree(registry, mode, log)
-    console.print(tree_output)
+cli.add_command(plugins)
 
 
 # ---------------------------------------------------------------------------
