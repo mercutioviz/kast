@@ -39,6 +39,7 @@ from rich.console import Console
 from kast.cli._shared import make_args_namespace as _make_args_namespace
 from kast.cli.doctor import doctor
 from kast.cli.plugins import plugins
+from kast.cli.registry import registry as registry_cmd
 from kast.cli.scan import scan
 from kast.config_manager import ConfigManager
 from kast.registry import PluginRegistry
@@ -89,6 +90,7 @@ def version() -> None:
 cli.add_command(plugins)
 cli.add_command(doctor)
 cli.add_command(scan)
+cli.add_command(registry_cmd)
 
 
 # ---------------------------------------------------------------------------
