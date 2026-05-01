@@ -14,9 +14,9 @@ import time
 from rich.console import Console
 from rich.logging import RichHandler
 
-from kast.utils import discover_plugins
 from kast.orchestrator import ScannerOrchestrator
 from kast.config_manager import ConfigManager
+from kast.registry import PluginRegistry
 
 # Set up rich console for CLI output
 console = Console()
@@ -184,40 +184,29 @@ def list_plugins():
     # Create a minimal logger for plugin discovery
     logging.basicConfig(level=logging.CRITICAL)
     log = logging.getLogger("kast")
-    
-    # Discover plugins
-    plugins = discover_plugins(log)
-    
+
+    # Use a PluginRegistry without cli_args/config_manager — list-plugins
+    # only needs metadata, and the registry's MinimalArgs stand-in is enough.
+    registry = PluginRegistry(log)
+
     console.print("[bold cyan]Available KAST Plugins:[/bold cyan]\n")
-    
-    if not plugins:
+
+    instances = registry.all_instances()
+    if not instances:
         console.print("[yellow]No plugins found.[/yellow]")
         return
-    
-    # Display each plugin with its description
-    for plugin_class in plugins:
-        # Instantiate plugin with minimal args to get metadata
-        class MinimalArgs:
-            verbose = False
-        
-        try:
-            plugin_instance = plugin_class(MinimalArgs())
-            name = plugin_instance.name
-            description = plugin_instance.description
-            scan_type = plugin_instance.scan_type
-            priority = plugin_instance.priority
-            available = plugin_instance.is_available()
-            
-            # Format availability status
-            status = "[green]✓[/green]" if available else "[red]✗[/red]"
-            
-            console.print(f"{status} [bold]{name}[/bold] (priority: {priority}, type: {scan_type})")
-            console.print(f"  {description}")
-            if not available:
-                console.print(f"  [dim red]Tool not available in PATH[/dim red]")
-            console.print()
-        except Exception as e:
-            console.print(f"[red]Error loading plugin {plugin_class.__name__}: {e}[/red]\n")
+
+    for plugin in instances:
+        available = plugin.is_available()
+        status = "[green]✓[/green]" if available else "[red]✗[/red]"
+        console.print(
+            f"{status} [bold]{plugin.name}[/bold] "
+            f"(priority: {plugin.priority}, type: {plugin.scan_type})"
+        )
+        console.print(f"  {plugin.description}")
+        if not available:
+            console.print(f"  [dim red]Tool not available in PATH[/dim red]")
+        console.print()
 
 def write_kast_info(output_dir, kast_info):
     """
@@ -252,16 +241,17 @@ def main():
     # Handle --show-deps flag
     if args.show_deps:
         from kast.utils import show_dependency_tree
-        
+
         # Initialize configuration manager
         config_manager = ConfigManager(cli_args=args, logger=log)
         config_manager.load(args.config)
-        
-        # Discover plugins
-        plugins = discover_plugins(log)
-        
+
+        # Build the registry once (handles discovery + instantiation +
+        # legacy __init__ shape fallback).
+        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
+
         # Generate and display dependency tree
-        tree_output = show_dependency_tree(plugins, args.mode, log, config_manager)
+        tree_output = show_dependency_tree(registry, args.mode, log)
         console.print(tree_output)
         sys.exit(0)
     
@@ -279,71 +269,30 @@ def main():
             args.set = []
         args.set.append(f"zap.zap_config.automation_plan={profile_path}")
     
-    # Handle config-only commands (exit after execution, no target required)
+    # Handle config-only commands (exit after execution, no target required).
+    # Each of these needs plugin schemas registered with the config manager;
+    # PluginRegistry.all_instances() forces instantiation, which (via base.py)
+    # registers each plugin's schema. Phase A5 will move schemas to class
+    # attributes so this implicit "instantiate to register" step goes away.
     if args.config_schema:
-        # Discover plugins to register their schemas
-        plugins = discover_plugins(log)
-        for plugin_cls in plugins:
-            class MinimalArgs:
-                verbose = False
-            try:
-                # Try new-style (with config_manager), fall back to old-style
-                try:
-                    plugin_instance = plugin_cls(MinimalArgs(), config_manager)
-                except TypeError:
-                    # Old-style plugin that doesn't accept config_manager
-                    plugin_instance = plugin_cls(MinimalArgs())
-                # Plugin will register its schema during init (if new-style)
-            except Exception as e:
-                log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
-        
-        # Export schema
+        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
+        registry.all_instances()  # registers schemas as a side-effect of __init__
         schema = config_manager.export_schema(format="json")
         console.print(schema)
         sys.exit(0)
-    
+
     if args.config_init:
-        # Discover plugins to register their schemas first
-        plugins = discover_plugins(log)
-        for plugin_cls in plugins:
-            class MinimalArgs:
-                verbose = False
-            try:
-                # Try new-style (with config_manager), fall back to old-style
-                try:
-                    plugin_instance = plugin_cls(MinimalArgs(), config_manager)
-                except TypeError:
-                    # Old-style plugin that doesn't accept config_manager
-                    plugin_instance = plugin_cls(MinimalArgs())
-            except Exception as e:
-                log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
-        
-        # Create default config
+        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
+        registry.all_instances()
         config_path = config_manager.create_default_config()
         console.print(f"[green]Created default configuration at:[/green] {config_path}")
         console.print("[cyan]Edit this file to customize plugin settings.[/cyan]")
         sys.exit(0)
-    
+
     if args.config_show:
-        # Load configuration
         config_manager.load(args.config)
-        
-        # Discover plugins to register their schemas
-        plugins = discover_plugins(log)
-        for plugin_cls in plugins:
-            class MinimalArgs:
-                verbose = False
-            try:
-                # Try new-style (with config_manager), fall back to old-style
-                try:
-                    plugin_instance = plugin_cls(MinimalArgs(), config_manager)
-                except TypeError:
-                    # Old-style plugin that doesn't accept config_manager
-                    plugin_instance = plugin_cls(MinimalArgs())
-            except Exception as e:
-                log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
-        
-        # Show current config
+        registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
+        registry.all_instances()
         config_yaml = config_manager.show_current_config()
         console.print("[bold cyan]Current Configuration:[/bold cyan]")
         console.print(config_yaml)
@@ -446,41 +395,44 @@ def main():
     else:
         report_only=False
 
-    # Discover plugins and register their schemas
-    plugins = discover_plugins(log)
-    log.info(f"Discovered {len(plugins)} plugins: {[p.__name__ for p in plugins]}")
+    # Build the plugin registry once (discovery + instantiation + schema
+    # registration happen inside). All downstream code consumes instances.
+    registry = PluginRegistry(log, cli_args=args, config_manager=config_manager)
+    all_instances = registry.all_instances()
+    log.info(
+        f"Discovered {len(all_instances)} plugins: "
+        f"{[p.name for p in all_instances]}"
+    )
 
     # Filter plugins if --run-only is specified
     if args.run_only:
-        requested_plugins = [name.strip() for name in args.run_only.split(',')]
-        log.info(f"--run-only specified: {requested_plugins}")
-        
-        # Create a mapping of plugin names to plugin classes
-        plugin_map = {}
-        for plugin_cls in plugins:
-            class MinimalArgs:
-                verbose = False
-            try:
-                plugin_instance = plugin_cls(MinimalArgs())
-                plugin_map[plugin_instance.name] = plugin_cls
-            except Exception as e:
-                log.error(f"Error instantiating plugin {plugin_cls.__name__}: {e}")
-        
-        # Validate requested plugins
-        invalid_plugins = [name for name in requested_plugins if name not in plugin_map]
-        
-        if invalid_plugins:
-            console.print(f"[bold red]Error:[/bold red] Invalid plugin name(s): {', '.join(invalid_plugins)}")
+        requested_names = [name.strip() for name in args.run_only.split(',')]
+        log.info(f"--run-only specified: {requested_names}")
+
+        available_names = {p.name for p in all_instances}
+        invalid_names = [name for name in requested_names if name not in available_names]
+
+        if invalid_names:
+            console.print(
+                f"[bold red]Error:[/bold red] Invalid plugin name(s): "
+                f"{', '.join(invalid_names)}"
+            )
             console.print()
             list_plugins()
             sys.exit(1)
-        
-        # Filter to only requested plugins
-        plugins = [plugin_map[name] for name in requested_plugins if name in plugin_map]
-        log.info(f"Filtered to {len(plugins)} plugin(s): {[p.__name__ for p in plugins]}")
 
-    # Launch orchestrator with config manager
-    orchestrator = ScannerOrchestrator(plugins, args, output_dir, log, report_only, config_manager)
+        selected_plugins = [registry.get(name) for name in requested_names]
+        log.info(
+            f"Filtered to {len(selected_plugins)} plugin(s): "
+            f"{[p.name for p in selected_plugins]}"
+        )
+    else:
+        selected_plugins = all_instances
+
+    # Launch orchestrator with the already-instantiated plugins.
+    orchestrator = ScannerOrchestrator(
+        selected_plugins, args, output_dir, log, report_only
+    )
     results = orchestrator.run()
     
     # Capture end time

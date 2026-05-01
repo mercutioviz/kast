@@ -38,14 +38,13 @@ def discover_plugins(log):
     plugins.sort(key=lambda x: x.priority)    
     return plugins
 
-def show_dependency_tree(plugins, scan_mode, log, config_manager=None):
+def show_dependency_tree(registry, scan_mode, log):
     """
     Display a tree-like view of plugin dependencies, filtered by scan mode.
-    
-    :param plugins: List of plugin classes
+
+    :param registry: PluginRegistry instance providing plugin instances
     :param scan_mode: Scan mode filter ('active', 'passive', or 'both')
-    :param log: Logger instance
-    :param config_manager: Optional ConfigManager instance for plugin initialization
+    :param log: Logger instance (kept for parity; instances are already loaded)
     :return: Formatted string containing dependency tree
     """
     output_lines = []
@@ -53,60 +52,41 @@ def show_dependency_tree(plugins, scan_mode, log, config_manager=None):
     output_lines.append("KAST Plugin Dependency Tree")
     output_lines.append("="*70)
     output_lines.append(f"Scan Mode: {scan_mode}\n")
-    
-    # Minimal args for plugin instantiation
-    class MinimalArgs:
-        verbose = False
-        mode = scan_mode
-    
-    minimal_args = MinimalArgs()
-    
-    # Collect plugin metadata
+
+    # Collect plugin metadata directly from registry instances. The registry
+    # already handled discovery and instantiation (including the legacy
+    # __init__(cli_args) fallback), so this loop has no try/except dance.
     plugin_metadata = []
     filtered_out = []
-    
-    for plugin_cls in plugins:
-        try:
-            # Instantiate plugin to get metadata
-            if config_manager:
-                try:
-                    plugin_instance = plugin_cls(minimal_args, config_manager)
-                except TypeError:
-                    # Fallback for old-style plugins
-                    plugin_instance = plugin_cls(minimal_args)
-            else:
-                plugin_instance = plugin_cls(minimal_args)
-            
-            plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
-            
-            # Filter by scan mode
-            should_include = (
-                scan_mode == "both" or 
-                plugin_scan_type == scan_mode
-            )
-            
-            if not should_include:
-                filtered_out.append({
-                    'name': plugin_instance.name,
-                    'scan_type': plugin_scan_type
-                })
-                continue
-            
-            # Collect metadata
-            metadata = {
+
+    for plugin_instance in registry.all_instances():
+        plugin_scan_type = getattr(plugin_instance, "scan_type", "passive")
+
+        # Filter by scan mode
+        should_include = (
+            scan_mode == "both" or
+            plugin_scan_type == scan_mode
+        )
+
+        if not should_include:
+            filtered_out.append({
                 'name': plugin_instance.name,
-                'display_name': getattr(plugin_instance, 'display_name', plugin_instance.name),
-                'description': plugin_instance.description,
-                'priority': plugin_instance.priority,
-                'scan_type': plugin_scan_type,
-                'available': plugin_instance.is_available(),
-                'dependencies': getattr(plugin_instance, 'dependencies', []),
-                'instance': plugin_instance
-            }
-            plugin_metadata.append(metadata)
-            
-        except Exception as e:
-            log.error(f"Error loading plugin {plugin_cls.__name__}: {e}")
+                'scan_type': plugin_scan_type
+            })
+            continue
+
+        # Collect metadata
+        metadata = {
+            'name': plugin_instance.name,
+            'display_name': getattr(plugin_instance, 'display_name', plugin_instance.name),
+            'description': plugin_instance.description,
+            'priority': plugin_instance.priority,
+            'scan_type': plugin_scan_type,
+            'available': plugin_instance.is_available(),
+            'dependencies': getattr(plugin_instance, 'dependencies', []),
+            'instance': plugin_instance
+        }
+        plugin_metadata.append(metadata)
     
     # Sort by priority (already sorted, but ensure consistency)
     plugin_metadata.sort(key=lambda x: x['priority'])
