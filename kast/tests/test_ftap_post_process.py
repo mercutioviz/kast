@@ -217,7 +217,15 @@ class TestFtapPostProcess(unittest.TestCase):
         self.assertEqual(entry["severity"], "High")
         self.assertEqual(entry["category"], "Access Control")
         self.assertIn("WAF", entry["remediation"])
-        self.assertIn("rate-limiting", entry["remediation"])
+        # The remediation text uses "rate limiting" (two words) — earlier
+        # versions had "rate-limiting" (hyphenated). Either spelling is
+        # acceptable here; we just want to confirm the concept is present.
+        self.assertTrue(
+            "rate limiting" in entry["remediation"]
+            or "rate-limiting" in entry["remediation"],
+            f"Expected 'rate limiting' or 'rate-limiting' in remediation; "
+            f"got: {entry['remediation']!r}",
+        )
 
 
 if __name__ == '__main__':

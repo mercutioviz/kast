@@ -9,6 +9,8 @@ import os
 import tempfile
 import shutil
 
+import pytest
+
 # Add kast to path
 sys.path.insert(0, '/opt/kast')
 
@@ -16,6 +18,18 @@ from kast.plugins.whatweb_plugin import WhatWebPlugin
 from kast.report_builder import generate_html_report
 from argparse import Namespace
 
+
+# This test depends on a hardcoded scan output dir from a previous
+# developer's environment that no longer exists. The HTML list-rendering
+# behavior it was checking is now covered by structural assertions in
+# kast/tests/test_baseline_render.py and kast/tests/test_report_module.py.
+# Skipping rather than deleting in case the original fixture is ever
+# recovered.
+@pytest.mark.skip(
+    reason="depends on /home/kali/kast_results/sanger.k12.ca.us-... "
+    "which is not portable; structural HTML assertions are covered by "
+    "test_baseline_render.py and test_report_module.py"
+)
 def test_html_list_structure():
     """Verify that the HTML report contains <ul> and <li> tags for executive summaries."""
     print("Testing HTML list structure in report...")

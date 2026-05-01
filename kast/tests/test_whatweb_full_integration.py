@@ -16,6 +16,18 @@ from kast.plugins.whatweb_plugin import WhatWebPlugin
 from kast.report_builder import generate_html_report
 from argparse import Namespace
 
+import pytest
+
+
+# Same hardcoded-path situation as test_html_list_structure: this test
+# depends on /home/kali/kast_results/sanger.k12.ca.us-... which doesn't
+# travel. The whatweb redirect-detection logic it exercised is covered
+# by test_whatweb_redirect.py (which uses an inline fixture).
+@pytest.mark.skip(
+    reason="depends on /home/kali/kast_results/sanger.k12.ca.us-... "
+    "which is not portable; whatweb redirect detection is covered by "
+    "test_whatweb_redirect.py"
+)
 def test_full_integration():
     """Test the complete flow from whatweb data to HTML report."""
     print("Testing full integration of WhatWeb redirect detection...")
