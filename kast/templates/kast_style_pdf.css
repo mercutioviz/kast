@@ -534,8 +534,8 @@ body {
 .tool-row {
     margin-bottom: 0.5em;
     font-size: 10pt;
-    overflow-wrap: break-word;
-    word-break: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .tool-row:last-child {
@@ -544,8 +544,8 @@ body {
 
 .tool-summary {
     margin-bottom: 1em;
-    overflow-wrap: break-word;
-    word-break: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .tool-custom {
@@ -566,8 +566,8 @@ body {
     font-size: 9pt;
     line-height: 1.5;
     overflow: hidden;
-    overflow-wrap: break-word;
-    word-break: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .json-object,
@@ -578,14 +578,14 @@ body {
 .json-key {
     color: #0a4a63;
     font-weight: 600;
-    overflow-wrap: break-word;
-    word-break: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .json-string { 
     color: #087f5b;
-    overflow-wrap: break-word;
-    word-break: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     max-width: 100%;
     display: inline-block;
 }
@@ -595,8 +595,8 @@ body {
 .json-truncated { color: #868e96; font-style: italic; }
 
 .json-item {
-    overflow-wrap: break-word;
-    word-break: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 /* ===== FOOTER ===== */
@@ -881,4 +881,17 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 3px;
     font-size: 9pt;
     color: #495057;
+}
+
+/* ===== A9: long-string wrapping (replaces v2 add_word_break_opportunities) =====
+   Long URLs and other strings without natural break opportunities used to
+   overflow PDF table cells / paragraphs. v2 worked around this by injecting
+   <wbr> tags into the rendered text. v3 lets CSS handle it: overflow-wrap:
+   anywhere allows the renderer to break inside an unbroken token if needed. */
+.report-paragraph,
+.issue-description,
+.summary-block,
+td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }

@@ -302,6 +302,9 @@ code {
 .report-paragraph {
     margin: 0.5em 0;
     line-height: 1.5;
+    /* A9: replace v2's <wbr>-injection. Lets very long unbroken strings
+       (typically URLs) wrap rather than overflow the container. */
+    overflow-wrap: anywhere;
 }
 
 .executive-summary-list {
@@ -1116,7 +1119,7 @@ code {
     border: 1px solid #e1e4e8;
     border-radius: 4px;
     padding: 1em;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
     white-space: pre-wrap;
     page-break-inside: auto;
   }

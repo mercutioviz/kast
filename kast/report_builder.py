@@ -19,7 +19,6 @@ from kast.report import (
 
 # Helpers that some callers (and tests) imported directly from report_builder.
 from kast.report.helpers import (
-    add_word_break_opportunities,
     format_json_for_pdf,
     format_multiline_text,
     format_multiline_text_as_list,
@@ -39,7 +38,6 @@ __all__ = [
     "generate_pdf_report",
     "calculate_waf_statistics",
     # Helpers
-    "add_word_break_opportunities",
     "format_json_for_pdf",
     "format_multiline_text",
     "format_multiline_text_as_list",

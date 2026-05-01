@@ -159,38 +159,14 @@ def write_missing_issues_report(missing_issues, output_dir, target=None):
 # -- text formatting helpers -------------------------------------------------
 
 
-def add_word_break_opportunities(text):
-    """Insert ``<wbr>`` after URL-like delimiters in long strings.
-
-    NOTE: A9 will replace this with a CSS rule (``overflow-wrap: anywhere;
-    word-break: break-word;``) on URL cells in ``kast_style_pdf.css``.
-    Tracking the existing call sites here so the function can be deleted
-    in one go.
-    """
-    if not text or len(text) < 80:
-        return text
-
-    result = []
-    inside_tag = False
-    for char in text:
-        if char == "<":
-            inside_tag = True
-            result.append(char)
-        elif char == ">":
-            inside_tag = False
-            result.append(char)
-        elif not inside_tag and char in [
-            "/", "?", "&", "=", "-", "_", ".", ":", ";", ",",
-        ]:
-            result.append(char)
-            result.append("<wbr>")
-        else:
-            result.append(char)
-    return "".join(result)
-
-
 def format_multiline_text(text):
-    """Convert newline-separated text or a list into ``<p>`` paragraphs."""
+    """Convert newline-separated text or a list into ``<p>`` paragraphs.
+
+    Long-string wrapping (URLs etc.) is handled by CSS — see the
+    ``overflow-wrap: anywhere`` rules on ``.report-paragraph`` in
+    ``kast_style.css`` / ``kast_style_pdf.css``. v2's ``<wbr>``-injection
+    helper was retired in Phase A9.
+    """
     if not text:
         return ""
 
@@ -199,9 +175,7 @@ def format_multiline_text(text):
     out = []
     for p in paragraphs:
         if str(p).strip():
-            out.append(
-                f'<p class="report-paragraph">{add_word_break_opportunities(str(p))}</p>'
-            )
+            out.append(f'<p class="report-paragraph">{str(p)}</p>')
     return "\n".join(out)
 
 
@@ -295,10 +269,9 @@ def format_json_for_pdf(data, max_depth=3, current_depth=0):
             )
         elif isinstance(data, str):
             escaped = data.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            if len(escaped) > 80:
-                # NOTE: also a target for A9 (CSS-based wrap rather than <wbr>).
-                for char in ["/", "?", "&", "=", "-", "_", ".", ":", ";", ","]:
-                    escaped = escaped.replace(char, char + "<wbr>")
+            # A9: long-string wrapping handled by CSS (.json-string has
+            # overflow-wrap: anywhere in kast_style_pdf.css). The 500-char
+            # truncation remains as a content-length safety net for the PDF.
             if len(escaped) > 500:
                 escaped = escaped[:500] + "..."
             return f'<span class="json-string">"{escaped}"</span>'
