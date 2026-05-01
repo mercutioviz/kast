@@ -2,7 +2,7 @@
   "plugin-name": "ai_chatbot_detection",
   "plugin-description": "Detects indicators of agentic AI chatbots from passive scan data.",
   "plugin-display-name": "AI Chatbot Detection",
-  "timestamp": "2026-05-01T20:52:06.002+00:00",
+  "timestamp": "2026-05-01T21:25:06.028+00:00",
   "target": "insecure.democuda.org",
   "findings": {
     "detections": []

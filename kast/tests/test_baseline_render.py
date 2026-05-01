@@ -52,7 +52,11 @@ def test_baseline_directory_exists():
     assert BASELINE_DIR.is_dir(), f"Missing baseline at {BASELINE_DIR}"
     assert (BASELINE_DIR / "kast_report.html").exists()
     assert (BASELINE_DIR / "kast_info.json").exists()
-    assert (BASELINE_DIR / "missing_issue_ids.json").exists()
+    # Note: missing_issue_ids.json is NOT asserted to exist. The baseline
+    # was refreshed after promoting BEAST/BEAST_CBC_TLS1/fallback_SCSV to
+    # the registry, so a clean render produces no missing-issues file.
+    # If a future plugin emits a brand-new unregistered ID, the file
+    # will reappear here on the next baseline refresh.
 
     processed_files = list(BASELINE_DIR.glob("*_processed.json"))
     assert len(processed_files) == 10, (
@@ -108,15 +112,18 @@ def test_all_10_plugins_present():
     assert len(data["detailed_results"]) == 10
 
 
-def test_missing_issues_match_baseline():
-    """The baseline has a known set of unknown-to-registry issue IDs."""
+def test_missing_issues_is_empty_after_promotion():
+    """Post-promotion the registry covers every issue ID emitted by the
+    baseline plugins. If a future plugin emits a brand-new unknown ID,
+    this fails and prompts a registry update or baseline refresh.
+    """
     data = collect_report_data(_load_plugin_results(), target="example.com")
-    # Snapshot at end of Phase A: BEAST, BEAST_CBC_TLS1, fallback_SCSV
-    # were missing from the registry. If the registry is later updated to
-    # include them, this assertion will fail and you should refresh both
-    # the registry and this baseline (see baseline README).
-    missing = set(data["missing_issues"].keys())
-    assert "BEAST" in missing or len(missing) >= 0  # tolerant if registry is updated
+    missing = data["missing_issues"]
+    assert missing == {}, (
+        f"Baseline plugins emitted issue IDs not present in the registry: "
+        f"{sorted(missing.keys())}. Either add them to "
+        f"kast/data/issue_registry.json (preferred) or refresh the baseline."
+    )
 
 
 # -- rendered HTML invariants -----------------------------------------------

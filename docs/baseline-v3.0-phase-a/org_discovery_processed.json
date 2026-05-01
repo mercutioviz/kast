@@ -2,7 +2,7 @@
   "plugin-name": "org_discovery",
   "plugin-description": "Discovers public-facing web domains belonging to the same organization",
   "plugin-display-name": "Organization Domain Discovery",
-  "timestamp": "2026-05-01T20:52:05.923+00:00",
+  "timestamp": "2026-05-01T21:25:05.953+00:00",
   "executive_summary": "Discovered 0 domain(s) potentially belonging to the same organization via passive sources.",
   "findings_count": 0,
   "findings": {

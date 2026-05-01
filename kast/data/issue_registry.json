@@ -714,5 +714,38 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "4-6 weeks",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "BEAST": {
+    "display_name": "BEAST Vulnerability",
+    "description": "BEAST (Browser Exploit Against SSL/TLS) is a chosen-plaintext attack against CBC-mode ciphers in TLS 1.0 and earlier. While modern browsers mitigate the attack client-side, servers that still support TLS 1.0 with CBC ciphers leave legacy and non-browser clients exposed.",
+    "remediation": "Disable TLS 1.0 (and SSL 3.0 if still enabled) and require TLS 1.2 or TLS 1.3. A WAF can enforce minimum TLS version at the edge without requiring origin server reconfiguration.",
+    "severity": "Medium",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "BEAST_CBC_TLS1": {
+    "display_name": "BEAST (TLS 1.0 CBC ciphers)",
+    "description": "Testssl-specific identifier for the BEAST vulnerability against CBC-mode ciphers under TLS 1.0. Same root cause as BEAST: chosen-plaintext attack feasible when CBC ciphers are negotiated under TLS 1.0.",
+    "remediation": "Disable CBC-mode ciphers under TLS 1.0 and migrate the supported minimum to TLS 1.2+. Modern AEAD cipher suites (GCM, ChaCha20-Poly1305) are not vulnerable. A WAF terminating TLS at the edge can enforce modern protocols regardless of origin configuration.",
+    "severity": "Medium",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "fallback_SCSV": {
+    "display_name": "TLS_FALLBACK_SCSV Not Supported",
+    "description": "The server does not support TLS_FALLBACK_SCSV, a defense-in-depth mechanism that prevents protocol downgrade attacks. Without it, a MITM attacker can force a connection to negotiate a weaker protocol version (e.g., TLS 1.0 instead of TLS 1.2) even when both endpoints support stronger versions.",
+    "remediation": "Enable TLS_FALLBACK_SCSV in the server's TLS stack (most modern TLS libraries support it; ensure the OpenSSL/BoringSSL/etc. version is recent and the configuration enables it). A WAF fronting the application typically supports SCSV out of the box.",
+    "severity": "Low",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

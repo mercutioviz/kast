@@ -3,10 +3,10 @@
   "plugin-description": "Detects and analyzes external JavaScript files loaded by the target.",
   "plugin-display-name": "External Script Detection",
   "plugin-website-url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script",
-  "timestamp": "2026-05-01T20:52:05.933+00:00",
+  "timestamp": "2026-05-01T21:25:05.962+00:00",
   "findings": {
     "name": "script_detection",
-    "timestamp": "2026-05-01T20:52:05.933+00:00",
+    "timestamp": "2026-05-01T21:25:05.962+00:00",
     "disposition": "success",
     "results": {
       "target_url": "https://insecure.democuda.org",

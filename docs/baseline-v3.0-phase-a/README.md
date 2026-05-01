@@ -23,9 +23,13 @@ A complete kast scan output dir as it would land on disk after
   for PDF output.
 - **`kast_style.css`** — copied alongside the HTML report by
   `render_html` (so the directory is self-contained).
-- **`missing_issue_ids.json`** — three testssl issue IDs (`BEAST`,
-  `BEAST_CBC_TLS1`, `fallback_SCSV`) tracked as missing from the
-  registry; targets for `kast registry promote` (Phase B).
+- **`missing_issue_ids.json`** — present only when the baseline plugins
+  emit issue IDs not in `kast/data/issue_registry.json`. After the
+  initial baseline capture (commit `4e4dcab`), `BEAST`,
+  `BEAST_CBC_TLS1`, and `fallback_SCSV` were promoted to the registry,
+  so a clean render against this baseline now produces no missing-
+  issues file. If a future plugin emits a new unknown ID, the file
+  will reappear here at the next baseline refresh.
 
 ## When this baseline was captured
 

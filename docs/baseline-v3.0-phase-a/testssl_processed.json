@@ -3,7 +3,7 @@
   "plugin-description": "Tests SSL and TLS posture",
   "plugin-display-name": "Test SSL",
   "plugin-website-url": "https://testssl.sh/",
-  "timestamp": "2026-05-01T20:52:05.986+00:00",
+  "timestamp": "2026-05-01T21:25:06.011+00:00",
   "findings": {
     "clientProblem1": [
       {
@@ -478,6 +478,6 @@
     "cipher-tls1_2_x0a"
   ],
   "executive_summary": "SSL/TLS scan identified 5 vulnerability issue(s) and 16 TLS 1.2+ cipher issue(s). Review recommended.",
-  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">testssl -U -E --connect-timeout 10 --warnings=batch -oJ /tmp/v3-validation/testssl.json insecure.democuda.org</code>",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">testssl -U -E --connect-timeout 10 --warnings=batch -oJ docs/baseline-v3.0-phase-a/testssl.json insecure.democuda.org</code>",
   "results_message": "Scan completed. Found 21 issue(s). See details above."
 }

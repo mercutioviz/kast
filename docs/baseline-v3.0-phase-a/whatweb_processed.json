@@ -3,12 +3,12 @@
   "plugin-description": "Identifies technologies used by a website.",
   "plugin-display-name": "WhatWeb",
   "plugin-website-url": "https://github.com/urbanadventurer/whatweb",
-  "timestamp": "2026-05-01T20:52:05.957+00:00",
+  "timestamp": "2026-05-01T21:25:05.987+00:00",
   "findings": {
     "disposition": "success",
     "results": {
       "name": "whatweb",
-      "timestamp": "2026-05-01T20:52:05.955+00:00",
+      "timestamp": "2026-05-01T21:25:05.984+00:00",
       "disposition": "success",
       "results": [
         {
@@ -117,5 +117,5 @@
   "details": "",
   "issues": [],
   "executive_summary": "Recommend running a scan on , which was the target redirection location from insecure.democuda.org",
-  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">whatweb -a 3 --read-timeout 30 --max-redirects 2 --log-json /tmp/v3-validation/whatweb.json insecure.democuda.org</code>"
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">whatweb -a 3 --read-timeout 30 --max-redirects 2 --log-json docs/baseline-v3.0-phase-a/whatweb.json insecure.democuda.org</code>"
 }

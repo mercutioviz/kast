@@ -3,7 +3,7 @@
   "plugin-description": "Discovers related subdomains and probes for live web services",
   "plugin-display-name": "Related Sites Discovery",
   "plugin-website-url": "https://github.com/mercutioviz/kast",
-  "timestamp": "2026-05-01T20:52:05.963+00:00",
+  "timestamp": "2026-05-01T21:25:05.992+00:00",
   "findings": {
     "target": "insecure.democuda.org",
     "apex_domain": "democuda.org",
