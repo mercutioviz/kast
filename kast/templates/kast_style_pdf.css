@@ -535,7 +535,7 @@ body {
     margin-bottom: 0.5em;
     font-size: 10pt;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
 }
 
 .tool-row:last-child {
@@ -545,7 +545,7 @@ body {
 .tool-summary {
     margin-bottom: 1em;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
 }
 
 .tool-custom {
@@ -567,7 +567,7 @@ body {
     line-height: 1.5;
     overflow: hidden;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
 }
 
 .json-object,
@@ -579,13 +579,13 @@ body {
     color: #0a4a63;
     font-weight: 600;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
 }
 
 .json-string { 
     color: #087f5b;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
     max-width: 100%;
     display: inline-block;
 }
@@ -596,7 +596,7 @@ body {
 
 .json-item {
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
 }
 
 /* ===== FOOTER ===== */
@@ -893,5 +893,5 @@ h1, h2, h3, h4, h5, h6 {
 .summary-block,
 td {
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
 }
