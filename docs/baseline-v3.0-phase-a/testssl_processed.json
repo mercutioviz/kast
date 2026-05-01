@@ -1,0 +1,483 @@
+{
+  "plugin-name": "testssl",
+  "plugin-description": "Tests SSL and TLS posture",
+  "plugin-display-name": "Test SSL",
+  "plugin-website-url": "https://testssl.sh/",
+  "timestamp": "2026-05-01T20:52:05.986+00:00",
+  "findings": {
+    "clientProblem1": [
+      {
+        "id": "engine_problem",
+        "severity": "WARN",
+        "finding": "No engine or GOST support via engine with your /usr/bin/openssl"
+      }
+    ],
+    "Invocation": "testssl -U -E --connect-timeout 10 --warnings=batch -oJ /home/mscollins/baseline/sample-scan-1/testssl.json insecure.democuda.org",
+    "at": "kast3dev:/usr/bin/openssl",
+    "version": "3.2.1 ",
+    "openssl": "OpenSSL 3.5.5 from Fri Apr 3 10:05:32 2026",
+    "startTime": "1777483760",
+    "scanResult": [
+      {
+        "targetHost": "insecure.democuda.org",
+        "ip": "4.152.87.222",
+        "port": "443",
+        "rDNS": "--",
+        "service": "HTTP",
+        "pretest": [
+          {
+            "id": "pre_128cipher",
+            "severity": "INFO",
+            "finding": "No 128 cipher limit bug"
+          }
+        ],
+        "protocols": [],
+        "grease": [],
+        "ciphers": [],
+        "serverPreferences": [],
+        "fs": [],
+        "serverDefaults": [],
+        "vulnerabilities": [
+          {
+            "id": "heartbleed",
+            "severity": "OK",
+            "cve": "CVE-2014-0160",
+            "cwe": "CWE-119",
+            "finding": "not vulnerable, no heartbeat extension"
+          },
+          {
+            "id": "CCS",
+            "severity": "OK",
+            "cve": "CVE-2014-0224",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "ticketbleed",
+            "severity": "OK",
+            "cve": "CVE-2016-9244",
+            "cwe": "CWE-200",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "ROBOT",
+            "severity": "OK",
+            "cve": "CVE-2017-17382 CVE-2017-17427 CVE-2017-17428 CVE-2017-13098 CVE-2017-1000385 CVE-2017-13099 CVE-2016-6883 CVE-2012-5081 CVE-2017-6168",
+            "cwe": "CWE-203",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "secure_renego",
+            "severity": "OK",
+            "cwe": "CWE-310",
+            "finding": "supported"
+          },
+          {
+            "id": "secure_client_renego",
+            "severity": "OK",
+            "cve": "CVE-2011-1473",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "CRIME_TLS",
+            "severity": "OK",
+            "cve": "CVE-2012-4929",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "BREACH",
+            "severity": "OK",
+            "cve": "CVE-2013-3587",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable, no gzip/deflate/compress/br HTTP compression  - only supplied '/' tested"
+          },
+          {
+            "id": "POODLE_SSL",
+            "severity": "OK",
+            "cve": "CVE-2014-3566",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "fallback_SCSV",
+            "severity": "WARN",
+            "finding": "Check failed, unexpected result, run testssl -Z --debug=1 and look at /tmp/testssl.0997E4/*tls_fallback_scsv.txt"
+          },
+          {
+            "id": "SWEET32",
+            "severity": "LOW",
+            "cve": "CVE-2016-2183 CVE-2016-6329",
+            "cwe": "CWE-327",
+            "finding": "uses 64 bit block ciphers"
+          },
+          {
+            "id": "FREAK",
+            "severity": "OK",
+            "cve": "CVE-2015-0204",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "DROWN",
+            "severity": "OK",
+            "cve": "CVE-2016-0800 CVE-2016-0703",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable on this host and port"
+          },
+          {
+            "id": "DROWN_hint",
+            "severity": "INFO",
+            "cve": "CVE-2016-0800 CVE-2016-0703",
+            "cwe": "CWE-310",
+            "finding": "Make sure you don't use this certificate elsewhere with SSLv2 enabled services, see https://search.censys.io/search?resource=hosts&virtual_hosts=INCLUDE&q=D98D8A643D8F21A75D86CA8DE7FACBE0079361452FB776776CFE946DAC9BF07D"
+          },
+          {
+            "id": "LOGJAM",
+            "severity": "OK",
+            "cve": "CVE-2015-4000",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable, no DH EXPORT ciphers,"
+          },
+          {
+            "id": "LOGJAM-common_primes",
+            "severity": "OK",
+            "cve": "CVE-2015-4000",
+            "cwe": "CWE-310",
+            "finding": "no DH key with <= TLS 1.2"
+          },
+          {
+            "id": "BEAST_CBC_TLS1",
+            "severity": "MEDIUM",
+            "cve": "CVE-2011-3389",
+            "cwe": "CWE-20",
+            "finding": "ECDHE-RSA-AES256-SHA ECDHE-RSA-AES128-SHA AES256-SHA CAMELLIA256-SHA AES128-SHA CAMELLIA128-SHA ECDHE-RSA-DES-CBC3-SHA DES-CBC3-SHA"
+          },
+          {
+            "id": "BEAST",
+            "severity": "LOW",
+            "cve": "CVE-2011-3389",
+            "cwe": "CWE-20",
+            "finding": "VULNERABLE -- but also supports higher protocols  TLSv1.1 TLSv1.2 (likely mitigated)"
+          },
+          {
+            "id": "LUCKY13",
+            "severity": "LOW",
+            "cve": "CVE-2013-0169",
+            "cwe": "CWE-310",
+            "finding": "potentially vulnerable, uses TLS CBC ciphers"
+          },
+          {
+            "id": "winshock",
+            "severity": "OK",
+            "cve": "CVE-2014-6321",
+            "cwe": "CWE-94",
+            "finding": "not vulnerable"
+          },
+          {
+            "id": "RC4",
+            "severity": "OK",
+            "cve": "CVE-2013-2566 CVE-2015-2808",
+            "cwe": "CWE-310",
+            "finding": "not vulnerable"
+          }
+        ],
+        "cipherTests": [
+          {
+            "id": "cipher-tls1_xc014",
+            "severity": "LOW",
+            "finding": "TLS 1   xc014   ECDHE-RSA-AES256-SHA              ECDH 253   AES         256      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_x35",
+            "severity": "LOW",
+            "finding": "TLS 1   x35     AES256-SHA                        RSA        AES         256      TLS_RSA_WITH_AES_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_x84",
+            "severity": "LOW",
+            "finding": "TLS 1   x84     CAMELLIA256-SHA                   RSA        Camellia    256      TLS_RSA_WITH_CAMELLIA_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_xc013",
+            "severity": "LOW",
+            "finding": "TLS 1   xc013   ECDHE-RSA-AES128-SHA              ECDH 253   AES         128      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_x2f",
+            "severity": "LOW",
+            "finding": "TLS 1   x2f     AES128-SHA                        RSA        AES         128      TLS_RSA_WITH_AES_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_x41",
+            "severity": "LOW",
+            "finding": "TLS 1   x41     CAMELLIA128-SHA                   RSA        Camellia    128      TLS_RSA_WITH_CAMELLIA_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_xc012",
+            "severity": "MEDIUM",
+            "finding": "TLS 1   xc012   ECDHE-RSA-DES-CBC3-SHA            ECDH 253   3DES        168      TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_x0a",
+            "severity": "MEDIUM",
+            "finding": "TLS 1   x0a     DES-CBC3-SHA                      RSA        3DES        168      TLS_RSA_WITH_3DES_EDE_CBC_SHA"
+          },
+          {
+            "id": "supportedciphers_TLS 1",
+            "severity": "INFO",
+            "finding": "ECDHE-RSA-AES256-SHA AES256-SHA CAMELLIA256-SHA ECDHE-RSA-AES128-SHA AES128-SHA CAMELLIA128-SHA ECDHE-RSA-DES-CBC3-SHA DES-CBC3-SHA"
+          },
+          {
+            "id": "cipher-tls1_1_xc014",
+            "severity": "LOW",
+            "finding": "TLS 1.1   xc014   ECDHE-RSA-AES256-SHA              ECDH 253   AES         256      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_x35",
+            "severity": "LOW",
+            "finding": "TLS 1.1   x35     AES256-SHA                        RSA        AES         256      TLS_RSA_WITH_AES_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_x84",
+            "severity": "LOW",
+            "finding": "TLS 1.1   x84     CAMELLIA256-SHA                   RSA        Camellia    256      TLS_RSA_WITH_CAMELLIA_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_xc013",
+            "severity": "LOW",
+            "finding": "TLS 1.1   xc013   ECDHE-RSA-AES128-SHA              ECDH 253   AES         128      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_x2f",
+            "severity": "LOW",
+            "finding": "TLS 1.1   x2f     AES128-SHA                        RSA        AES         128      TLS_RSA_WITH_AES_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_x41",
+            "severity": "LOW",
+            "finding": "TLS 1.1   x41     CAMELLIA128-SHA                   RSA        Camellia    128      TLS_RSA_WITH_CAMELLIA_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_xc012",
+            "severity": "MEDIUM",
+            "finding": "TLS 1.1   xc012   ECDHE-RSA-DES-CBC3-SHA            ECDH 253   3DES        168      TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_1_x0a",
+            "severity": "MEDIUM",
+            "finding": "TLS 1.1   x0a     DES-CBC3-SHA                      RSA        3DES        168      TLS_RSA_WITH_3DES_EDE_CBC_SHA"
+          },
+          {
+            "id": "supportedciphers_TLS 1_1",
+            "severity": "INFO",
+            "finding": "ECDHE-RSA-AES256-SHA AES256-SHA CAMELLIA256-SHA ECDHE-RSA-AES128-SHA AES128-SHA CAMELLIA128-SHA ECDHE-RSA-DES-CBC3-SHA DES-CBC3-SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xc030",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc030   ECDHE-RSA-AES256-GCM-SHA384       ECDH 253   AESGCM      256      TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+          },
+          {
+            "id": "cipher-tls1_2_xc028",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc028   ECDHE-RSA-AES256-SHA384           ECDH 253   AES         256      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384"
+          },
+          {
+            "id": "cipher-tls1_2_xc014",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc014   ECDHE-RSA-AES256-SHA              ECDH 253   AES         256      TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xcca8",
+            "severity": "OK",
+            "finding": "TLS 1.2   xcca8   ECDHE-RSA-CHACHA20-POLY1305       ECDH 253   ChaCha20    256      TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_xc077",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc077   ECDHE-RSA-CAMELLIA256-SHA384      ECDH 253   Camellia    256      TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384"
+          },
+          {
+            "id": "cipher-tls1_2_x9d",
+            "severity": "OK",
+            "finding": "TLS 1.2   x9d     AES256-GCM-SHA384                 RSA        AESGCM      256      TLS_RSA_WITH_AES_256_GCM_SHA384"
+          },
+          {
+            "id": "cipher-tls1_2_xc0a1",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc0a1   AES256-CCM8                       RSA        AESCCM8     256      TLS_RSA_WITH_AES_256_CCM_8"
+          },
+          {
+            "id": "cipher-tls1_2_xc09d",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc09d   AES256-CCM                        RSA        AESCCM      256      TLS_RSA_WITH_AES_256_CCM"
+          },
+          {
+            "id": "cipher-tls1_2_x3d",
+            "severity": "LOW",
+            "finding": "TLS 1.2   x3d     AES256-SHA256                     RSA        AES         256      TLS_RSA_WITH_AES_256_CBC_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_x35",
+            "severity": "LOW",
+            "finding": "TLS 1.2   x35     AES256-SHA                        RSA        AES         256      TLS_RSA_WITH_AES_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xc0",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc0     CAMELLIA256-SHA256                RSA        Camellia    256      TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_x84",
+            "severity": "LOW",
+            "finding": "TLS 1.2   x84     CAMELLIA256-SHA                   RSA        Camellia    256      TLS_RSA_WITH_CAMELLIA_256_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xc051",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc051   ARIA256-GCM-SHA384                RSA        ARIAGCM     256      TLS_RSA_WITH_ARIA_256_GCM_SHA384"
+          },
+          {
+            "id": "cipher-tls1_2_xc061",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc061   ECDHE-ARIA256-GCM-SHA384          ECDH 253   ARIAGCM     256      TLS_ECDHE_RSA_WITH_ARIA_256_GCM_SHA384"
+          },
+          {
+            "id": "cipher-tls1_2_xc02f",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc02f   ECDHE-RSA-AES128-GCM-SHA256       ECDH 253   AESGCM      128      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_xc027",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc027   ECDHE-RSA-AES128-SHA256           ECDH 253   AES         128      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_xc013",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc013   ECDHE-RSA-AES128-SHA              ECDH 253   AES         128      TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xc0a0",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc0a0   AES128-CCM8                       RSA        AESCCM8     128      TLS_RSA_WITH_AES_128_CCM_8"
+          },
+          {
+            "id": "cipher-tls1_2_xc09c",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc09c   AES128-CCM                        RSA        AESCCM      128      TLS_RSA_WITH_AES_128_CCM"
+          },
+          {
+            "id": "cipher-tls1_2_xc076",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xc076   ECDHE-RSA-CAMELLIA128-SHA256      ECDH 253   Camellia    128      TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_x9c",
+            "severity": "OK",
+            "finding": "TLS 1.2   x9c     AES128-GCM-SHA256                 RSA        AESGCM      128      TLS_RSA_WITH_AES_128_GCM_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_x3c",
+            "severity": "LOW",
+            "finding": "TLS 1.2   x3c     AES128-SHA256                     RSA        AES         128      TLS_RSA_WITH_AES_128_CBC_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_x2f",
+            "severity": "LOW",
+            "finding": "TLS 1.2   x2f     AES128-SHA                        RSA        AES         128      TLS_RSA_WITH_AES_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xba",
+            "severity": "LOW",
+            "finding": "TLS 1.2   xba     CAMELLIA128-SHA256                RSA        Camellia    128      TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_x41",
+            "severity": "LOW",
+            "finding": "TLS 1.2   x41     CAMELLIA128-SHA                   RSA        Camellia    128      TLS_RSA_WITH_CAMELLIA_128_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_xc050",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc050   ARIA128-GCM-SHA256                RSA        ARIAGCM     128      TLS_RSA_WITH_ARIA_128_GCM_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_xc060",
+            "severity": "OK",
+            "finding": "TLS 1.2   xc060   ECDHE-ARIA128-GCM-SHA256          ECDH 253   ARIAGCM     128      TLS_ECDHE_RSA_WITH_ARIA_128_GCM_SHA256"
+          },
+          {
+            "id": "cipher-tls1_2_xc012",
+            "severity": "MEDIUM",
+            "finding": "TLS 1.2   xc012   ECDHE-RSA-DES-CBC3-SHA            ECDH 253   3DES        168      TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA"
+          },
+          {
+            "id": "cipher-tls1_2_x0a",
+            "severity": "MEDIUM",
+            "finding": "TLS 1.2   x0a     DES-CBC3-SHA                      RSA        3DES        168      TLS_RSA_WITH_3DES_EDE_CBC_SHA"
+          },
+          {
+            "id": "supportedciphers_TLS 1_2",
+            "severity": "INFO",
+            "finding": "ECDHE-RSA-AES256-GCM-SHA384 ECDHE-RSA-AES256-SHA384 ECDHE-RSA-AES256-SHA ECDHE-RSA-CHACHA20-POLY1305 ECDHE-RSA-CAMELLIA256-SHA384 AES256-GCM-SHA384 AES256-CCM8 AES256-CCM AES256-SHA256 AES256-SHA CAMELLIA256-SHA256 CAMELLIA256-SHA ARIA256-GCM-SHA384 ECDHE-ARIA256-GCM-SHA384 ECDHE-RSA-AES128-GCM-SHA256 ECDHE-RSA-AES128-SHA256 ECDHE-RSA-AES128-SHA AES128-CCM8 AES128-CCM ECDHE-RSA-CAMELLIA128-SHA256 AES128-GCM-SHA256 AES128-SHA256 AES128-SHA CAMELLIA128-SHA256 CAMELLIA128-SHA ARIA128-GCM-SHA256 ECDHE-ARIA128-GCM-SHA256 ECDHE-RSA-DES-CBC3-SHA DES-CBC3-SHA"
+          },
+          {
+            "id": "cipher-tls1_3_x1302",
+            "severity": "OK",
+            "finding": "TLS 1.3   x1302   TLS_AES_256_GCM_SHA384            ECDH 253   AESGCM      256      TLS_AES_256_GCM_SHA384"
+          },
+          {
+            "id": "cipher-tls1_3_x1303",
+            "severity": "OK",
+            "finding": "TLS 1.3   x1303   TLS_CHACHA20_POLY1305_SHA256      ECDH 253   ChaCha20    256      TLS_CHACHA20_POLY1305_SHA256"
+          },
+          {
+            "id": "cipher-tls1_3_x1301",
+            "severity": "OK",
+            "finding": "TLS 1.3   x1301   TLS_AES_128_GCM_SHA256            ECDH 253   AESGCM      128      TLS_AES_128_GCM_SHA256"
+          },
+          {
+            "id": "supportedciphers_TLS 1_3",
+            "severity": "INFO",
+            "finding": "TLS_AES_256_GCM_SHA384 TLS_CHACHA20_POLY1305_SHA256 TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "browserSimulations": [],
+        "rating": []
+      }
+    ],
+    "scanTime": 86
+  },
+  "findings_count": 21,
+  "summary": "Found 5 vulnerability issue(s) and 16 TLS 1.2+ cipher issue(s).",
+  "details": "Vulnerabilities Found (5):\n  \u2022 fallback_SCSV\n  \u2022 SWEET32\n  \u2022 BEAST_CBC_TLS1\n  \u2022 BEAST\n  \u2022 LUCKY13\n\nTLS 1.2+ Cipher Issues (16):\n  \u2022 cipher-tls1_2_xc028\n  \u2022 cipher-tls1_2_xc014\n  \u2022 cipher-tls1_2_xc077\n  \u2022 cipher-tls1_2_x3d\n  \u2022 cipher-tls1_2_x35\n  \u2022 cipher-tls1_2_xc0\n  \u2022 cipher-tls1_2_x84\n  \u2022 cipher-tls1_2_xc027\n  \u2022 cipher-tls1_2_xc013\n  \u2022 cipher-tls1_2_xc076\n  \u2022 cipher-tls1_2_x3c\n  \u2022 cipher-tls1_2_x2f\n  \u2022 cipher-tls1_2_xba\n  \u2022 cipher-tls1_2_x41\n  \u2022 cipher-tls1_2_xc012\n  \u2022 cipher-tls1_2_x0a",
+  "issues": [
+    "fallback_SCSV",
+    "SWEET32",
+    "BEAST_CBC_TLS1",
+    "BEAST",
+    "LUCKY13",
+    "cipher-tls1_2_xc028",
+    "cipher-tls1_2_xc014",
+    "cipher-tls1_2_xc077",
+    "cipher-tls1_2_x3d",
+    "cipher-tls1_2_x35",
+    "cipher-tls1_2_xc0",
+    "cipher-tls1_2_x84",
+    "cipher-tls1_2_xc027",
+    "cipher-tls1_2_xc013",
+    "cipher-tls1_2_xc076",
+    "cipher-tls1_2_x3c",
+    "cipher-tls1_2_x2f",
+    "cipher-tls1_2_xba",
+    "cipher-tls1_2_x41",
+    "cipher-tls1_2_xc012",
+    "cipher-tls1_2_x0a"
+  ],
+  "executive_summary": "SSL/TLS scan identified 5 vulnerability issue(s) and 16 TLS 1.2+ cipher issue(s). Review recommended.",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">testssl -U -E --connect-timeout 10 --warnings=batch -oJ /tmp/v3-validation/testssl.json insecure.democuda.org</code>",
+  "results_message": "Scan completed. Found 21 issue(s). See details above."
+}

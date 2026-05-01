@@ -1,0 +1,49 @@
+{
+  "target_url": "https://insecure.democuda.org",
+  "target_origin": "https://insecure.democuda.org",
+  "total_scripts": 1,
+  "total_scripts_found": 1,
+  "scripts_analyzed": 1,
+  "limited_by_config": false,
+  "same_origin_count": 1,
+  "cross_origin_count": 0,
+  "scripts_with_sri": 0,
+  "scripts_without_sri": 1,
+  "insecure_http_scripts": 0,
+  "unique_origins": [
+    "https://insecure.democuda.org"
+  ],
+  "unique_origin_count": 1,
+  "scripts": [
+    {
+      "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+      "origin": "https://insecure.democuda.org",
+      "hostname": "insecure.democuda.org",
+      "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+      "is_same_origin": true,
+      "is_cross_origin": false,
+      "has_sri": false,
+      "integrity": null,
+      "crossorigin": null,
+      "is_https": true,
+      "is_secure": true
+    }
+  ],
+  "scripts_by_origin": {
+    "https://insecure.democuda.org": [
+      {
+        "url": "https://insecure.democuda.org/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+        "origin": "https://insecure.democuda.org",
+        "hostname": "insecure.democuda.org",
+        "path": "/bnith__a5HB0grmlWEbxfQ97Zk6XqeP0O7ZqK82J5QBK1tCz2MBgpY9TgQupU2A9R0_HtkwkNLzS9hnaAE=",
+        "is_same_origin": true,
+        "is_cross_origin": false,
+        "has_sri": false,
+        "integrity": null,
+        "crossorigin": null,
+        "is_https": true,
+        "is_secure": true
+      }
+    ]
+  }
+}

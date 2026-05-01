@@ -1,0 +1,29 @@
+{
+  "plugin-name": "wafw00f",
+  "plugin-description": "Detects and identifies Web Application Firewalls (WAFs) on the target.",
+  "plugin-display-name": "Wafw00f",
+  "plugin-website-url": "https://github.com/EnableSecurity/wafw00f",
+  "timestamp": "2026-05-01T20:52:05.951+00:00",
+  "findings": {
+    "name": "wafw00f",
+    "timestamp": "2026-05-01T20:52:05.949+00:00",
+    "disposition": "success",
+    "results": [
+      {
+        "detected": false,
+        "firewall": "None",
+        "manufacturer": "None",
+        "trigger_url": null,
+        "url": "https://insecure.democuda.org"
+      }
+    ]
+  },
+  "findings_count": 0,
+  "summary": "No WAF detected",
+  "details": "No WAF detected.\nTest URL: /?cisgshjh=%3Cscript%3Ealert%28%22XSS%22%29%3B%3C%2Fscript%3E&kbnwveul=UNION+SELECT+ALL+FROM+information_schema+AND+%22+or+SLEEP%285%29+or+%22&xxrtwudh=..%2F..%2Fetc%2Fpasswd\nTest URL: /?jtxdihfp=%3Cscript%3Ealert%28%22XSS%22%29%3B%3C%2Fscript%3E\nTest URL: /?hkhtifef=UNION+SELECT+ALL+FROM+information_schema+AND+%22+or+SLEEP%285%29+or+%22",
+  "issues": [
+    "No WAF Detected"
+  ],
+  "executive_summary": "No WAFs were detected.",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">wafw00f insecure.democuda.org -a -vvv -T 30 -f json -o /tmp/v3-validation/wafw00f.json</code>"
+}

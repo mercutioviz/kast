@@ -1,0 +1,99 @@
+{
+  "kast_version": "2.14.5",
+  "start_timestamp": "2026-04-29T17:29:11.902946",
+  "end_timestamp": "2026-04-29T17:30:46.370212",
+  "duration_seconds": 94.47,
+  "cli_arguments": {
+    "target": "insecure.democuda.org",
+    "mode": "passive",
+    "parallel": true,
+    "max_workers": 5,
+    "verbose": true,
+    "output_dir": "/home/mscollins/baseline/sample-scan-1",
+    "run_only": null,
+    "log_dir": "/var/log/kast/",
+    "format": "both",
+    "logo": null,
+    "dry_run": false,
+    "report_only": null
+  },
+  "plugins": [
+    {
+      "plugin_name": "mozilla_observatory",
+      "start_timestamp": null,
+      "end_timestamp": null,
+      "duration_seconds": null,
+      "status": "unavailable"
+    },
+    {
+      "plugin_name": "wafw00f",
+      "start_timestamp": "2026-04-29T17:29:12.514033",
+      "end_timestamp": "2026-04-29T17:29:16.816154",
+      "duration_seconds": 4.3,
+      "status": "success"
+    },
+    {
+      "plugin_name": "org_discovery",
+      "start_timestamp": "2026-04-29T17:29:12.486176",
+      "end_timestamp": "2026-04-29T17:29:19.405881",
+      "duration_seconds": 6.92,
+      "status": "success"
+    },
+    {
+      "plugin_name": "subfinder",
+      "start_timestamp": "2026-04-29T17:29:12.513520",
+      "end_timestamp": "2026-04-29T17:29:26.532617",
+      "duration_seconds": 14.02,
+      "status": "success"
+    },
+    {
+      "plugin_name": "whatweb",
+      "start_timestamp": "2026-04-29T17:29:12.536329",
+      "end_timestamp": "2026-04-29T17:29:27.325604",
+      "duration_seconds": 14.79,
+      "status": "success"
+    },
+    {
+      "plugin_name": "script_detection",
+      "start_timestamp": "2026-04-29T17:29:27.346720",
+      "end_timestamp": "2026-04-29T17:29:27.923021",
+      "duration_seconds": 0.58,
+      "status": "success"
+    },
+    {
+      "plugin_name": "katana",
+      "start_timestamp": "2026-04-29T17:29:26.560468",
+      "end_timestamp": "2026-04-29T17:29:40.345961",
+      "duration_seconds": 13.79,
+      "status": "success"
+    },
+    {
+      "plugin_name": "ai_chatbot_detection",
+      "start_timestamp": "2026-04-29T17:29:40.369887",
+      "end_timestamp": "2026-04-29T17:29:40.429749",
+      "duration_seconds": 0.06,
+      "status": "success"
+    },
+    {
+      "plugin_name": "ftap",
+      "start_timestamp": "2026-04-29T17:29:16.842387",
+      "end_timestamp": "2026-04-29T17:30:01.688019",
+      "duration_seconds": 44.85,
+      "status": "success"
+    },
+    {
+      "plugin_name": "related_sites",
+      "start_timestamp": "2026-04-29T17:29:12.568571",
+      "end_timestamp": "2026-04-29T17:30:24.431200",
+      "duration_seconds": 71.86,
+      "status": "success"
+    },
+    {
+      "plugin_name": "testssl",
+      "start_timestamp": "2026-04-29T17:29:19.452157",
+      "end_timestamp": "2026-04-29T17:30:46.366192",
+      "duration_seconds": 86.91,
+      "status": "fail"
+    }
+  ]
+}

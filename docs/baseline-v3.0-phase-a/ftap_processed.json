@@ -1,0 +1,83 @@
+{
+  "plugin-name": "ftap",
+  "plugin-description": "Scans target for exposed admin login pages",
+  "plugin-display-name": "Find The Admin Panel",
+  "plugin-website-url": "https://github.com/DV64/Find-The-Admin-Panel",
+  "timestamp": "2026-05-01T20:52:05.972+00:00",
+  "findings": {
+    "scan_info": {
+      "url": "http://insecure.democuda.org/",
+      "mode": "stealth",
+      "start_time": 1777483759.7937255,
+      "paths_count": 500,
+      "concurrency": 3,
+      "mode_details": {
+        "MAX_CONCURRENT_TASKS": 3,
+        "CONNECTION_TIMEOUT": 10,
+        "READ_TIMEOUT": 15,
+        "DELAY_BETWEEN_REQUESTS": 2.0,
+        "REQUEST_RANDOMIZATION": true,
+        "CONFIDENCE_THRESHOLD": 0.65,
+        "MAX_RETRIES": 0,
+        "USE_RANDOM_USER_AGENTS": true,
+        "VERIFY_FOUND_URLS": true,
+        "DESCRIPTION": "Slow scanning to avoid detection, with advanced evasion techniques"
+      },
+      "end_time": 1777483801.4447381,
+      "duration": 41.651012659072876,
+      "found_count": 1,
+      "total_count": 1,
+      "success_rate": 0.002,
+      "verified_count": 1,
+      "rejected_count": 0,
+      "scan_time": 41.651962,
+      "target_url": "http://insecure.democuda.org/",
+      "scan_mode": "default",
+      "detection_mode": "stealth",
+      "total_paths": 500
+    },
+    "results": [
+      {
+        "url": "http://insecure.democuda.org/#admin/",
+        "status_code": 200,
+        "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*",
+        "confidence": 1.0,
+        "found": true,
+        "has_login_form": true,
+        "technologies": [
+          "Laravel",
+          "PHP"
+        ],
+        "headers": {
+          "Date": "Wed, 29 Apr 2026 17:29:21 GMT",
+          "Expires": "Tue, 23 Jun 2009 12:00:00 GMT",
+          "Cache-Control": "no-cache, must-revalidate",
+          "Pragma": "no-cache",
+          "Vary": "Accept-Encoding",
+          "Content-Type": "text/html;charset=utf-8",
+          "x-frame-options": "SAMEORIGIN",
+          "Transfer-Encoding": "chunked"
+        },
+        "content_length": 3128,
+        "scan_time": "2026-04-29T17:29:21.844389",
+        "server": "Unknown",
+        "forms": [],
+        "inputs": []
+      }
+    ],
+    "total_count": 1,
+    "found_count": 1,
+    "export_time": "2026-04-29T17:30:01.445686"
+  },
+  "findings_count": 1,
+  "summary": "Found 1 exposed admin panel.",
+  "details": "Exposed Admin Panels:\n\nPanel #1:\n  URL: http://insecure.democuda.org/#admin/\n  Title: Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*\n  Confidence: 100.0%\n  Status Code: 200\n  Login Form Detected: Yes\n  Technologies: Laravel, PHP\n",
+  "issues": [
+    "exposed_admin_panel"
+  ],
+  "executive_summary": "Found 1 admin panel.",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">ftap --url insecure.democuda.org --detection-mode stealth -d /tmp/v3-validation -e json -f ftap.json</code>",
+  "custom_html": "\n        <div class=\"url-display-widget\" id=\"ftap-panel-widget-139646546260192\">\n            <div class=\"url-search-container\">\n                <input type=\"text\" \n                       class=\"url-search-input\" \n                       placeholder=\"\ud83d\udd0d Search panels (e.g., admin, login, dashboard)...\"\n                       onkeyup=\"filterFtapPanels('ftap-panel-widget-139646546260192')\">\n                <span class=\"url-count-badge\">Total: 1 URL(s) Tested</span>\n            </div>\n            \n            <div class=\"url-groups-container\">\n        \n        <div class=\"url-group\" data-group=\"ftap-panel-widget-139646546260192-exposed\">\n            <div class=\"url-group-header\" onclick=\"toggleUrlGroup('ftap-panel-widget-139646546260192-exposed')\">\n                <span class=\"url-group-icon\">\ud83d\udd10</span>\n                <span class=\"url-group-title\">Exposed Admin Panels</span>\n                <span class=\"url-group-count\">1 Panel(s)</span>\n                <span class=\"url-group-toggle\">\u25bc</span>\n            </div>\n            <div class=\"url-group-content\" id=\"ftap-panel-widget-139646546260192-exposed-content\" style=\"display: none;\">\n                <div class=\"ftap-panels-list\" id=\"ftap-panel-widget-139646546260192-exposed-list\">\n        \n        <div class=\"url-item\" data-page=\"1\" data-url=\"http://insecure.democuda.org/#admin/ login :: damn vulnerable web application (dvwa) v1.10 *development* laravel php\" style=\"\">\n            <div style=\"padding: 0.8em; background: #f8fbfd; border-radius: 6px; border: 1px solid #e6eef6; margin: 0.3em 0;\">\n                <div style=\"display: flex; align-items: center; gap: 0.8em; margin-bottom: 0.6em;\">\n                    <span style=\"background: #075985; color: white; padding: 0.25em 0.5em; border-radius: 4px; font-size: 0.85em; font-weight: 600;\">#1</span>\n                    <span style=\"flex: 1; font-weight: 600; color: #083344; font-size: 0.95em;\">Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</span>\n                    <span style=\"background-color: #28a74520; color: #28a745; border: 1px solid #28a745; padding: 0.3em 0.7em; border-radius: 12px; font-size: 0.85em; font-weight: 600;\">\n                        100.0%\n                    </span>\n                </div>\n                <div style=\"padding-left: 2.5em;\">\n                    <div style=\"margin: 0.4em 0;\">\n                        <span style=\"font-weight: 600; color: #075985; font-size: 0.85em;\">URL:</span>\n                        <a href=\"http://insecure.democuda.org/#admin/\" target=\"_blank\" style=\"color: #0284c7; text-decoration: none; margin-left: 0.5em; font-family: 'Courier New', Consolas, monospace; font-size: 0.85em; word-break: break-all;\">http://insecure.democuda.org/#admin/</a>\n                    </div>\n                    <div style=\"margin: 0.4em 0;\">\n                        <span style=\"font-weight: 600; color: #075985; font-size: 0.85em;\">Status Code:</span>\n                        <span style=\"margin-left: 0.5em; color: #083344; font-size: 0.85em;\">200</span>\n                    </div>\n                    <div style=\"margin: 0.4em 0;\">\n                        <span style=\"font-weight: 600; color: #075985; font-size: 0.85em;\">Login Form:</span>\n                        <span style=\"margin-left: 0.5em; color: #083344; font-size: 0.85em;\">\u2713 Yes</span>\n                    </div>\n        \n                    <div style=\"margin: 0.4em 0;\">\n                        <span style=\"font-weight: 600; color: #075985; font-size: 0.85em;\">Technologies:</span>\n                        <div style=\"display: inline-flex; flex-wrap: wrap; gap: 0.4em; margin-left: 0.5em;\">\n            <span style=\"background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #0369a1; padding: 0.2em 0.6em; border-radius: 10px; font-size: 0.75em; font-weight: 500; border: 1px solid #93c5fd;\">Laravel</span><span style=\"background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #0369a1; padding: 0.2em 0.6em; border-radius: 10px; font-size: 0.75em; font-weight: 500; border: 1px solid #93c5fd;\">PHP</span>\n                        </div>\n                    </div>\n            \n                </div>\n            </div>\n        </div>\n        \n                </div>\n        \n            </div>\n        </div>\n        \n            </div>\n        </div>\n        ",
+  "custom_html_pdf": "<div class=\"pdf-url-list\"><div class=\"pdf-url-header\"><strong>Exposed Admin Panels</strong> (showing 1 of 1)</div><ul class=\"pdf-url-items\">\n            <li class=\"pdf-url-item\">\n                <div><strong>Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*</strong> - Confidence: 100.0%</div>\n                <div><code>http://insecure.democuda.org/#admin/</code></div>\n            </li>\n            </ul></div>",
+  "results_message": "\ud83d\udccb View panel details below"
+}

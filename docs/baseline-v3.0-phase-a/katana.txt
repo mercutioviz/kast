@@ -1,0 +1,5 @@
+[GET] https://insecure.democuda.org [depth:0]
+[header] [GET] https://insecure.democuda.org/login.php [depth:1]
+[link] [GET] https://insecure.democuda.org/dvwa/css/login.css [depth:1]
+[script] [GET] https://insecure.democuda.org/bnith__a5HB0grmlWEMmYR5qvW93nhCQMTstH86shiLOlhuWboUzrNkf8lFRGDFA-ex9Uz8xSkzBzpKa1M= [depth:1]
+[script] [GET] https://insecure.democuda.org/bnith__a5HB0grmlWFAI6HIaNYIczlHB8KzE4YwctWeEXj6I9qlq9oOOr3LpvBs4peO3NRHH7taYCY3NYY= [depth:2]

@@ -1,0 +1,22 @@
+{
+  "plugin-name": "subfinder",
+  "plugin-description": "Subdomain finder.",
+  "plugin-display-name": "Subfinder",
+  "plugin-website-url": "https://github.com/projectdiscovery/subfinder",
+  "timestamp": "2026-05-01T20:52:05.945+00:00",
+  "findings": {
+    "name": "subfinder",
+    "timestamp": "2026-05-01T20:52:05.943+00:00",
+    "disposition": "success",
+    "results": []
+  },
+  "findings_count": 0,
+  "summary": "No subdomains were found.",
+  "details": "Detected 0 unique subdomain(s).",
+  "issues": [],
+  "executive_summary": "No subdomains detected.",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">subfinder -d insecure.democuda.org -o /tmp/v3-validation/subfinder_tmp.json -cs -oJ</code>",
+  "custom_html": "<p>No subdomains found.</p>",
+  "custom_html_pdf": "<p>No subdomains found.</p>",
+  "results_message": "\ud83d\udccb View subdomain details below"
+}

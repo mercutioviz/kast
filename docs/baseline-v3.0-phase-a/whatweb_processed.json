@@ -1,0 +1,121 @@
+{
+  "plugin-name": "whatweb",
+  "plugin-description": "Identifies technologies used by a website.",
+  "plugin-display-name": "WhatWeb",
+  "plugin-website-url": "https://github.com/urbanadventurer/whatweb",
+  "timestamp": "2026-05-01T20:52:05.957+00:00",
+  "findings": {
+    "disposition": "success",
+    "results": {
+      "name": "whatweb",
+      "timestamp": "2026-05-01T20:52:05.955+00:00",
+      "disposition": "success",
+      "results": [
+        {
+          "target": "http://insecure.democuda.org",
+          "http_status": 302,
+          "request_config": {
+            "headers": {
+              "User-Agent": "WhatWeb/0.5.5"
+            }
+          },
+          "plugins": {
+            "Cookies": {
+              "string": [
+                "PHPSESSID",
+                "security"
+              ]
+            },
+            "Country": {
+              "string": [
+                "UNITED STATES"
+              ],
+              "module": [
+                "US"
+              ]
+            },
+            "IP": {
+              "string": [
+                "4.152.87.222"
+              ]
+            },
+            "RedirectLocation": {
+              "string": [
+                "login.php"
+              ]
+            },
+            "X-Frame-Options": {
+              "string": [
+                "SAMEORIGIN"
+              ]
+            }
+          }
+        },
+        {
+          "target": "http://insecure.democuda.org/login.php",
+          "http_status": 200,
+          "request_config": {
+            "headers": {
+              "User-Agent": "WhatWeb/0.5.5"
+            }
+          },
+          "plugins": {
+            "Cookies": {
+              "string": [
+                "PHPSESSID",
+                "security"
+              ]
+            },
+            "Country": {
+              "string": [
+                "UNITED STATES"
+              ],
+              "module": [
+                "US"
+              ]
+            },
+            "DVWA": {},
+            "IP": {
+              "string": [
+                "4.152.87.222"
+              ]
+            },
+            "PasswordField": {
+              "string": [
+                "password"
+              ]
+            },
+            "Script": {
+              "string": [
+                "text/javascript"
+              ]
+            },
+            "Title": {
+              "string": [
+                "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*"
+              ]
+            },
+            "X-Frame-Options": {
+              "string": [
+                "SAMEORIGIN"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "findings_count": 9,
+  "summary": [
+    {
+      "http://insecure.democuda.org - HTTP 302": "Cookies [PHPSESSID, security]; Country [UNITED STATES]; IP [4.152.87.222]; RedirectLocation [login.php]; X-Frame-Options [SAMEORIGIN]"
+    },
+    {
+      "http://insecure.democuda.org/login.php - HTTP 200": "Cookies [PHPSESSID, security]; Country [UNITED STATES]; IP [4.152.87.222]; PasswordField [password]; Script [text/javascript]; Title [Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*]; X-Frame-Options [SAMEORIGIN]"
+    }
+  ],
+  "details": "",
+  "issues": [],
+  "executive_summary": "Recommend running a scan on , which was the target redirection location from insecure.democuda.org",
+  "report": "<code style=\"color: #00008B; font-family: Consolas, 'Courier New', monospace;\">whatweb -a 3 --read-timeout 30 --max-redirects 2 --log-json /tmp/v3-validation/whatweb.json insecure.democuda.org</code>"
+}

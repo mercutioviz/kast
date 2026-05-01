@@ -1,0 +1,5 @@
+[
+{"target":"http://insecure.democuda.org","http_status":302,"request_config":{"headers":{"User-Agent":"WhatWeb/0.5.5"}},"plugins":{"Cookies":{"string":["PHPSESSID","security"]},"Country":{"string":["UNITED STATES"],"module":["US"]},"IP":{"string":["4.152.87.222"]},"RedirectLocation":{"string":["login.php"]},"X-Frame-Options":{"string":["SAMEORIGIN"]}}}
+,
+{"target":"http://insecure.democuda.org/login.php","http_status":200,"request_config":{"headers":{"User-Agent":"WhatWeb/0.5.5"}},"plugins":{"Cookies":{"string":["PHPSESSID","security"]},"Country":{"string":["UNITED STATES"],"module":["US"]},"DVWA":{},"IP":{"string":["4.152.87.222"]},"PasswordField":{"string":["password"]},"Script":{"string":["text/javascript"]},"Title":{"string":["Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*"]},"X-Frame-Options":{"string":["SAMEORIGIN"]}}}
+]

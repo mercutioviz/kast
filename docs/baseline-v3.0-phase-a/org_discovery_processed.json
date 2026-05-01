@@ -1,0 +1,44 @@
+{
+  "plugin-name": "org_discovery",
+  "plugin-description": "Discovers public-facing web domains belonging to the same organization",
+  "plugin-display-name": "Organization Domain Discovery",
+  "timestamp": "2026-05-01T20:52:05.923+00:00",
+  "executive_summary": "Discovered 0 domain(s) potentially belonging to the same organization via passive sources.",
+  "findings_count": 0,
+  "findings": {
+    "target": "insecure.democuda.org",
+    "apex_domain": "democuda.org",
+    "org_name": null,
+    "org_source": "502 Server Error: Bad Gateway for url: https://crt.sh/?q=democuda.org&output=json",
+    "whois": {
+      "status": "disabled",
+      "org": null,
+      "email": null
+    },
+    "amass_available": true,
+    "shodan_enabled": false,
+    "shodan_available": false,
+    "shodan_exposure": [],
+    "discovered_domains": [],
+    "sources_used": [],
+    "command_executed": {
+      "crtsh_queries": [
+        "https://crt.sh/?q=democuda.org&output=json",
+        "https://crt.sh/?q=democuda.org&output=json"
+      ],
+      "dns_queries": [
+        "TXT democuda.org (SPF)",
+        "TXT _dmarc.democuda.org (DMARC)"
+      ],
+      "amass_commands": [
+        "amass enum -passive -d democuda.org -json /home/mscollins/baseline/sample-scan-1/amass_output.json -timeout 5"
+      ]
+    },
+    "timestamp": "2026-04-29T17:29:19.370"
+  },
+  "issues": [],
+  "summary": "No findings were produced by org_discovery.",
+  "details": "Organization: None\nApex domain: democuda.org\nDomains discovered: 0\nHigh confidence: 0\nSources: passive sources\nExposed services (Shodan): 0",
+  "custom_html": "<div class=\"org-discovery-widget\">\n<p><strong>Target:</strong> democuda.org &nbsp; <strong>Org:</strong> Not detected</p>\n</div>",
+  "custom_html_pdf": "<div class=\"org-discovery-widget\">\n<p><strong>Target:</strong> democuda.org | <strong>Org:</strong> Not detected</p>\n</div>"
+}
