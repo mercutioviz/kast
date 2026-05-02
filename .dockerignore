@@ -1,0 +1,40 @@
+# Editor / OS noise
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+build/
+dist/
+*.whl
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation that doesn't ship with the package
+docs/
+.claude/
+
+# Other large/ephemeral things
+*.log
+*.tar.gz
+backups/

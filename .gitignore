@@ -7,6 +7,12 @@ __pycache__/
 venv/
 env/
 
+# Python build artifacts (pyproject.toml + setuptools)
+build/
+dist/
+*.egg-info/
+*.whl
+
 # Editor swap and backup files
 *.swp
 *.swo

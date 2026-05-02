@@ -1,571 +1,313 @@
-# KAST - Kali Automated Scan Tool
+# KAST — Kali Automated Scan Tool
 
 <p align="center">
   <img src="assets/kast-logo-pro-label.png" alt="KAST Logo" width="400"/>
 </p>
 
-**KAST** (Kali Automated Scan Tool) is a modular, extensible Python framework for automating web application security scanning tools. It orchestrates multiple security tools, aggregates their findings, and generates comprehensive HTML reports with executive summaries.
+KAST is a modular Python framework that orchestrates web-application security scanning tools, aggregates their findings, and produces digestible HTML and PDF reports with executive summaries — including an optional AI-augmented narrative powered by Claude.
 
-## 🌟 Key Features
+KAST pairs with **kast-web**, a Flask web frontend that lets a team submit scans through a browser and manage cloud infrastructure for ephemeral ZAP scanning. The two ship as a coordinated bundle: kast 3.0 + kast-web 2.0.
 
-### Core Capabilities
-- **Modular Plugin Architecture**: Easily extend KAST with custom plugins for any security tool
-- **Parallel Execution**: Run multiple security tools simultaneously for faster scans
-- **Intelligent Report Generation**: Automatic HTML and PDF report generation with executive summaries
-- **Flexible Execution Modes**: Support for both active and passive scanning modes
-- **Report-Only Mode**: Generate reports from previously collected scan data
-- **Dry Run Mode**: Preview scan execution without actually running tools
-- **Selective Plugin Execution**: Run specific plugins using `--run-only`
-- **Priority-Based Scheduling**: Plugins execute in order of priority for optimal workflow
-- **Rich CLI Interface**: Beautiful terminal output with progress indicators using Rich library
-- **Custom Logo Support**: Add your organization's logo to reports (PNG/JPG)
+---
 
-### Advanced Features
-- **Issue Registry**: Centralized database of security issues with remediation guidance
-- **Post-Processing Pipeline**: Structured JSON output with standardized format across all plugins
-- **Execution Tracking**: Detailed timing information and execution metadata in `kast_info.json`
-- **Redirect Detection**: Automatically identifies domain redirects and suggests additional scans
-- **Custom HTML Styling**: Professional-looking reports with embedded CSS styling
-- **Logging Infrastructure**: Comprehensive logging to both console and file
+## What's new in v3
 
-## 📦 Installation
+- **Click-based subcommand CLI** (`kast scan`, `kast plugins`, `kast registry`, `kast doctor`, `kast self-update`, `kast config`). The legacy v2 argv shape (`kast --target X --mode passive ...`) still works through a compatibility wrapper.
+- **AI-augmented executive summaries.** `kast scan --ai-summary` produces a narrative, key findings, and recommended actions via Claude. Set `KAST_AI_API_KEY` or configure `~/.config/kast/ai.yaml`.
+- **Unified report pipeline.** One data structure feeds both the HTML and PDF renderers, eliminating drift between them.
+- **PluginRegistry** and **`ExternalToolPlugin`** base — clean plugin authoring with class-attribute identity and shared subprocess scaffolding.
+- **Atomic JSON writes** for every state-bearing file — kast-web watchers never observe a partial file.
+- **Issue-registry workflow:** `kast registry list / add / promote SCAN_DIR` to surface and accept new issue IDs from scan output.
+- **Cloud-deployment subsystem moved to kast-web.** kast 3.0 only handles `local` and `remote` ZAP modes; cloud-mode scans are managed by kast-web.
+
+For the full migration story, see [`docs/MIGRATION_V2_TO_V3.md`](docs/MIGRATION_V2_TO_V3.md). For the rationale behind the refactor, see [`docs/v3-planning/`](docs/v3-planning/).
+
+---
+
+## Features
+
+**Core capabilities**
+- Modular plugin architecture for any external scanner
+- Sequential or parallel execution with dependency resolution
+- HTML and PDF reports with executive summary, severity breakdown, and WAF impact analysis
+- AI-augmented executive summaries (opt-in)
+- Active and passive scanning modes
+- Report-only mode (`kast scan rerun DIR`) regenerates reports from existing scan data
+- Dry-run mode previews execution without running tools
+- Selective plugin execution (`--run-only`)
+- Priority-based plugin scheduling
+- Custom logo support for white-labeled reports
+
+**Operations**
+- Issue registry with severity / category / talking points
+- Atomic per-plugin output (`*.json` and `*_processed.json`) for safe consumption by external watchers
+- Detailed timing in `kast_info.json`
+- Comprehensive logging to console and file
+- `kast doctor` for environment health checks (with `--fix` for safe auto-remediation)
+- `kast self-update` for in-place upgrades with backups and rollback
+
+---
+
+## Installation
 
 ### Prerequisites
 
-**Operating System:**
-- **Kali Linux 2024.x or later** (tested, works well)
-- **Debian 12 (Bookworm) or 13 (Trixie)** - **RECOMMENDED** for clean installations
-- **Ubuntu 24.04 (Noble Numbat) or later**
+**Operating system:** Debian 12/13 or Ubuntu 24.04 (recommended for clean installs); Kali Linux 2024.x or later (also supported).
 
-> **Note:** KAST works well on Kali Linux, but the automated installer works best on a **clean Debian 12 or 13 system**. The installer validates your OS before proceeding and will not run on unsupported systems.
+**System requirements:** Python 3.11+, APT package manager (Debian-based systems), root access for the installer, internet connection for downloads.
 
-**System Requirements:**
-- Python 3.7 or higher (Python 3.9-3.11 tested)
-- APT package manager (Debian-based systems)
-- Root access (for installer)
-- Internet connection for downloading dependencies
+### Option 1: pipx (recommended for kast-only use)
 
-### Recommended: Automated Installer
+If you only need the kast CLI (no kast-web), install via pipx:
 
-The easiest way to install KAST is using the automated installer, which handles all dependencies and system configuration:
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/mercutioviz/kast.git
-   cd kast
-   ```
-
-2. **Run the installer:**
-   ```bash
-   sudo ./install.sh
-   ```
-
-The installer will:
-- ✅ Validate your operating system and version
-- ✅ Analyze tool version requirements (Go, Node.js, Java)
-- ✅ Automatically install missing dependencies via APT or manual methods
-- ✅ Install all security scanning tools (WhatWeb, TestSSL, Subfinder, Katana, etc.)
-- ✅ Set up Python virtual environment with all required packages
-- ✅ Create system-wide launcher scripts (`kast` and `ftap` commands)
-- ✅ Create automatic backups before upgrades
-- ✅ Support recovery from interrupted installations
-
-**Installer Options:**
 ```bash
-# Interactive installation (recommended for first-time setup)
-sudo ./install.sh
-
-# Check and update only external tools (safe for existing installations)
-sudo ./install.sh --check-tools
-
-# Automated/non-interactive mode (for scripts/CI-CD)
-sudo ./install.sh --auto
-
-# Custom installation directory
-sudo ./install.sh --install-dir /custom/path
-
-# View help
-sudo ./install.sh --help
+pipx install kast
+kast doctor --fix
+kast --version
 ```
 
-> **Important:** If the installer upgrades Go, you'll need to reload your shell:
-> ```bash
-> source ~/.bashrc  # or source ~/.zshrc
-> # or simply open a new terminal
-> ```
+`kast doctor --fix` creates the results directory, scaffolds a default config, and prints any remaining external-tool installs you need to do by hand (e.g., `sudo apt install whatweb wafw00f testssl.sh`).
 
-3. **Verify installation:**
-   ```bash
-   kast --version
-   kast --list-plugins
-   ```
+### Option 2: Automated installer (recommended for SA / production use)
 
-### Alternative: Manual Installation
-
-For advanced users or specific requirements, you can install manually:
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/mercutioviz/kast.git
-   cd kast
-   ```
-
-2. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-   Required packages:
-   
-   **Core Web/HTTP Libraries:**
-   - `aiohttp>=3.9.1` - Async HTTP client library
-   - `requests>=2.31.0` - HTTP requests for plugins
-   - `urllib3>=2.1.0` - HTTP library
-   - `certifi>=2023.11.17` - Certificate bundle
-   - `aioquic>=0.9.21` - QUIC/HTTP3 protocol support
-   
-   **HTML/Web Parsing:**
-   - `beautifulsoup4>=4.12.2` - HTML parsing for plugins
-   
-   **CLI and Output:**
-   - `rich>=13.7.0` - Terminal formatting and output
-   - `psutil>=5.9.6` - System monitoring
-   
-   **Configuration and Templates:**
-   - `pyyaml` - Configuration file parsing
-   - `argparse` - Command-line argument parsing
-   - `jinja2` - HTML template rendering
-   
-   **Report Generation:**
-   - `weasyprint` - PDF report generation
-   - `pillow` - Image processing for reports
-   
-   **Analysis and Processing:**
-   - `scikit-learn>=1.3.0` - Machine learning library
-   - `diskcache>=5.6.1` - Disk caching
-   - `langdetect>=1.0.9` - Language detection
-   
-   **SSH and Remote Access:**
-   - `paramiko>=3.0.0` - SSH protocol implementation for Python
-
-3. **Install security tools:**
-   
-   On Kali Linux, most tools are pre-installed. For missing tools:
-   ```bash
-   sudo apt update
-   sudo apt install whatweb wafw00f testssl.sh
-   ```
-
-   For additional tools:
-   ```bash
-   # Subfinder (subdomain enumeration)
-   go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-   
-   # Katana (web crawler)
-   go install github.com/projectdiscovery/katana/cmd/katana@latest
-   ```
-
-4. **Verify installation:**
-   ```bash
-   python -m kast.main --version
-   python -m kast.main --list-plugins
-   ```
-
-## 🔄 Updating KAST
-
-KAST includes a comprehensive update script for safely updating production installations.
-
-### Quick Update
+The automated installer handles every dependency — Python, scanner CLIs, Go-installed tools, Docker, fonts for PDF rendering, system services. Use this when you want a clean kast install on a fresh box, especially if you'll also be running kast-web.
 
 ```bash
-cd /path/to/kast/repo
+git clone https://github.com/mercutioviz/kast.git
+cd kast
+sudo ./install.sh
+```
+
+The installer will:
+- Validate your OS and version
+- Install Python, Go, Node.js as needed
+- Install scanner tools (whatweb, wafw00f, testssl.sh, sslscan, subfinder, katana, ftap, observatory)
+- Set up the kast Python venv and install the wheel
+- Install Docker (for ZAP local mode)
+- Create the system-wide `kast` launcher
+
+Useful flags:
+```bash
+sudo ./install.sh --check-tools    # update tool binaries only
+sudo ./install.sh --auto           # non-interactive (CI-friendly)
+sudo ./install.sh --install-dir /custom/path
+```
+
+### Option 3: Docker
+
+Build the image:
+```bash
+docker build -t kast:3.0.0 -t kast:latest .
+```
+
+Run a passive scan:
+```bash
+docker run --rm \
+  -v "$HOME/kast_results:/kast_results" \
+  -v "$HOME/.config/kast:/home/kast/.config/kast:ro" \
+  kast:latest scan --target example.com --output-dir /kast_results
+```
+
+The image bundles `whatweb`, `wafw00f`, `testssl.sh`, `sslscan`, plus the Python runtime. ZAP is **not** bundled — for local-mode ZAP, mount `/var/run/docker.sock` and rely on the host's Docker daemon. For managed cloud-mode scans, use kast-web instead of running kast directly.
+
+### Option 4: Manual install
+
+For development or unusual environments:
+```bash
+git clone https://github.com/mercutioviz/kast.git
+cd kast
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+kast doctor
+```
+
+---
+
+## Usage
+
+### Basic scan
+
+```bash
+kast scan --target example.com
+```
+
+This runs every available plugin in passive mode and writes HTML+PDF reports plus per-plugin JSON to `~/kast_results/example.com-YYYYMMDD-HHMMSS/`.
+
+### Common scan options
+
+```bash
+# Active mode (includes ZAP)
+kast scan --target example.com --mode active
+
+# Specific plugins only
+kast scan --target example.com --run-only whatweb,wafw00f,testssl
+
+# Parallel execution
+kast scan --target example.com --parallel --max-workers 5
+
+# Dry-run preview (don't actually scan)
+kast scan --target example.com --dry-run
+
+# AI-augmented executive summary
+kast scan --target example.com --ai-summary
+
+# Custom output directory and logo
+kast scan --target example.com --output-dir /tmp/scan1 --logo my-logo.png
+
+# Override a plugin config knob
+kast scan --target example.com --set related_sites.httpx_rate_limit=20
+```
+
+### Past scans
+
+```bash
+kast scan list                     # list past scans under ~/kast_results
+kast scan show DIR                 # show details of a past scan
+kast scan rerun DIR                # re-render reports from existing data
+```
+
+### Plugins, registry, doctor
+
+```bash
+kast plugins list                  # list discovered plugins (--json available)
+kast plugins show whatweb          # show config schema and metadata
+kast plugins deps                  # plugin dependency tree
+
+kast registry list                 # list issue-registry entries
+kast registry add ID --severity High --category Headers ...
+kast registry promote SCAN_DIR     # walk through missing_issue_ids.json
+
+kast doctor                        # environment health check
+kast doctor --fix                  # apply safe auto-fixes
+kast doctor --json                 # machine-readable
+```
+
+### Configuration
+
+Plugin and global settings are managed via YAML, with priority: CLI overrides > project config > user config > system config > schema defaults.
+
+```bash
+kast config init                   # write a default config
+kast config show                   # show merged config
+kast config schema                 # export the JSON schema
+```
+
+Configs are searched at `./kast_config.yaml`, `~/.config/kast/config.yaml`, and `/etc/kast/config.yaml`.
+
+### AI-augmented summaries
+
+When `--ai-summary` is set, kast calls Claude (via the Anthropic API) with the scan's findings and produces a structured executive summary. Configure credentials by either setting the env var:
+
+```bash
+export KAST_AI_API_KEY=sk-ant-...
+```
+
+or writing `~/.config/kast/ai.yaml`:
+
+```yaml
+provider: anthropic
+api_key: sk-ant-...
+model: claude-sonnet-4-6
+```
+
+If the AI call fails (no key, network error, schema mismatch), the report still generates with a deterministic summary and a banner noting the issue. You always get a report.
+
+---
+
+## Plugins (v3.0)
+
+| Plugin                  | Display Name              | Type    | Priority | Description                              |
+| ----------------------- | ------------------------- | ------- | -------- | ---------------------------------------- |
+| `org_discovery`         | Organization Discovery    | Passive | 3        | WHOIS / Shodan correlation               |
+| `mozilla_observatory`   | Mozilla Observatory       | Passive | 5        | Security headers and HTTPS posture       |
+| `script_detection`      | External Script Detection | Passive | 10       | Third-party script inventory             |
+| `subfinder`             | Subfinder                 | Passive | 10       | Subdomain enumeration                    |
+| `wafw00f`               | Wafw00f                   | Passive | 10       | WAF detection                            |
+| `whatweb`               | WhatWeb                   | Passive | 15       | Technology fingerprinting                |
+| `related_sites`         | Related Sites Discovery   | Passive | 45       | Affiliated-domain risk surface           |
+| `ftap`                  | Find The Admin Panel      | Passive | 50       | Admin-panel discovery                    |
+| `testssl`               | Test SSL                  | Passive | 50       | TLS configuration audit                  |
+| `katana`                | Katana                    | Passive | 60       | Web crawler                              |
+| `ai_chatbot_detection`  | AI Chatbot Detection      | Passive | 70       | LLM widget detection                     |
+| `zap`                   | OWASP ZAP                 | Active  | 200      | Active vulnerability scanner             |
+
+Lower priority numbers run earlier. ZAP supports two execution modes: `local` (Docker-based) and `remote` (connect to an existing ZAP via SSH+API). Cloud-mode ZAP is managed by kast-web.
+
+---
+
+## Output structure
+
+```
+~/kast_results/example.com-20260502-143022/
+  kast_report.html
+  kast_report.pdf
+  kast_info.json              (scan metadata + AI block)
+  kast_style.css
+  missing_issue_ids.json      (if any IDs were unrecognized)
+  zap_scan_progress.json      (during/after ZAP scans)
+  {plugin}.json               (raw tool output)
+  {plugin}_processed.json     (post-processed; consumed by kast-web)
+```
+
+Every state-bearing file is written atomically (write to `.tmp`, then `os.replace`) — external watchers never observe partial writes.
+
+---
+
+## Updating
+
+```bash
+kast self-update                   # update in place; backups + rollback
+kast self-update --check-only      # see what would change
+kast self-update --rollback TS     # restore a prior backup
+```
+
+For installer-based installs:
+```bash
+cd /path/to/kast-repo
 git pull
 sudo ./update.sh
 ```
 
-### Update Features
-
-- ✅ **Automatic Backups**: Creates timestamped backups before each update
-- ✅ **Configuration Preservation**: Keeps your custom settings during updates
-- ✅ **Easy Rollback**: Instantly restore any previous backup if issues occur
-- ✅ **Version Tracking**: Tracks current and target versions
-- ✅ **Validation**: Pre and post-update checks ensure system integrity
-- ✅ **Multiple Modes**: Interactive, automated, and dry-run options
-
-### Update Commands
-
-```bash
-# Interactive update (recommended)
-sudo ./update.sh
-
-# Automated update (for scripts/CI/CD)
-sudo ./update.sh --auto
-
-# Preview changes without modifying anything
-sudo ./update.sh --dry-run
-
-# List available backups
-sudo ./update.sh --list-backups
-
-# Rollback to previous version
-sudo ./update.sh --rollback <timestamp>
-```
-
-### Documentation
-
-- **Quick Reference**: [UPDATE.md](UPDATE.md)
-- **Full Guide**: [kast/docs/UPDATE_SCRIPT_GUIDE.md](kast/docs/UPDATE_SCRIPT_GUIDE.md)
-
-## 🚀 Usage
-
-### Basic Syntax
-
-```bash
-python -m kast.main [OPTIONS] --target <domain>
-```
-
-### Common Commands
-
-**Basic scan:**
-```bash
-python -m kast.main --target example.com
-```
-
-**Parallel execution for faster scans:**
-```bash
-python -m kast.main --target example.com --parallel --max-workers 5
-```
-
-**Run specific plugins only:**
-```bash
-python -m kast.main --target example.com --run-only whatweb,testssl,subfinder
-```
-
-**Active scan mode:**
-```bash
-python -m kast.main --target example.com --mode active
-```
-
-**Verbose output:**
-```bash
-python -m kast.main --target example.com --verbose
-```
-
-**Custom output directory:**
-```bash
-python -m kast.main --target example.com --output-dir ~/my-scans/example-scan
-```
-
-**Report-only mode (generate report from existing data):**
-```bash
-python -m kast.main --report-only ~/kast_results/example.com-20250119-143022/
-```
-
-**Dry run (preview without executing):**
-```bash
-python -m kast.main --target example.com --dry-run
-```
-
-**Generate PDF report:**
-```bash
-python -m kast.main --target example.com --format pdf
-```
-
-**Generate both HTML and PDF reports:**
-```bash
-python -m kast.main --target example.com --format both
-```
-
-**Use custom logo in reports:**
-```bash
-python -m kast.main --target example.com --logo ~/my-company-logo.png
-```
-
-### Command-Line Options
-
-| Option | Description |
-|--------|-------------|
-| `-t, --target <domain>` | Target domain to scan (required) |
-| `-m, --mode <mode>` | Scan mode: `active` or `passive` (default: passive) |
-| `-p, --parallel` | Enable parallel execution of plugins |
-| `--max-workers <n>` | Maximum parallel workers (default: 5) |
-| `--run-only <plugins>` | Comma-separated list of plugins to run |
-| `-o, --output-dir <path>` | Custom output directory |
-| `--report-only <path>` | Generate report from existing scan data |
-| `--format <format>` | Output format: `html`, `pdf`, or `both` (default: html) |
-| `--logo <path>` | Custom logo file (PNG/JPG) for reports |
-| `--dry-run` | Preview execution without running tools |
-| `-v, --verbose` | Enable verbose logging |
-| `-l, --log-dir <path>` | Log directory (default: /var/log/kast/) |
-| `-ls, --list-plugins` | List all available plugins |
-| `-V, --version` | Display version information |
-
-## 🔌 Available Plugins
-
-KAST includes the following built-in plugins:
-
-| Plugin | Description | Type | Priority |
-|--------|-------------|------|----------|
-| **Script Detection** | Analyzes external JavaScript files and SRI protection | Passive | 10 |
-| **WhatWeb** | Identifies web technologies and frameworks | Passive | 15 (High) |
-| **Wafw00f** | Detects Web Application Firewalls (WAF) | Passive | 20 |
-| **TestSSL** | Comprehensive SSL/TLS security testing | Passive | 30 |
-| **Subfinder** | Subdomain enumeration and discovery | Passive | 40 |
-| **FTAP** | Find The Admin Panel - Discovers exposed admin login pages | Active | 50 |
-| **Katana** | Web crawling and endpoint discovery | Active | 50 |
-| **Observatory** | Mozilla Observatory security assessment | Passive | 60 |
-
-## 🛠️ Plugin Requirements
-
-Each plugin requires its corresponding security tool to be installed:
-
-### WhatWeb
-- **Installation:** `sudo apt install whatweb`
-- **Description:** Web technology fingerprinting
-- **Homepage:** https://github.com/urbanadventurer/whatweb
-- **Requirements:** Ruby
-
-### Wafw00f
-- **Installation:** `sudo apt install wafw00f` or `pip install wafw00f`
-- **Description:** Web Application Firewall detection
-- **Requirements:** Python 3
-
-### TestSSL
-- **Installation:** `sudo apt install testssl.sh`
-- **Description:** SSL/TLS configuration testing
-- **Homepage:** https://testssl.sh/
-- **Requirements:** OpenSSL or LibreSSL, bash
-
-### Subfinder
-- **Installation:** 
-  ```bash
-  go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-  ```
-- **Description:** Fast passive subdomain enumeration
-- **Homepage:** https://github.com/projectdiscovery/subfinder
-- **Requirements:** Go 1.21+
-
-### FTAP (Find The Admin Panel)
-- **Installation:**
-  ```bash
-  pip install ftap
-  ```
-  Or from source:
-  ```bash
-  git clone https://github.com/DV64/Find-The-Admin-Panel.git
-  cd Find-The-Admin-Panel
-  pip install -r requirements.txt
-  python setup.py install
-  ```
-- **Description:** Scans target websites for exposed admin login pages using stealth detection mode
-- **Homepage:** https://github.com/DV64/Find-The-Admin-Panel
-- **Requirements:** Python 3.7+
-- **Features:**
-  - Stealth detection mode for admin panel discovery
-  - Confidence scoring for detected panels
-  - Login form detection
-  - Technology identification
-  - JSON output format for integration
-
-### Katana
-- **Installation:**
-  ```bash
-  go install github.com/projectdiscovery/katana/cmd/katana@latest
-  ```
-- **Description:** Next-generation web crawler
-- **Homepage:** https://github.com/projectdiscovery/katana
-- **Requirements:** Go 1.21+
-
-### Observatory
-- **Installation:** Uses Mozilla's public API (no local installation required)
-- **Description:** Security assessment using Mozilla Observatory
-- **Homepage:** https://observatory.mozilla.org/
-- **Requirements:** Internet connection
-
-### Script Detection
-- **Installation:** No external tool required (uses Python libraries)
-- **Description:** Analyzes external JavaScript files and checks for Subresource Integrity (SRI) protection
-- **Requirements:** Python packages: `requests`, `beautifulsoup4` (installed via requirements.txt)
-- **Features:**
-  - Detects cross-origin script loading
-  - Identifies missing SRI protection
-  - Correlates findings with Mozilla Observatory results
-  - Highlights insecure (HTTP) external scripts
-
-## 📊 Output Structure
-
-KAST generates organized output in the following structure:
-
-```
-~/kast_results/example.com-20250119-143022/
-├── kast_report.html           # Main HTML report
-├── kast_report.pdf            # PDF report (if --format pdf or both)
-├── kast_info.json            # Execution metadata and timing
-├── whatweb.json              # Raw WhatWeb output
-├── whatweb_processed.json    # Processed findings
-├── testssl.json              # Raw TestSSL output
-├── testssl_processed.json    # Processed findings
-└── ...                       # Additional plugin outputs
-```
-
-### kast_info.json
-Contains execution metadata including:
-- KAST version
-- Start/end timestamps
-- Execution duration
-- CLI arguments used
-- Per-plugin timing information
-
-### Reports (HTML and PDF)
-The generated reports include:
-- Executive summary with key findings
-- Per-plugin detailed findings
-- Security issues with remediation guidance
-- Technology stack identification
-- Visual styling for easy readability
-- Custom logo support (if provided)
-- Professional formatting optimized for each format
-
-## 🌐 KAST Web Interface
-
-For a web-based interface to KAST, check out the **KAST-Web** sister project:
-
-**Repository:** https://github.com/mercutioviz/kast-web
-
-KAST-Web provides:
-- Web UI for initiating scans
-- Real-time scan progress monitoring
-- Interactive report viewing
-- Historical scan management
-- Multi-user support
-- RESTful API for integration
-
-## 🔧 Extending KAST
-
-### Creating Custom Plugins
-
-KAST's modular architecture makes it easy to add new security tools. See the [Plugin Development Guide](kast/plugins/README.md) for detailed instructions.
-
-Quick steps:
-1. Copy `kast/plugins/template_plugin.py`
-2. Rename and customize the class
-3. Implement required methods: `__init__`, `is_available`, `run`, `post_process`
-4. Add your plugin to the plugins directory
-5. Test with `--run-only your_plugin_name`
-
-### Plugin Lifecycle
-```
-__init__() → is_available() → run() → post_process() → report generation
-```
-
-## 📝 Configuration
-
-### Issue Registry
-KAST includes a centralized issue registry at `kast/data/issue_registry.json` containing:
-- Issue definitions and descriptions
-- Severity ratings (Critical, High, Medium, Low, Informational)
-- Remediation guidance (talking points)
-- Categorization (HTTPS, Security Headers, Configuration, etc.)
-
-Plugins can reference issues by ID for consistent reporting.
-
-### Custom Styling
-Customize report appearance by editing `kast/templates/kast_style.css`.
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Plugin shows as unavailable:**
-- Verify the tool is installed: `which <tool_name>`
-- Check your PATH includes the tool's location
-- Try reinstalling the tool
-
-**Permission errors:**
-- Ensure log directory is writable: `sudo chmod 666 /var/log/kast/`
-- OR change owner: `sudo chown $USER:$USER /var/log/kast/`
-- Use `--log-dir` to specify an alternative location
-
-**Empty reports:**
-- Check `kast_info.json` for execution errors
-- Run with `--verbose` for detailed logging
-- Verify the target is accessible
-
-**SSL/TLS errors with TestSSL:**
-- Ensure OpenSSL is properly installed
-- Some scans may take several minutes on complex sites
-
-## 📚 Additional Resources
-
-### Documentation
-- [Plugin Development Guide](kast/plugins/README.md)
-- [Executive Summary Implementation](kast/docs/EXECUTIVE_SUMMARY_IMPLEMENTATION.md)
-- [KAST Info Implementation](kast/docs/KAST_INFO_IMPLEMENTATION.md)
-- [Parallel Execution Improvements](kast/docs/PARALLEL_EXECUTION_IMPROVEMENTS.md)
-- [WhatWeb Redirect Detection](kast/docs/WHATWEB_REDIRECT_DETECTION.md)
-
-### Directory Structure
-```
-kast/
-├── __init__.py
-├── main.py              # Entry point
-├── orchestrator.py      # Plugin orchestration
-├── report_builder.py    # HTML report generation
-├── report_templates.py  # Report templates
-├── utils.py            # Utility functions
-├── config.py           # Configuration
-├── plugins/            # Plugin implementations
-│   ├── base.py
-│   ├── whatweb_plugin.py
-│   ├── testssl_plugin.py
-│   └── ...
-├── data/
-│   └── issue_registry.json
-├── templates/
-│   ├── report_template.html
-│   └── kast_style.css
-├── tests/              # Test suite
-└── docs/              # Documentation
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Submit a pull request
-
-For plugin contributions, ensure:
-- Code follows existing style conventions
-- Plugin includes comprehensive docstrings
-- Post-processing generates standardized JSON
-- Testing covers both unit and integration scenarios
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-KAST integrates and orchestrates excellent open-source security tools:
-- WhatWeb by Andrew Horton
-- Wafw00f by Sandro Gauci
-- TestSSL by Dirk Wetter
-- Subfinder by ProjectDiscovery
-- Katana by ProjectDiscovery
-- Mozilla Observatory
-
-## 📞 Support
-
-For issues, questions, or feature requests:
-- GitHub Issues: [Create an issue](https://github.com/mercutioviz/kast/issues)
-- Documentation: Check the `docs/` directory
-- Plugin Development: See `kast/plugins/README.md`
+---
+
+## Plugin development
+
+See [`kast/plugins/README.md`](kast/plugins/README.md) for the full plugin authoring guide, and [`genai-instructions.md`](genai-instructions.md) for v3 patterns. The short version:
+
+- Inherit from `ExternalToolPlugin` for tool wrappers; from `KastPlugin` for pure-Python plugins.
+- Declare identity (`name`, `display_name`, `description`, `website_url`, `scan_type`, `output_type`) as **class attributes** — never set in `__init__`.
+- Declare `config_schema` as a class attribute too.
+- Required hooks: `build_command(target, output_path)`, `count_findings(findings)`. Optional hooks have sensible defaults: `parse_findings`, `extract_issues`, `format_summary`, `format_details`, `format_executive_summary`, `extra_processed_fields`.
+- Use `self.get_config(key, default)` to read plugin configuration.
+- Use `kast.core.atomic.write_json_atomic` for any state-bearing JSON writes.
+- Use the `Severity` enum (`kast.core.severity`) for severity values; never bare strings.
 
 ---
 
-**Version:** 2.1.0 (Installer: 2.7.1)
-**Last Updated:** December 2024
+## kast-web
 
-Made with ❤️ for the security community
+For multi-user / browser-based scanning and managed cloud-mode ZAP, see the [kast-web companion repo](https://github.com/mercutioviz/kast-web). It shells out to the kast CLI and adds:
+
+- Web-based scan submission and history
+- User accounts, roles, and audit logging
+- Cloud-mode ZAP scanning via Terraform-provisioned ephemeral infrastructure (AWS / Azure / GCP)
+- Encrypted credential storage for cloud providers
+- Polished report sharing and download
+
+The kast↔kast-web boundary is documented in [`docs/web-integration.md`](docs/web-integration.md).
+
+---
+
+## Contributing
+
+For issues, questions, or feature requests:
+- GitHub Issues: [Create an issue](https://github.com/mercutioviz/kast/issues)
+- Documentation: see `docs/` and `genai-instructions.md`
+- Plugin authoring: see `kast/plugins/README.md`
+
+---
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

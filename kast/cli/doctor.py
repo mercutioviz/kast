@@ -1,4 +1,4 @@
-"""``kast doctor`` (Phase B5) — environment health check.
+"""``kast doctor`` (Phase B5, ``--fix`` added in Phase E3) — env health check.
 
 Pre-flight check meant for an SA setting up a fresh kast install (or
 diagnosing why a scan failed). Reports each check's status as one of:
@@ -12,8 +12,11 @@ Exit code:
 - 0 if no ``fail`` results
 - 1 if any ``fail`` (CI-friendly)
 
-Future B5+ work could add a ``--fix`` flag that attempts apt-installable
-items; for now, every failure includes a concrete remediation hint.
+``--fix`` applies the safe auto-fixes (mkdir for results / log dirs,
+``kast config init`` when no config exists, scaffold ``~/.config/kast/ai.yaml``
+template). System-mutating fixes (``sudo apt install ...``, ``go install ...``)
+are NOT performed automatically — they're printed as a checklist the user
+can run by hand.
 """
 
 from __future__ import annotations
@@ -388,12 +391,100 @@ def render_summary(results: List[CheckResult]) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _apply_safe_fixes() -> List[CheckResult]:
+    """Run safe auto-fixes; return per-fix CheckResults summarizing actions taken.
+
+    Safe fixes only — anything system-mutating (apt / go install) is left for
+    the user to run, with the existing ``hint`` fields surfacing the commands.
+    """
+    section = "Auto-fix"
+    fixes: List[CheckResult] = []
+
+    results_dir = Path.home() / "kast_results"
+    if not results_dir.exists():
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+            fixes.append(CheckResult(section=section, name="results dir",
+                                     status=OK, detail=f"created {results_dir}"))
+        except OSError as e:
+            fixes.append(CheckResult(section=section, name="results dir",
+                                     status=FAIL, detail=str(e)))
+
+    log_dir = Path("/var/log/kast/")
+    if not log_dir.exists():
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            fixes.append(CheckResult(section=section, name="log dir",
+                                     status=OK, detail=f"created {log_dir}"))
+        except PermissionError:
+            fixes.append(CheckResult(section=section, name="log dir",
+                                     status=WARN,
+                                     detail=f"cannot create {log_dir} (needs sudo)",
+                                     hint=f"sudo mkdir -p {log_dir} && sudo chown $USER {log_dir}"))
+
+    user_config = Path.home() / ".config" / "kast" / "config.yaml"
+    project_config = Path("./kast_config.yaml")
+    system_config = Path("/etc/kast/config.yaml")
+    if not (user_config.exists() or project_config.exists() or system_config.exists()):
+        try:
+            user_config.parent.mkdir(parents=True, exist_ok=True)
+            from kast.config_manager import ConfigManager
+            cm = ConfigManager()
+            cm.create_default_config(str(user_config))
+            fixes.append(CheckResult(section=section, name="user config",
+                                     status=OK, detail=f"created {user_config}"))
+        except Exception as e:
+            fixes.append(CheckResult(section=section, name="user config",
+                                     status=FAIL, detail=str(e)))
+
+    ai_config = Path.home() / ".config" / "kast" / "ai.yaml"
+    if not ai_config.exists():
+        try:
+            ai_config.parent.mkdir(parents=True, exist_ok=True)
+            ai_config.write_text(
+                "# kast AI adapter configuration. Add your API key below to enable\n"
+                "# `kast scan --ai-summary`. Either KAST_AI_API_KEY env var or this\n"
+                "# file is required; env var takes precedence.\n"
+                "provider: anthropic\n"
+                "api_key: \"\"  # paste sk-ant-... here, or leave empty and use the env var\n"
+                "model: claude-sonnet-4-6\n"
+            )
+            ai_config.chmod(0o600)
+            fixes.append(CheckResult(section=section, name="AI config template",
+                                     status=OK,
+                                     detail=f"scaffolded {ai_config} (mode 600)"))
+        except Exception as e:
+            fixes.append(CheckResult(section=section, name="AI config template",
+                                     status=WARN, detail=str(e)))
+
+    return fixes
+
+
+def _print_manual_remediation_checklist(results: List[CheckResult]) -> None:
+    """Print a checklist of commands the user needs to run by hand."""
+    manual = [r for r in results if r.status in (FAIL, WARN) and r.hint]
+    if not manual:
+        return
+    console.print("\n[bold cyan]Manual fixes needed:[/bold cyan]")
+    for r in manual:
+        console.print(f"  [yellow]•[/yellow] {r.name}: {r.detail}")
+        console.print(f"      [dim]→[/dim] {r.hint}")
+
+
 @click.command()
 @click.option("--json", "json_output", is_flag=True,
               help="Emit machine-readable JSON instead of formatted tables.")
-def doctor(json_output: bool) -> None:
+@click.option("--fix", "fix", is_flag=True,
+              help="Apply safe auto-fixes (mkdir, config init); print the rest.")
+def doctor(json_output: bool, fix: bool) -> None:
     """Run environment health checks (Python, tools, perms, plugins)."""
     results = run_all_checks()
+
+    fix_results: List[CheckResult] = []
+    if fix:
+        fix_results = _apply_safe_fixes()
+        # Re-run the checks after fixes so the report reflects new state.
+        results = run_all_checks()
 
     if json_output:
         payload = {
@@ -412,10 +503,23 @@ def doctor(json_output: bool) -> None:
                 for status in (OK, WARN, FAIL, INFO)
             },
         }
+        if fix:
+            payload["fixes"] = [
+                {"name": r.name, "status": r.status, "detail": r.detail, "hint": r.hint}
+                for r in fix_results
+            ]
         click.echo(json.dumps(payload, indent=2))
     else:
         console.print()
         console.print("[bold cyan]KAST Environment Check[/bold cyan]\n")
+        if fix and fix_results:
+            console.print("[bold cyan]Auto-fix actions:[/bold cyan]")
+            for r in fix_results:
+                marker = _STATUS_MARKERS[r.status]
+                console.print(f"  {marker} {r.name}: {r.detail}")
+                if r.hint:
+                    console.print(f"      [dim]→[/dim] {r.hint}")
+            console.print()
         render_report(results)
         counts = render_summary(results)
         if counts[FAIL]:
@@ -423,6 +527,8 @@ def doctor(json_output: bool) -> None:
                 "\n[red]One or more checks failed; "
                 "follow the hints above to remediate.[/red]"
             )
+        if fix:
+            _print_manual_remediation_checklist(results)
 
     # Exit code reflects fail count for CI-friendliness.
     fail_count = sum(1 for r in results if r.status == FAIL)
