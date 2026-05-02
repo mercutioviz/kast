@@ -21,7 +21,7 @@ We are on branch `refactor/v3.0`, executing the plan in `docs/v3-planning/`:
 
 **Version-history note:** kast goes 2.14 → 3.0 on this branch. **kast-web** has its own independent version line and is going **v1.5 → v2.0** on its `refactor/v2.0` branch. The two repos release as a coordinated bundle, but the version numbers don't match. Earlier sections in `03-design-and-migration.md` that say "kast-web 3.0" were a mistake; they've been corrected to "kast-web 2.0."
 
-**Active phase: A — Foundation refactors.** Goal: fix audit-identified klunk without changing user-visible behavior. See section 7, Phase A in `03-design-and-migration.md` for the deliverable list.
+**Active phase: E — Release polish + tagging.** Phases A–D are complete. C is partial (C1+C3+C4 shipped; C5/C7/C8–C11/C12 deferred to v3.1). E1–E4, E6–E7 shipped on the kast side; E5 was opportunistically done in B10. **E8 (tags `v3.0.0` and `v2.0.0`) is created locally** — push them after running `docs/RELEASE_VALIDATION.md`'s OS smoke-test on at least one supported OS. E9 is a manual checklist Michael runs on fresh VMs before pushing tags.
 
 ## Critical: contracts frozen for v3.0
 
