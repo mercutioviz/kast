@@ -197,6 +197,12 @@
     </div>
     {% endif %}
 
+    <!-- TCO Appendix (Phase C5 / F1) -->
+    {% if tco and tco.has_data %}
+    <h2><span class="section-icon">💰</span> Cost of Remediation</h2>
+    {% include "partials/tco_appendix.html" %}
+    {% endif %}
+
     <!-- Issues Found Section with Integrated Severity Navigation -->
     <div class="issues-header-container">
         <h2><span class="section-icon">⚠️</span> Issues Found</h2>

@@ -23,6 +23,7 @@ from kast.report.helpers import (
     generate_registry_template,
     infer_issue_metadata,
 )
+from kast.report.tco import compute_tco
 from kast.report_templates import (
     generate_executive_summary,
     get_category,
@@ -275,6 +276,8 @@ def collect_report_data(plugin_results, target=None, ai_summary=None, ai_error=N
 
     executive_summary_text = generate_executive_summary(all_issues)
 
+    tco = compute_tco(all_issues)
+
     return {
         "target": target,
         "all_issues": all_issues,
@@ -285,4 +288,5 @@ def collect_report_data(plugin_results, target=None, ai_summary=None, ai_error=N
         "scan_metadata": scan_metadata,
         "ai_summary": ai_summary,
         "ai_error": ai_error,
+        "tco": tco,
     }

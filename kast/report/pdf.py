@@ -128,6 +128,7 @@ def render_pdf(report_data, output_path, logo_path=None):
         logo_base64=logo_base64,
         ai_summary=report_data.get("ai_summary"),
         ai_error=report_data.get("ai_error"),
+        tco=report_data.get("tco"),
     )
 
     base_url = f"file://{os.path.abspath(TEMPLATE_DIR)}/"

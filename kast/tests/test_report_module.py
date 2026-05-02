@@ -60,6 +60,7 @@ def test_collect_report_data_shape():
         "scan_metadata",
         "ai_summary",
         "ai_error",
+        "tco",
     }
     assert set(data.keys()) == expected_keys
 

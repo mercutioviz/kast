@@ -107,6 +107,7 @@ def render_html(report_data, output_path, logo_path=None):
         custom_logo=logo_filename,
         ai_summary=report_data.get("ai_summary"),
         ai_error=report_data.get("ai_error"),
+        tco=report_data.get("tco"),
     )
 
     with open(output_path, "w", encoding="utf-8") as f:

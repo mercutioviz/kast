@@ -1,0 +1,53 @@
+{# TCO appendix (Phase C5 / F1).
+
+Renders a "code fix vs WAF deployment" cost-of-ownership comparison from
+the issue registry. Shared by report_template.html (HTML) and
+report_template_pdf.html (PDF). The caller is responsible for picking
+the right surrounding heading classes; this partial only emits the
+shared inner content.
+
+Inputs (passed by the caller):
+  tco — dict from kast.report.tco.compute_tco. The partial renders nothing
+        when ``tco.has_data`` is False.
+#}
+{% if tco and tco.has_data %}
+<div class="tco-appendix">
+    <div class="tco-summary">
+        <p class="tco-headline">
+            Addressing all <strong>{{ tco.issue_count }}</strong> detected issue{% if tco.issue_count != 1 %}s{% endif %} in code:
+            estimated <strong>{{ tco.totals.code_fix_summary }}</strong> of development effort.
+        </p>
+        <p class="tco-headline">
+            With a WAF deployment:
+            estimated <strong>{{ tco.totals.waf_deploy_summary }}</strong> to baseline coverage.
+        </p>
+    </div>
+
+    <table class="tco-table">
+        <thead>
+            <tr>
+                <th>Issue</th>
+                <th>Severity</th>
+                <th>Category</th>
+                <th>Code-fix effort</th>
+                <th>WAF-deploy effort</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in tco.per_issue %}
+            <tr>
+                <td>{{ row.display_name }}</td>
+                <td><span class="severity-{{ row.severity|lower }}">{{ row.severity }}</span></td>
+                <td>{{ row.category }}</td>
+                <td>{{ row.code_fix_range }}</td>
+                <td>{{ row.waf_deploy_range }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p class="tco-footnote">
+        Effort estimates come from the kast issue registry and assume a typical engineering team and a Barracuda WAF/WaaS deployment. They are baseline guidance, not contractual commitments.
+    </p>
+</div>
+{% endif %}

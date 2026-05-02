@@ -80,6 +80,7 @@ def test_collect_data_shape_matches_baseline():
         "scan_metadata",
         "ai_summary",
         "ai_error",
+        "tco",
     }
     assert set(data.keys()) == expected_keys
 

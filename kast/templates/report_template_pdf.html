@@ -246,6 +246,15 @@
     <div class="page-break"></div>
     {% endif %}
 
+    <!-- TCO Appendix (Phase C5 / F1) -->
+    {% if tco and tco.has_data %}
+    <div class="section" id="tco-appendix">
+        <h1 class="section-title">Cost of Remediation</h1>
+        {% include "partials/tco_appendix.html" %}
+    </div>
+    <div class="page-break"></div>
+    {% endif %}
+
     <!-- Issues by Severity -->
     <div class="section" id="issues-found">
         <h1 class="section-title">Issues Found</h1>
