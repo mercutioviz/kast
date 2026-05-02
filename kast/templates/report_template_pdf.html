@@ -96,10 +96,39 @@
         {% endfor %}
         {% endif %}
         
+        {% if ai_summary %}
+        <div class="ai-summary">
+            <div class="ai-headline">{{ ai_summary.headline }}</div>
+            <div class="ai-narrative">{{ ai_summary.narrative|safe }}</div>
+            {% if ai_summary.key_findings %}
+            <h3 class="ai-section-title">Key Findings</h3>
+            <ul class="ai-list">
+                {% for finding in ai_summary.key_findings %}
+                <li>{{ finding }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if ai_summary.recommended_actions %}
+            <h3 class="ai-section-title">Recommended Actions</h3>
+            <ul class="ai-list">
+                {% for action in ai_summary.recommended_actions %}
+                <li>{{ action }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <p class="ai-disclaimer">AI-generated summary{% if ai_summary._meta and ai_summary._meta.model %} ({{ ai_summary._meta.model }}){% endif %}. Review for accuracy before sharing.</p>
+        </div>
+        {% else %}
+        {% if ai_error %}
+        <div class="ai-error-banner">
+            AI summary unavailable: {{ ai_error }}. Showing deterministic summary below.
+        </div>
+        {% endif %}
         <h2 class="subsection-title">Identified Issues</h2>
         <div class="summary-block">
             {{ executive_summary|safe }}
         </div>
+        {% endif %}
         <div class="summary-nav">
             <a href="#issues-found" class="nav-link">View All Issues by Severity →</a>
         </div>

@@ -126,6 +126,8 @@ def render_pdf(report_data, output_path, logo_path=None):
         target=report_data["target"],
         scan_metadata=report_data["scan_metadata"],
         logo_base64=logo_base64,
+        ai_summary=report_data.get("ai_summary"),
+        ai_error=report_data.get("ai_error"),
     )
 
     base_url = f"file://{os.path.abspath(TEMPLATE_DIR)}/"
@@ -156,11 +158,14 @@ def render_pdf(report_data, output_path, logo_path=None):
 
 
 def generate_pdf_report(
-    plugin_results, output_path="kast_report.pdf", target=None, logo_path=None
+    plugin_results, output_path="kast_report.pdf", target=None, logo_path=None,
+    ai_summary=None, ai_error=None,
 ):
     """One-shot entrypoint: collect data then render PDF.
 
     Preserved as the public surface of ``kast.report_builder``.
     """
-    data = collect_report_data(plugin_results, target)
+    data = collect_report_data(
+        plugin_results, target, ai_summary=ai_summary, ai_error=ai_error,
+    )
     render_pdf(data, output_path, logo_path)

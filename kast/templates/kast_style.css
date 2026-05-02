@@ -1137,3 +1137,62 @@ code {
     display: block !important;
   }
 }
+
+/* AI-generated executive summary (Phase C1) */
+.ai-summary {
+  margin: 1.5em 0 1em;
+  padding: 1.2em 1.4em;
+  background: #f0f9ff;
+  border-left: 4px solid #0c4a6e;
+  border-radius: 0 8px 8px 0;
+}
+
+.ai-summary .ai-headline {
+  font-size: 1.15em;
+  font-weight: 600;
+  color: #0c4a6e;
+  margin-bottom: 0.6em;
+  line-height: 1.4;
+}
+
+.ai-summary .ai-narrative {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+.ai-summary .ai-narrative p {
+  margin: 0 0 0.8em;
+}
+
+.ai-summary h5 {
+  margin: 1em 0 0.4em;
+  color: #0c4a6e;
+  font-size: 1em;
+}
+
+.ai-summary .ai-list {
+  margin: 0 0 0.8em 1.2em;
+  padding: 0;
+}
+
+.ai-summary .ai-list li {
+  margin-bottom: 0.3em;
+  line-height: 1.5;
+}
+
+.ai-summary .ai-disclaimer {
+  margin-top: 1.2em;
+  font-size: 0.82em;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.ai-error-banner {
+  margin: 1em 0;
+  padding: 0.7em 1em;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  color: #78350f;
+  font-size: 0.92em;
+}

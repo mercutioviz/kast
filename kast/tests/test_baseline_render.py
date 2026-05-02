@@ -78,6 +78,8 @@ def test_collect_data_shape_matches_baseline():
         "missing_issues",
         "executive_summary_text",
         "scan_metadata",
+        "ai_summary",
+        "ai_error",
     }
     assert set(data.keys()) == expected_keys
 

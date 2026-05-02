@@ -105,6 +105,8 @@ def render_html(report_data, output_path, logo_path=None):
         target=report_data["target"],
         scan_metadata=report_data["scan_metadata"],
         custom_logo=logo_filename,
+        ai_summary=report_data.get("ai_summary"),
+        ai_error=report_data.get("ai_error"),
     )
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -119,12 +121,15 @@ def render_html(report_data, output_path, logo_path=None):
 
 
 def generate_html_report(
-    plugin_results, output_path="kast_report.html", target=None, logo_path=None
+    plugin_results, output_path="kast_report.html", target=None, logo_path=None,
+    ai_summary=None, ai_error=None,
 ):
     """One-shot entrypoint: collect data then render HTML.
 
     Preserved as the public surface of ``kast.report_builder`` so callers
     that import ``generate_html_report`` continue to work unchanged.
     """
-    data = collect_report_data(plugin_results, target)
+    data = collect_report_data(
+        plugin_results, target, ai_summary=ai_summary, ai_error=ai_error,
+    )
     render_html(data, output_path, logo_path)

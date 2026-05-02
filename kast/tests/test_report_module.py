@@ -58,6 +58,8 @@ def test_collect_report_data_shape():
         "missing_issues",
         "executive_summary_text",
         "scan_metadata",
+        "ai_summary",
+        "ai_error",
     }
     assert set(data.keys()) == expected_keys
 

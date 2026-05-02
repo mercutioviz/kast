@@ -71,6 +71,12 @@ console = Console()
               help="Path to configuration file.")
 @click.option("--set", "set_overrides", multiple=True,
               help="Override config value: --set plugin.key=value")
+@click.option("--ai-summary", "ai_summary_flag", is_flag=True,
+              help="Generate an AI executive summary (requires KAST_AI_API_KEY).")
+@click.option("--ai-model", "ai_model", default=None,
+              help="Override AI model (default: claude-sonnet-4-6).")
+@click.option("--ai-adapter", "ai_adapter", type=click.Choice(["anthropic"]),
+              default="anthropic", help="AI provider adapter (default: anthropic).")
 @click.pass_context
 def scan(
     ctx: click.Context,
@@ -90,6 +96,9 @@ def scan(
     zap_profile: str | None,
     config_path: str | None,
     set_overrides: tuple[str, ...],
+    ai_summary_flag: bool,
+    ai_model: str | None,
+    ai_adapter: str,
 ) -> None:
     """Run a security scan against TARGET, or manage past scans via subcommand."""
     # If a subcommand was given (list / show / rerun), defer to it.
@@ -104,6 +113,7 @@ def scan(
         log_dir=log_dir, logo=logo, run_only=run_only,
         httpx_rate_limit=httpx_rate_limit, zap_profile=zap_profile,
         config_path=config_path, set_overrides=set_overrides,
+        ai_summary_flag=ai_summary_flag, ai_model=ai_model, ai_adapter=ai_adapter,
     )
 
 
@@ -371,6 +381,36 @@ def scan_rerun(scan_dir: str, format_: str, logo: str | None) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _build_ai_info(enabled: bool, adapter: str, ai_summary: dict | None,
+                   ai_error: str | None) -> dict:
+    """Build the ``ai`` block for kast_info.json.
+
+    Status is one of ``"success" | "error" | "disabled"``.
+    """
+    if not enabled:
+        return {"enabled": False, "status": "disabled", "adapter": None,
+                "model": None, "prompt_version": None,
+                "tokens_in": None, "tokens_out": None,
+                "latency_ms": None, "error": None}
+    if ai_summary is None:
+        return {"enabled": True, "status": "error", "adapter": adapter,
+                "model": None, "prompt_version": None,
+                "tokens_in": None, "tokens_out": None,
+                "latency_ms": None, "error": ai_error}
+    meta = ai_summary.get("_meta") or {}
+    return {
+        "enabled": True,
+        "status": "success",
+        "adapter": adapter,
+        "model": meta.get("model"),
+        "prompt_version": meta.get("prompt_version"),
+        "tokens_in": meta.get("tokens_in"),
+        "tokens_out": meta.get("tokens_out"),
+        "latency_ms": meta.get("latency_ms"),
+        "error": None,
+    }
+
+
 def _setup_logging(log_dir: str, verbose: bool) -> None:
     """Set up Rich-based logging plus a file handler."""
     from rich.logging import RichHandler
@@ -395,6 +435,7 @@ def _run_scan(
     *, target, mode, output_dir, report_only_path, format_, dry_run,
     parallel, max_workers, verbose, log_dir, logo, run_only,
     httpx_rate_limit, zap_profile, config_path, set_overrides,
+    ai_summary_flag=False, ai_model=None, ai_adapter="anthropic",
 ) -> None:
     """Execute a scan (or re-render in report-only mode).
 
@@ -545,6 +586,35 @@ def _run_scan(
     end_time = time.time()
     end_timestamp = datetime.now().isoformat()
 
+    processed_files = list(Path(out_dir).glob("*_processed.json"))
+    plugin_results: list = []
+    ai_summary = None
+    ai_error: str | None = None
+    if processed_files:
+        for pf in processed_files:
+            try:
+                plugin_results.append(json.loads(pf.read_text()))
+            except (json.JSONDecodeError, OSError) as e:
+                log.warning(f"Failed to load {pf}: {e}")
+
+    if ai_summary_flag and not dry_run and plugin_results:
+        try:
+            from kast.ai.config import get_ai_adapter
+            from kast.ai.summary import generate_ai_summary
+            from kast.report.data import collect_report_data
+            adapter = get_ai_adapter(ai_adapter, ai_model)
+            tmp_data = collect_report_data(plugin_results, target)
+            ai_summary = generate_ai_summary(adapter, tmp_data)
+            log.info(
+                f"AI summary generated: model={ai_summary['_meta']['model']}, "
+                f"tokens={ai_summary['_meta']['tokens_in']}+{ai_summary['_meta']['tokens_out']}, "
+                f"latency={ai_summary['_meta']['latency_ms']}ms"
+            )
+        except Exception as e:
+            ai_error = str(e)
+            log.exception("AI summary generation failed")
+            console.print(f"[yellow]Warning:[/yellow] AI summary unavailable: {e}")
+
     if not dry_run and not is_report_only:
         kast_info = {
             "kast_version": KAST_VERSION,
@@ -557,8 +627,10 @@ def _run_scan(
                 "output_dir": str(out_dir), "run_only": run_only,
                 "log_dir": log_dir, "format": format_, "logo": logo,
                 "dry_run": dry_run, "report_only": report_only_path,
+                "ai_summary": ai_summary_flag,
             },
             "plugins": orchestrator.get_plugin_timings(),
+            "ai": _build_ai_info(ai_summary_flag, ai_adapter, ai_summary, ai_error),
         }
         info_file = out_dir / "kast_info.json"
         try:
@@ -567,26 +639,28 @@ def _run_scan(
         except Exception as e:
             log.error(f"Failed to write kast_info.json: {e}")
 
-    processed_files = list(Path(out_dir).glob("*_processed.json"))
     if processed_files:
         console.print("[green]Post-processed JSON files created:[/green]")
         for pf in processed_files:
             console.print(f"  - {pf}")
         try:
-            plugin_results = []
-            for pf in processed_files:
-                plugin_results.append(json.loads(pf.read_text()))
             from kast.report_builder import generate_html_report, generate_pdf_report
 
             if format_ in ("html", "both"):
                 html_path = out_dir / "kast_report.html"
-                generate_html_report(plugin_results, str(html_path), target, custom_logo_path)
+                generate_html_report(
+                    plugin_results, str(html_path), target, custom_logo_path,
+                    ai_summary=ai_summary, ai_error=ai_error,
+                )
                 console.print(f"[green]HTML report generated:[/green] {html_path}")
                 log.info(f"HTML report generated at {html_path}")
 
             if format_ in ("pdf", "both"):
                 pdf_path = out_dir / "kast_report.pdf"
-                generate_pdf_report(plugin_results, str(pdf_path), target, custom_logo_path)
+                generate_pdf_report(
+                    plugin_results, str(pdf_path), target, custom_logo_path,
+                    ai_summary=ai_summary, ai_error=ai_error,
+                )
                 console.print(f"[green]PDF report generated:[/green] {pdf_path}")
                 log.info(f"PDF report generated at {pdf_path}")
         except Exception as e:

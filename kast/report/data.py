@@ -178,7 +178,7 @@ def calculate_waf_statistics(all_issues):
     }
 
 
-def collect_report_data(plugin_results, target=None):
+def collect_report_data(plugin_results, target=None, ai_summary=None, ai_error=None):
     """Aggregate plugin results into a single dict consumed by both renderers.
 
     Returns a dict with keys:
@@ -198,6 +198,11 @@ def collect_report_data(plugin_results, target=None):
     - ``scan_metadata`` — dict with ``scan_date``, ``total_issues``,
       ``total_plugins``, ``severity_counts`` (canonical "Informational" key,
       not "Info" — see audit § 5a.12), and ``waf_statistics``
+    - ``ai_summary`` — structured dict from ``kast.ai.summary``
+      (``headline / narrative / key_findings / recommended_actions / _meta``)
+      or ``None``. Renderers prefer this over ``executive_summary_text``.
+    - ``ai_error`` — string explaining why AI failed (or ``None``).
+      Renderers surface as a banner alongside the deterministic summary.
     """
     all_issues = []
     detailed_results = {}
@@ -278,4 +283,6 @@ def collect_report_data(plugin_results, target=None):
         "missing_issues": missing_issues,
         "executive_summary_text": executive_summary_text,
         "scan_metadata": scan_metadata,
+        "ai_summary": ai_summary,
+        "ai_error": ai_error,
     }

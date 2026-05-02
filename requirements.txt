@@ -1,3 +1,6 @@
+# AI adapter (Phase C1)
+anthropic>=0.97.0
+
 # Core web/HTTP libraries
 aiohttp>=3.9.1
 requests>=2.31.0
