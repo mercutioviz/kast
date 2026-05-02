@@ -1,6 +1,6 @@
 """
 File: plugins/zap_plugin.py
-Description: KAST plugin for OWASP ZAP with multi-mode support (local, remote, cloud)
+Description: KAST plugin for OWASP ZAP with multi-mode support (local, remote)
 """
 
 import json
@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from kast.plugins.base import KastPlugin
-from kast.scripts.zap_provider_factory import ZapProviderFactory
+from kast.scripts.zap_providers import LocalZapProvider, RemoteZapProvider
 from kast.core.atomic import write_json_atomic
 
 class ZapPlugin(KastPlugin):
@@ -21,13 +21,13 @@ class ZapPlugin(KastPlugin):
     config_schema = {
         "type": "object",
         "title": "OWASP ZAP Configuration",
-        "description": "Multi-mode configuration for OWASP ZAP security scanner (local/remote/cloud)",
+        "description": "Multi-mode configuration for OWASP ZAP security scanner (local/remote)",
         "properties": {
             "execution_mode": {
                 "type": "string",
-                "enum": ["auto", "local", "remote", "cloud"],
+                "enum": ["auto", "local", "remote"],
                 "default": "auto",
-                "description": "Execution mode: auto (intelligent discovery), local (Docker), remote (existing instance), cloud (ephemeral infrastructure)"
+                "description": "Execution mode: auto (intelligent discovery), local (Docker), remote (existing instance)"
             },
             "auto_discovery": {
                 "type": "object",
@@ -121,25 +121,6 @@ class ZapPlugin(KastPlugin):
                     }
                 }
             },
-            "cloud": {
-                "type": "object",
-                "title": "Cloud Provider Configuration",
-                "properties": {
-                    "cloud_provider": {
-                        "type": "string",
-                        "enum": ["aws", "azure", "gcp"],
-                        "default": "aws",
-                        "description": "Cloud provider for ephemeral infrastructure"
-                    },
-                    "use_automation_framework": {
-                        "type": "boolean",
-                        "default": True,
-                        "description": "Use ZAP automation framework with YAML config (default for all modes)"
-                    }
-                    # Note: Full cloud config remains in YAML file due to complexity
-                    # (AWS/Azure/GCP specific settings, credentials, Terraform state)
-                }
-            },
             "zap_config": {
                 "type": "object",
                 "title": "Common ZAP Settings",
@@ -208,12 +189,8 @@ class ZapPlugin(KastPlugin):
         # Check for Docker (local mode)
         if shutil.which("docker") is not None:
             return True
-        
-        # Check for Terraform (cloud mode)
-        if shutil.which("terraform") is not None:
-            return True
-        
-        # If neither is available, still return True as remote mode may be configured
+
+        # Remote mode is always available if config is provided
         return True
 
     def _load_config(self):
@@ -266,27 +243,18 @@ class ZapPlugin(KastPlugin):
                     self.debug(f"Error reading {config_path}: {e}")
                     continue
         
-        # If not found in unified configs, try standalone ZAP config files
+        # If not found in unified configs, try the standalone ZAP config file
         if config is None:
             standalone_paths = [
                 Path(__file__).parent.parent / "config" / "zap_config.yaml",
-                Path(__file__).parent.parent / "config" / "zap_cloud_config.yaml"
             ]
-            
+
             for config_path in standalone_paths:
                 if config_path.exists():
                     try:
                         self.debug(f"Checking standalone ZAP config: {config_path}")
                         with open(config_path, 'r') as f:
-                            standalone_config = yaml.safe_load(f)
-                        
-                        # Check if this is legacy cloud config format
-                        if 'cloud_provider' in standalone_config and 'execution_mode' not in standalone_config:
-                            self.debug("Using legacy cloud config format")
-                            config = self._adapt_legacy_config(standalone_config)
-                        else:
-                            config = standalone_config
-                        
+                            config = yaml.safe_load(f)
                         config_source = str(config_path)
                         self.debug(f"Found ZAP config in standalone format: {config_path}")
                         break
@@ -355,35 +323,6 @@ class ZapPlugin(KastPlugin):
             'remote.timeout_seconds',
             'remote.verify_ssl',
             'remote.use_automation_framework',
-            'cloud.cloud_provider',
-            'cloud.use_automation_framework',
-            # Generic cloud parameters (used by all providers)
-            'cloud.region',
-            'cloud.instance_type',
-            'cloud.spot_max_price',
-            'cloud.allowed_cidrs',
-            'cloud.auto_terminate',
-            # AWS-specific parameters
-            'cloud.aws.region',
-            'cloud.aws.instance_type',
-            'cloud.aws.ami_id',
-            'cloud.aws.spot_max_price',
-            # Azure-specific parameters
-            'cloud.azure.subscription_id',
-            'cloud.azure.tenant_id',
-            'cloud.azure.client_id',
-            'cloud.azure.client_secret',
-            'cloud.azure.region',
-            'cloud.azure.vm_size',
-            'cloud.azure.spot_enabled',
-            'cloud.azure.spot_max_price',
-            # GCP-specific parameters
-            'cloud.gcp.project_id',
-            'cloud.gcp.credentials_file',
-            'cloud.gcp.region',
-            'cloud.gcp.zone',
-            'cloud.gcp.machine_type',
-            'cloud.gcp.preemptible',
             'zap_config.timeout_minutes',
             'zap_config.poll_interval_seconds',
             'zap_config.report_name',
@@ -455,20 +394,6 @@ class ZapPlugin(KastPlugin):
         
         # Set the final value
         current[keys[-1]] = value
-
-    def _adapt_legacy_config(self, legacy_config):
-        """
-        Adapt legacy cloud config to new unified format
-        
-        :param legacy_config: Legacy cloud configuration
-        :return: Adapted configuration
-        """
-        return {
-            'execution_mode': 'cloud',
-            'cloud': legacy_config,
-            'zap_config': legacy_config.get('zap_config', {}),
-            'tags': legacy_config.get('tags', {})
-        }
 
     def _expand_env_vars(self, obj):
         """
@@ -677,15 +602,23 @@ class ZapPlugin(KastPlugin):
                     print(warning_msg)
                     self.debug("Remote mode: No API key provided")
             
-            # Create provider using factory
-            factory = ZapProviderFactory(self.config, self.debug)
-            self.provider = factory.create_provider()
+            # Select provider based on execution mode
+            _mode = self.config.get('execution_mode', 'auto')
+            if _mode == 'remote':
+                self.provider = RemoteZapProvider(self.config, self.debug)
+            elif _mode == 'auto':
+                _auto_cfg = self.config.get('auto_discovery', {})
+                if _auto_cfg.get('check_env_vars', True) and os.environ.get('KAST_ZAP_URL'):
+                    self.debug("Auto-discovery: Using remote mode (KAST_ZAP_URL found)")
+                    self.provider = RemoteZapProvider(self.config, self.debug)
+                else:
+                    self.debug("Auto-discovery: Using local mode")
+                    self.provider = LocalZapProvider(self.config, self.debug)
+            else:
+                self.provider = LocalZapProvider(self.config, self.debug)
 
             provider_mode = self.provider.get_mode_name()
             self.debug(f"Using {provider_mode} provider for ZAP scan")
-
-            if provider_mode == "cloud":
-                self._warn_cloud_mode_deprecated()
             
             # Provision ZAP instance
             self.debug("Provisioning ZAP instance...")
@@ -859,34 +792,6 @@ class ZapPlugin(KastPlugin):
                 self.provider.cleanup()
         except Exception as e:
             self.debug(f"Cleanup error: {e}")
-
-    def _warn_cloud_mode_deprecated(self):
-        """Emit a one-shot deprecation notice when cloud mode runs.
-
-        Phase D moves the cloud-deployment subsystem (Terraform configs,
-        provider factory, SSH executor, infrastructure scripts) from kast
-        to kast-web. The ``cloud`` execution mode of this plugin will be
-        removed in kast 3.0 once kast-web's cloud module is proven.
-        Cloud-mode users should migrate to kast-web's managed cloud scan.
-        """
-        import warnings as _warnings
-        msg = (
-            "kast cloud execution mode is deprecated and will be removed "
-            "in a future v3 release. Cloud-deployment functionality is "
-            "moving to kast-web; see docs/v3-planning/03-design-and-migration.md "
-            "(Phase D). Local and remote modes are unaffected."
-        )
-        _warnings.warn(msg, DeprecationWarning, stacklevel=2)
-        banner = (
-            "\033[93m"  # yellow
-            + "=" * 70 + "\n"
-            + "DEPRECATION: kast cloud execution mode\n"
-            + "=" * 70 + "\n"
-            + msg + "\n"
-            + "=" * 70 + "\033[0m"
-        )
-        print(banner)
-        self.debug("Cloud-mode deprecation warning emitted")
 
     def post_process(self, raw_output, output_dir):
         """Post-process ZAP results"""

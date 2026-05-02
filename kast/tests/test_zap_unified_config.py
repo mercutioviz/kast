@@ -140,36 +140,6 @@ class TestZapUnifiedConfig(unittest.TestCase):
             self.assertEqual(loaded['execution_mode'], 'remote')
             self.assertEqual(loaded['remote']['api_key'], 'test-key')
     
-    def test_legacy_cloud_config_adaptation(self):
-        """Test that legacy zap_cloud_config.yaml is adapted correctly"""
-        from kast.plugins.zap_plugin import ZapPlugin
-        
-        class MockArgs:
-            verbose = True
-        
-        plugin = ZapPlugin(MockArgs())
-        
-        # Legacy cloud config format (no execution_mode key)
-        legacy_config = {
-            'cloud_provider': 'aws',
-            'aws': {
-                'region': 'us-east-1',
-                'instance_type': 't3.medium'
-            },
-            'zap_config': {
-                'timeout_minutes': 60
-            }
-        }
-        
-        # Adapt to new format
-        adapted = plugin._adapt_legacy_config(legacy_config)
-        
-        # Verify adaptation
-        self.assertEqual(adapted['execution_mode'], 'cloud')
-        self.assertIn('cloud', adapted)
-        self.assertEqual(adapted['cloud']['cloud_provider'], 'aws')
-        self.assertEqual(adapted['zap_config']['timeout_minutes'], 60)
-    
     def test_config_not_found_error(self):
         """Test that clear error is raised when no config found"""
         from kast.plugins.zap_plugin import ZapPlugin

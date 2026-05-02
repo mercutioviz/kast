@@ -53,7 +53,6 @@ class TestZapConfig(unittest.TestCase):
         self.assertIn("auto_discovery", properties)
         self.assertIn("local", properties)
         self.assertIn("remote", properties)
-        self.assertIn("cloud", properties)
         self.assertIn("zap_config", properties)
     
     def test_schema_execution_modes(self):
@@ -64,7 +63,7 @@ class TestZapConfig(unittest.TestCase):
         exec_mode = schema["properties"]["execution_mode"]
         
         # Verify enum values
-        self.assertEqual(exec_mode["enum"], ["auto", "local", "remote", "cloud"])
+        self.assertEqual(exec_mode["enum"], ["auto", "local", "remote"])
         self.assertEqual(exec_mode["default"], "auto")
     
     def test_schema_local_mode_properties(self):
@@ -101,18 +100,6 @@ class TestZapConfig(unittest.TestCase):
         # Verify defaults
         self.assertEqual(remote_props["timeout_seconds"]["default"], 30)
         self.assertEqual(remote_props["verify_ssl"]["default"], True)
-    
-    def test_schema_cloud_mode_properties(self):
-        """Test that cloud mode schema has cloud provider enum."""
-        plugin = ZapPlugin(self.cli_args, self.config_manager)
-        
-        schema = self.config_manager.plugin_schemas["zap"]
-        cloud_props = schema["properties"]["cloud"]["properties"]
-        
-        # Verify cloud provider property
-        self.assertIn("cloud_provider", cloud_props)
-        self.assertEqual(cloud_props["cloud_provider"]["enum"], ["aws", "azure", "gcp"])
-        self.assertEqual(cloud_props["cloud_provider"]["default"], "aws")
     
     def test_schema_common_zap_settings(self):
         """Test that common ZAP settings are in schema."""
@@ -255,28 +242,6 @@ class TestZapConfig(unittest.TestCase):
         
         # Should keep the placeholder if env var doesn't exist
         self.assertEqual(result['remote']['api_url'], '${NONEXISTENT_VAR}')
-    
-    def test_legacy_config_adaptation(self):
-        """Test that legacy cloud config is adapted to new format."""
-        plugin = ZapPlugin(self.cli_args, self.config_manager)
-        
-        legacy_config = {
-            'cloud_provider': 'aws',
-            'zap_config': {
-                'timeout_minutes': 90
-            },
-            'tags': {
-                'Project': 'Test'
-            }
-        }
-        
-        adapted = plugin._adapt_legacy_config(legacy_config)
-        
-        # Verify adaptation
-        self.assertEqual(adapted['execution_mode'], 'cloud')
-        self.assertIn('cloud', adapted)
-        self.assertIn('zap_config', adapted)
-        self.assertIn('tags', adapted)
     
     def test_plugin_metadata(self):
         """Test that plugin metadata is correctly set."""
