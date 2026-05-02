@@ -1,6 +1,6 @@
 # kast / kast-web — Active Context for AI Assistants
 
-This file is auto-loaded by Claude Code on every session in this repo. It is the lightweight "what's true *right now*" override. Comprehensive reference lives in `genai-instructions.md` (and will be rewritten in Phase A); this file wins where the two conflict.
+This file is auto-loaded by Claude Code on every session in this repo. It is the lightweight "what's true *right now*" override. Comprehensive reference lives in `genai-instructions.md` (rewritten for v3 in Phase B10); this file wins where the two conflict.
 
 ## Project at a glance
 
@@ -31,19 +31,9 @@ Do not change these surfaces without explicit, coordinated planning:
 
 Internal refactoring is free as long as these surfaces stay stable.
 
-## Outdated guidance — IGNORE these in `genai-instructions.md` and `.clinerules`
+## genai-instructions.md and .clinerules — rewritten for v3 (Phase B10)
 
-Both files were authored against v2 and enshrine patterns v3 explicitly changes. **When they conflict with this file or with the v3 design doc, this file wins.**
-
-Specifically, ignore:
-
-1. **"Set attrs BEFORE `super().__init__()`."** v3 plugins declare identity (`name`, `display_name`, `description`, etc.) as **class attributes** — not set in `__init__` at all. Phase A5 lifted all 12 real plugins. The sequencing footgun is gone.
-2. **"Use `datetime.utcnow().isoformat(timespec='milliseconds')`."** That API is deprecated. Use `datetime.now(timezone.utc).isoformat(timespec='milliseconds')`.
-3. **"Provide both `custom_html` and `custom_html_pdf`."** v3 unifies the report pipeline (`collect → render(html|pdf)`); plugins emit a single rich payload, renderers handle format-specific differences.
-4. **"Use bare severity strings (`"High"`, `"Info"`, etc.)."** v3 has a `Severity` enum at `kast/core/severity.py`; never use bare severity strings.
-5. **"Copy `template_plugin.py` as the starting point."** Phase A5 migrated `template_plugin.py` to the v3 shape: identity as class attributes, canonical `__init__(self, cli_args, config_manager=None)` signature. Use it as a starting point — but note that A7+ will introduce `ExternalToolPlugin` as the proper base for tool-wrapper plugins.
-6. **".clinerules" lists 10 plugins.** Reality is 13: add `ai_chatbot_detection`, `org_discovery`, `related_sites`.
-7. **"Plugins register their schema during `__init__`."** v3 schemas are class attributes; `kast --config-schema` (and `--config-init`, `--config-show`) call `ConfigManager.collect_schemas_from_classes(...)` instead. No instantiation required.
+Both files were rewritten in Phase B10 to describe v3 patterns natively. The v2 footguns they used to enshrine (set-attrs-before-super-init, `datetime.utcnow`, dual `custom_html`/`custom_html_pdf`, bare severity strings, schema-registration during `__init__`, the 10-plugin list) are gone from the docs. Treat both files as v3-aligned reference material — but **this file (`CLAUDE.md`) still wins where they conflict**, since it tracks active-phase changes that may not yet be reflected in the comprehensive doc.
 
 ## v2 bug patches landing in v2.14.x — do not revert
 

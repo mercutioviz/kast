@@ -1,112 +1,145 @@
-# KAST Project - Cline Rules
+# KAST Project — Cline Rules
 
 ## Project Context
 
-This is the KAST (Kali Automated Scan Tool) project - a modular Python framework for automating web application security scanning. KAST orchestrates multiple security tools, aggregates findings, and generates comprehensive HTML/PDF reports with executive summaries.
+KAST (Kali Automated Scan Tool) is a modular Python framework that orchestrates web-application security scanning tools, aggregates findings, and generates HTML/PDF reports with executive summaries. KAST is paired with **kast-web** (separate repo at `/home/mscollins/kast-web/`), a Flask + Celery + Redis frontend that shells out to the kast CLI.
 
-**Current Version:** 2.14.3  
+**Current Version:** 3.0 (in development on `refactor/v3.0`)
 **Repository:** https://github.com/mercutioviz/kast
 
-## Instructions
+## Reading order
 
-For comprehensive project guidelines, architecture details, coding conventions, and development patterns, refer to:
-
-**📖 Primary Reference:** `genai-instructions.md` (located in project root)
-
-This file contains:
-- Complete architecture documentation
-- Plugin development guide with examples
-- Configuration system documentation
-- ZAP integration and cloud infrastructure guide
-- Code style and conventions
-- Testing standards
-- Common patterns and best practices
-- Integration points between components
-- Prompt engineering tips for KAST development
+1. **`CLAUDE.md`** at the repo root — the active-phase override. Tells you what's true right now on the v3 branch. **When this file conflicts with anything else, `CLAUDE.md` wins.**
+2. **`genai-instructions.md`** at the repo root — comprehensive v3 reference (architecture, plugin guide, config, CLI, reporting, contracts, testing).
+3. **`docs/web-integration.md`** — the frozen kast↔kast-web contract.
+4. **`docs/v3-planning/`** — phase 1-3 planning docs (audit, ideation, design+migration).
 
 ## Quick Reference
 
 ### Key Concepts
-- **Plugin System**: All security tools are wrapped as plugins inheriting from `KastPlugin`
-- **Orchestrator**: Manages plugin execution (parallel/sequential with dependency resolution)
-- **Configuration System**: YAML-based config with `ConfigManager`, plugin schemas, and CLI overrides (`--set`, `--config`, `--config-init`, `--config-show`, `--config-schema`)
-- **Issue Registry**: Centralized security issue database at `kast/data/issue_registry.json`
-- **Report Builder**: Generates HTML/PDF reports with executive summaries
-- **ZAP Integration**: Multi-mode OWASP ZAP scanning (local Docker, remote, cloud with Terraform)
-- **Infrastructure Provisioning**: Cloud provisioning via Terraform (AWS/Azure/GCP) for remote ZAP scanning
+
+- **Plugin System:** plugins inherit from `KastPlugin` (pure-Python plugins) or `ExternalToolPlugin(KastPlugin)` (CLI-tool wrappers). Identity (`name`, `display_name`, `description`, `website_url`, `scan_type`, `output_type`) is declared as **class attributes**, never set in `__init__`.
+- **PluginRegistry** (`kast/registry.py`): single source of truth for plugin discovery, instantiation, caching by name, and priority sorting. Pass it around — don't instantiate plugins ad hoc.
+- **Orchestrator** (`kast/orchestrator.py`): runs plugin **instances** (sequential or parallel) with dependency gating.
+- **Configuration:** YAML-based via `ConfigManager`. Schemas are class attributes; `ConfigManager.collect_schemas_from_classes(...)` collects without instantiation.
+- **Issue Registry:** `kast/data/issue_registry.json`. Workflow via `kast registry list/add/promote`.
+- **Severity:** `Severity` enum at `kast/core/severity.py`. Never use bare severity strings.
+- **Atomic writes:** all state-bearing JSON via `write_json_atomic` from `kast/core/atomic.py`. Never raw `json.dump`.
+- **Reports:** unified pipeline at `kast/report/`. `collect_report_data(...)` builds a dict; `render_html` and `render_pdf` consume the same data.
+- **CLI:** Click subcommands under `kast/cli/`. v2 argv shape preserved via `_translate_v2_argv()` for kast-web compatibility.
+- **ZAP:** Local + Remote modes only. Cloud (Terraform) is migrating out of kast → kast-web in Phase D.
 
 ### File Locations
+
 - Plugins: `kast/plugins/`
+- CLI: `kast/cli/`
+- Core utilities: `kast/core/` (severity, atomic)
+- Report pipeline: `kast/report/`
 - Tests: `kast/tests/`
-- Templates: `kast/templates/`
-- Documentation: `kast/docs/`
-- Configuration: `kast/config/` (default config, ZAP automation plans, nginx configs)
-- Scripts: `kast/scripts/` (ZAP providers, Terraform manager, SSH executor, monitoring)
-- Terraform: `kast/terraform/` (AWS/Azure/GCP modules)
-- Config Manager: `kast/config_manager.py`
+- Templates: `kast/templates/` (with `_macros.html`, `partials/`)
+- Data: `kast/data/issue_registry.json`
+- Configuration: `kast/config/`
+- Scripts: `kast/scripts/` (cloud parts migrating out)
+- Terraform: `kast/terraform/` (migrating out)
+- v3 planning: `docs/v3-planning/`
+- Baseline scans: `docs/baseline-v2.14/`
 
-### Available Plugins (as of v2.14.3)
+### Available Plugins (12 real plugins)
 
-| Plugin | Display Name | Type | Priority | Dependencies |
-|--------|--------------|------|----------|--------------|
-| `mozilla_observatory` | Mozilla Observatory | Passive | 5 | None |
-| `script_detection` | External Script Detection | Passive | 10 | mozilla_observatory |
-| `subfinder` | Subfinder | Passive | 10 | None |
-| `wafw00f` | Wafw00f | Passive | 10 | None |
-| `whatweb` | WhatWeb | Passive | 15 | None |
-| `related_sites` | Related Sites Discovery | Passive | 45 | None |
-| `ftap` | Find The Admin Panel | Passive | 50 | None |
-| `testssl` | Test SSL | Passive | 50 | None |
-| `katana` | Katana | Passive | 60 | None |
-| `zap` | OWASP ZAP | Active | 200 | None |
+| Plugin                  | Display Name              | Type    | Priority | Base                  | Dependencies         |
+| ----------------------- | ------------------------- | ------- | -------- | --------------------- | -------------------- |
+| `org_discovery`         | Organization Discovery    | Passive | 3        | `KastPlugin`          | None                 |
+| `mozilla_observatory`   | Mozilla Observatory       | Passive | 5        | `KastPlugin`          | None                 |
+| `script_detection`      | External Script Detection | Passive | 10       | `KastPlugin`          | mozilla_observatory  |
+| `subfinder`             | Subfinder                 | Passive | 10       | `KastPlugin`          | None                 |
+| `wafw00f`               | Wafw00f                   | Passive | 10       | `ExternalToolPlugin`  | None                 |
+| `whatweb`               | WhatWeb                   | Passive | 15       | `ExternalToolPlugin`  | None                 |
+| `related_sites`         | Related Sites Discovery   | Passive | 45       | `KastPlugin`          | None                 |
+| `ftap`                  | Find The Admin Panel      | Passive | 50       | `KastPlugin`          | None                 |
+| `testssl`               | Test SSL                  | Passive | 50       | `KastPlugin`          | None                 |
+| `katana`                | Katana                    | Passive | 60       | `KastPlugin`          | None                 |
+| `ai_chatbot_detection`  | AI Chatbot Detection      | Passive | 70       | `KastPlugin`          | None                 |
+| `zap`                   | OWASP ZAP                 | Active  | 200      | `KastPlugin`          | None                 |
+
+`template_plugin.py` is the canonical v3 starter and is deliberately skipped by discovery.
+
+### CLI Surface
+
+```
+kast version
+kast config (init | show | schema)
+kast scan --target TARGET [options]
+kast scan list | show DIR | rerun DIR
+kast plugins (list | show | deps)            # list --json is the kast-web integration target
+kast registry (list | add | promote)
+kast doctor [--json]                          # FAIL → exit 1; WARN alone → exit 0
+kast self-update [options]
+```
+
+The legacy v2 argv shape (`kast --target X --mode passive ...`) still works — `_translate_v2_argv()` maps it to subcommands before Click parses.
 
 ### Plugin Development
-When creating plugins:
-1. Start with `kast/plugins/template_plugin.py` or use `kast/scripts/create_plugin.py`
-2. Use the new-style `__init__` signature: `def __init__(self, cli_args, config_manager=None):`
-3. Implement required methods: `__init__`, `is_available`, `run`, `post_process`, `get_dry_run_info`
-4. Define a `config_schema` class attribute for configuration support
-5. Return standardized result dictionaries using `self.get_result_dict()`
-6. Always include `executive_summary` and `findings_count` in processed output
-7. Map findings to issue registry where applicable
-8. Provide both `custom_html` and `custom_html_pdf` for rich report widgets
+
+For a tool-wrapper plugin (most common case):
+
+1. Inherit from `ExternalToolPlugin`.
+2. Declare identity as class attributes (`name`, `display_name`, `description`, `website_url`, `scan_type`, `output_type`).
+3. Declare tool plumbing as class attributes (`tool_binary`, `output_filename`, `output_format`, optionally `subprocess_timeout`).
+4. Declare `config_schema` as a class attribute.
+5. Use the canonical `__init__(self, cli_args, config_manager=None)` signature; load config via `self.get_config(key, default)` after `super().__init__(...)`.
+6. Implement `build_command(target, output_path)` and `count_findings(findings)`.
+7. Override format hooks as needed (`parse_findings`, `extract_issues`, `format_summary`, `format_details`, `format_executive_summary`, `extra_processed_fields`).
+8. Override `run()` only if there's a tool-specific quirk the base can't cover (the wafw00f HTTPS→HTTP TLS-error retry is the canonical example).
+
+For a non-wrapper plugin (no CLI tool — HTTP API, file analysis, etc.): inherit from `KastPlugin` directly and implement `is_available`, `run`, `post_process`.
+
+`whatweb_plugin.py` and `wafw00f_plugin.py` are the reference migrations to `ExternalToolPlugin`.
 
 ### Code Standards
-- Python 3.9+ (tested on 3.9-3.11)
-- PascalCase for classes, snake_case for functions
-- Comprehensive error handling (never crash the orchestrator)
-- Thread-safe operations for parallel execution
-- Always use `self.get_result_dict()` for results
-- Use `self.get_config(key, default)` for reading plugin configuration
+
+- Python 3.11+ (dev box runs 3.13).
+- PascalCase for classes, snake_case for functions/variables.
+- Plugin `name` is `lowercase_with_underscores`.
+- `self.get_result_dict(disposition, results, timestamp)` for results — never manual.
+- `self.get_config(key, default)` for plugin configuration.
+- `write_json_atomic(path, data)` for state-bearing JSON — never raw `json.dump`.
+- `Severity.from_registry(value)` — never bare severity strings.
+- `datetime.now(timezone.utc).isoformat(timespec="milliseconds")` — never deprecated `datetime.utcnow()`.
+- Comprehensive error handling — never crash the orchestrator.
+- Thread-safe operations for parallel mode.
+- No emojis in code or docs unless explicitly requested.
 
 ### Testing
-- Use unittest framework
-- Tests in `kast/tests/test_*.py`
-- Config test helpers in `kast/tests/helpers/config_test_helpers.py`
-- Run: `python -m pytest kast/tests/`
-- Aim for 80%+ coverage on plugin methods
+
+- Framework: pytest (some legacy unittest-style tests remain).
+- Tests in `kast/tests/test_*.py`.
+- Helpers in `kast/tests/helpers/`.
+- Run: `PYTHONPATH=. pytest kast/tests/`
+- Aim for 80%+ coverage on plugin methods.
+- The v3 baseline scan at `docs/baseline-v2.14/sample-scan-1/` is the regression reference for plugin output and reports.
 
 ## Important Reminders
 
-1. **Always handle report-only mode** in plugin `run()` methods
-2. **Use debug logging**: `self.debug(message)` for verbose output
-3. **Standardize timestamps**: Use `datetime.utcnow().isoformat(timespec="milliseconds")`
-4. **Thread safety**: Use locks when writing to shared data in parallel mode
-5. **Executive summaries**: Always provide high-level findings for non-technical audience
-6. **Configuration support**: Accept `config_manager=None` in `__init__`, define `config_schema`, implement `_load_plugin_config()`
-7. **Dry run support**: Implement `get_dry_run_info(target, output_dir)` to show what would execute
-8. **Findings count**: Always include `findings_count` (integer) in processed output JSON
-9. **Dual HTML output**: Provide `custom_html` (interactive) and `custom_html_pdf` (static) for report widgets
+1. **CLAUDE.md is the active-phase override.** When in doubt, defer to it.
+2. **Identity is class attributes** — never `self.name = ...` in `__init__`.
+3. **Use `Severity` enum** — never bare severity strings.
+4. **Use `write_json_atomic`** — never raw `json.dump` for state-bearing files.
+5. **Timestamps:** `datetime.now(timezone.utc).isoformat(timespec="milliseconds")`.
+6. **Handle `report_only=True`** in plugin `run()` (the `ExternalToolPlugin` base does this for you).
+7. **Always include `findings_count`** (integer) in processed output.
+8. **Plugins emit a single rich payload** for report widgets — the v2 dual `custom_html` / `custom_html_pdf` requirement is gone.
+9. **Don't extend cloud-mode code in kast** — that subsystem is migrating to kast-web.
+10. **Don't change frozen contracts** without explicit coordinated planning. See `docs/web-integration.md`.
 
 ## Before Making Changes
 
-1. Review relevant sections in `genai-instructions.md`
-2. Check existing plugins for patterns (especially newer ones like `related_sites_plugin.py`, `zap_plugin.py`)
-3. Verify tests exist and pass
-4. Consider impact on both HTML and PDF reports
-5. Test in both sequential and parallel execution modes
-6. If adding config options, define in `config_schema` and update `kast/config/default_config.yaml`
+1. Read `CLAUDE.md` for current-phase context.
+2. Review the relevant section of `genai-instructions.md`.
+3. Check existing plugins for patterns — especially `whatweb_plugin.py` and `wafw00f_plugin.py` for `ExternalToolPlugin` migrations.
+4. Verify tests exist and pass: `PYTHONPATH=. pytest kast/tests/`.
+5. If touching report output, validate against `docs/baseline-v2.14/sample-scan-1/`.
+6. If adding config options, define in the plugin's `config_schema` and update `kast/config/default_config.yaml` if appropriate.
 
 ---
 
-**For detailed information on any topic, always consult `genai-instructions.md`**
+**For detailed information on any topic, consult `genai-instructions.md`. For active-phase context, consult `CLAUDE.md`.**
