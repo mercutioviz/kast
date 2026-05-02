@@ -27,15 +27,27 @@ def discover_plugins(log):
         spec.loader.exec_module(module)
         for attr in dir(module):
             obj = getattr(module, attr)
-            if isinstance(obj, type) and hasattr(obj, "run") and hasattr(obj, "is_available") and not inspect.isabstract(obj):
-                # Also skip TemplatePlugin by class name (defensive)
-                if obj.__name__ == "TemplatePlugin":
-                    log.debug("Skipping TemplatePlugin class (not a real plugin)")
-                    continue
-                plugins.append(obj)
-    
+            if not (
+                isinstance(obj, type)
+                and hasattr(obj, "run")
+                and hasattr(obj, "is_available")
+                and not inspect.isabstract(obj)
+            ):
+                continue
+            # Phase B9: only include classes DEFINED in this file. Without
+            # this check, classes imported by the plugin (e.g.
+            # ExternalToolPlugin imported by whatweb_plugin and wafw00f_plugin)
+            # get discovered as duplicate "plugins."
+            if getattr(obj, "__module__", None) != module_name:
+                continue
+            # Also skip TemplatePlugin by class name (defensive)
+            if obj.__name__ == "TemplatePlugin":
+                log.debug("Skipping TemplatePlugin class (not a real plugin)")
+                continue
+            plugins.append(obj)
+
     # Sort plugins by priority
-    plugins.sort(key=lambda x: x.priority)    
+    plugins.sort(key=lambda x: x.priority)
     return plugins
 
 def show_dependency_tree(registry, scan_mode, log):

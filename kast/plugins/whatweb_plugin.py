@@ -1,56 +1,22 @@
-"""
-File: plugins/whatweb_plugin.py
-Description: Plugin for running WhatWeb as part of KAST.
+"""WhatWeb plugin — migrated to ExternalToolPlugin in Phase B9.
+
+Drops from 458 lines (v2) to ~150 lines by inheriting subprocess /
+output-reading / processed-dict assembly from ExternalToolPlugin. The
+plugin-specific logic (config-driven command building, the
+target/HTTP-status-bucketed summary, domain-redirect recommendations)
+moves into the format hooks.
 """
 
-import subprocess
-import shutil
-import json
-import os
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
-from kast.core.atomic import write_json_atomic
-from pprint import pformat
+from __future__ import annotations
+
 from collections import defaultdict
 from urllib.parse import urlparse, urlunparse
 
-class WhatWebPlugin(KastPlugin):
-    priority = 15  # High priority (lower number = higher priority)
-    
-    # Configuration schema for kast-web integration
-    config_schema = {
-        "type": "object",
-        "title": "WhatWeb Configuration",
-        "description": "Web technology detection configuration",
-        "properties": {
-            "aggression_level": {
-                "type": "integer",
-                "default": 3,
-                "minimum": 1,
-                "maximum": 4,
-                "description": "Aggression level (1=stealthy, 3=aggressive, 4=heavy)"
-            },
-            "timeout": {
-                "type": "integer",
-                "default": 30,
-                "minimum": 5,
-                "maximum": 120,
-                "description": "HTTP request timeout in seconds"
-            },
-            "user_agent": {
-                "type": ["string", "null"],
-                "default": None,
-                "description": "Custom User-Agent string (null for default)"
-            },
-            "follow_redirects": {
-                "type": "integer",
-                "default": 2,
-                "minimum": 0,
-                "maximum": 10,
-                "description": "Maximum redirect depth to follow"
-            }
-        }
-    }
+from kast.plugins.external_tool import ExternalToolPlugin
+
+
+class WhatWebPlugin(ExternalToolPlugin):
+    priority = 15  # High priority
 
     name = "whatweb"
     display_name = "WhatWeb"
@@ -59,399 +25,175 @@ class WhatWebPlugin(KastPlugin):
     scan_type = "passive"
     output_type = "file"
 
+    tool_binary = "whatweb"
+    output_filename = "whatweb.json"
+    output_format = "json"
+
+    config_schema = {
+        "type": "object",
+        "title": "WhatWeb Configuration",
+        "description": "Web technology detection configuration",
+        "properties": {
+            "aggression_level": {
+                "type": "integer", "default": 3, "minimum": 1, "maximum": 4,
+                "description": "Aggression level (1=stealthy, 3=aggressive, 4=heavy)",
+            },
+            "timeout": {
+                "type": "integer", "default": 30, "minimum": 5, "maximum": 120,
+                "description": "HTTP request timeout in seconds",
+            },
+            "user_agent": {
+                "type": ["string", "null"], "default": None,
+                "description": "Custom User-Agent string (null for default)",
+            },
+            "follow_redirects": {
+                "type": "integer", "default": 2, "minimum": 0, "maximum": 10,
+                "description": "Maximum redirect depth to follow",
+            },
+        },
+    }
+
     def __init__(self, cli_args, config_manager=None):
-        
         super().__init__(cli_args, config_manager)
-        
-        self.command_executed = None  # Store the command for reporting
-        
-        # Load configuration values
         self._load_plugin_config()
-    
-    def _load_plugin_config(self):
-        """Load configuration with defaults from schema."""
-        # Get config values (defaults from schema if not set)
-        self.aggression_level = self.get_config('aggression_level', 3)
-        self.timeout = self.get_config('timeout', 30)
-        self.user_agent = self.get_config('user_agent', None)
-        self.follow_redirects = self.get_config('follow_redirects', 2)
-        
-        self.debug(f"WhatWeb config loaded: aggression={self.aggression_level}, "
-                  f"timeout={self.timeout}, "
-                  f"user_agent={'(custom)' if self.user_agent else '(default)'}, "
-                  f"follow_redirects={self.follow_redirects}")
 
-    def is_available(self):
-        """
-        Check if WhatWeb is installed and available in PATH.
-        """
-        return shutil.which("whatweb") is not None
+    def _load_plugin_config(self) -> None:
+        self.aggression_level = self.get_config("aggression_level", 3)
+        self.timeout = self.get_config("timeout", 30)
+        self.user_agent = self.get_config("user_agent", None)
+        self.follow_redirects = self.get_config("follow_redirects", 2)
+        self.debug(
+            f"WhatWeb config loaded: aggression={self.aggression_level}, "
+            f"timeout={self.timeout}, "
+            f"user_agent={'(custom)' if self.user_agent else '(default)'}, "
+            f"follow_redirects={self.follow_redirects}"
+        )
 
-    def setup(self):
-        """
-        Optional pre-run setup. Nothing required for WhatWeb currently.
-        """
-        pass
+    # -- ExternalToolPlugin hooks ------------------------------------------
 
-    def run(self, target, output_dir, report_only):
-        """
-        Run WhatWeb against the target and save output to a file.
-        Returns a result dictionary.
-        """
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-        output_file = os.path.join(output_dir, "whatweb.json")
-        
-        # Build command dynamically based on configuration
-        cmd = ["whatweb"]
-        
-        # Add aggression level
-        cmd.extend(["-a", str(self.aggression_level)])
-        
-        # Add read timeout if configured
+    def build_command(self, target: str, output_path: str) -> list[str]:
+        cmd = ["whatweb", "-a", str(self.aggression_level)]
         if self.timeout:
             cmd.extend(["--read-timeout", str(self.timeout)])
-        
-        # Add custom user-agent if configured
         if self.user_agent:
             cmd.extend(["--user-agent", self.user_agent])
-        
-        # Add redirect follow depth
         if self.follow_redirects:
             cmd.extend(["--max-redirects", str(self.follow_redirects)])
-        
-        # Add output file and target (target must come LAST)
-        cmd.extend(["--log-json", output_file, target])
+        # target must come last in WhatWeb's CLI
+        cmd.extend(["--log-json", output_path, target])
+        return cmd
 
-        if getattr(self.cli_args, "verbose", False):
-            self.debug(f"Running command: {' '.join(cmd)}")
+    def parse_findings(self, raw):
+        """Wrap raw output in the v2-compatible {disposition, results} shape.
 
-        # Store command for reporting
-        self.command_executed = ' '.join(cmd)
-
-        if not self.is_available():
-            return self.get_result_dict(
-                disposition="fail",
-                results="WhatWeb is not installed or not found in PATH.",
-                timestamp=timestamp
-            )
-
-        try:
-            if report_only:
-                self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
-
-            else:    
-                proc = subprocess.run(cmd, capture_output=True, text=True)
-                if proc.returncode != 0:
-                    return self.get_result_dict(
-                        disposition="fail",
-                        results=proc.stderr.strip()
-                    )
-                
-                # Check if output file was created
-                if not os.path.exists(output_file):
-                    error_msg = "WhatWeb completed but did not create output file."
-                    if proc.stderr:
-                        error_msg += f" Stderr: {proc.stderr.strip()}"
-                    if proc.stdout:
-                        error_msg += f" Stdout: {proc.stdout.strip()}"
-                    return self.get_result_dict(
-                        disposition="fail",
-                        results=error_msg,
-                        timestamp=timestamp
-                    )
-
-            # Read the output file
-            with open(output_file, "r") as f:
-                results = json.load(f)
-
-            return self.get_result_dict(
-                disposition="success",
-                results=results,
-                timestamp=timestamp
-            )
-
-        except Exception as e:
-            return self.get_result_dict(
-                disposition="fail",
-                results=str(e),
-                timestamp=timestamp
-            )
-
-    def post_process(self, raw_output, output_dir):
+        WhatWeb's --log-json writes a top-level JSON array; v2 wrapped it
+        for storage in the processed dict. Preserved here for byte-compat
+        with kast-web parsers and the v3 baseline.
         """
-        Post-process WhatWeb output into standardized structure.
-        Handles both successful findings and failure cases gracefully.
-        """
-        # Handle failure cases from run() method
-        if isinstance(raw_output, dict) and raw_output.get('disposition') == 'fail':
-            # This is a failed run result, not actual findings
-            error_message = raw_output.get('results', 'Unknown error')
-            self.debug(f"{self.name} failed during execution: {error_message}")
-            
-            # Return a minimal processed result for failures
-            processed = {
-                "plugin-name": self.name,
-                "plugin-description": self.description,
-                "plugin-display-name": getattr(self, 'display_name', None),
-                "plugin-website-url": getattr(self, 'website_url', None),
-                "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-                "findings": {"disposition": "fail", "results": error_message},
-                "summary": [{"Error": f"Plugin execution failed: {error_message}"}],
-                "details": "",
-                "issues": [],
-                "executive_summary": "",
-                "report": self._format_command_for_report()
-            }
-            
-            processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-            write_json_atomic(processed_path, processed)
-            return processed_path
-        
-        # Handle successful findings
-        if isinstance(raw_output, str) and os.path.isfile(raw_output):
-            with open(raw_output, "r") as f:
-                findings = json.load(f)
-        elif isinstance(raw_output, dict):
-            findings = raw_output
-        else:
-            try:
-                findings = json.loads(raw_output)
-            except Exception:
-                findings = {}
-
-        self.debug(f"{self.name} raw findings:\n {pformat(findings)}")
-
-        # Initialize issues and details
-        issues = []
-        details = ""
-        executive_summary = ""
-
-        # Detect domain redirects and generate recommendations
-        redirect_recommendations = self._detect_domain_redirects(findings)
-        if redirect_recommendations:
-            executive_summary = "\n".join(redirect_recommendations)
-
-        # Calculate findings_count - count of unique technologies detected
-        findings_count = self._count_technologies(findings)
-
-        # Format command for report notes
-        report_notes = self._format_command_for_report()
-
-        # Properly structure the findings
-        structured_findings = {
-            "disposition": "success" if findings else "fail",
-            "results": findings
+        return {
+            "disposition": "success" if raw else "fail",
+            "results": raw or [],
         }
 
-        self.debug(f"{self.name} findings_count: {findings_count}")
-
-        processed = {
-            "plugin-name": self.name,
-            "plugin-description": self.description,
-            "plugin-display-name": getattr(self, 'display_name', None),
-            "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
-            "findings": structured_findings,
-            "findings_count": findings_count,
-            "summary": self._generate_summary(findings),
-            "details": details,
-            "issues": issues,
-            "executive_summary": executive_summary,
-            "report": report_notes
-        }
-
-        processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-        write_json_atomic(processed_path, processed)
-        return processed_path
-
-    def _detect_domain_redirects(self, findings):
-        """
-        Detect redirects that change the domain name (not just protocol changes).
-        Returns a list of recommendation strings for the executive summary.
-        """
-        recommendations = []
-        
-        # Handle both list and dict formats
-        if isinstance(findings, list):
-            results = findings
-        elif isinstance(findings, dict):
-            results = findings.get("results", [])
-        else:
-            results = []
-        
-        # Track redirects we've already seen to avoid duplicates
-        seen_redirects = set()
-        
+    def count_findings(self, findings) -> int:
+        """Count unique technologies detected across all WhatWeb result entries."""
+        results = self._results_list(findings)
+        technologies: set[str] = set()
         for entry in results:
-            # Check if this is a redirect (301 or 302)
-            http_status = entry.get("http_status")
-            if http_status not in [301, 302]:
-                continue
-            
-            # Get the target and redirect location
-            target = entry.get("target", "")
-            plugins = entry.get("plugins", {})
-            redirect_location = plugins.get("RedirectLocation", {}).get("string", [])
-            
-            if not redirect_location:
-                continue
-            
-            # RedirectLocation string is typically a list with one element
-            redirect_url = redirect_location[0] if isinstance(redirect_location, list) else redirect_location
-            
-            # Parse both URLs to extract domains
-            try:
-                target_parsed = urlparse(target)
-                redirect_parsed = urlparse(redirect_url)
-                
-                target_domain = target_parsed.netloc.lower()
-                redirect_domain = redirect_parsed.netloc.lower()
-                
-                # Skip if domains are the same (e.g., just http->https redirect)
-                if target_domain == redirect_domain:
-                    continue
-                
-                # Create a unique key for this redirect pair
-                redirect_key = (target_domain, redirect_domain)
-                if redirect_key in seen_redirects:
-                    continue
-                
-                seen_redirects.add(redirect_key)
-                
-                # Generate recommendation
-                recommendation = (
-                    f"Recommend running a scan on {redirect_domain}, which was the "
-                    f"target redirection location from {target_domain}"
-                )
-                recommendations.append(recommendation)
-                
-            except Exception as e:
-                self.debug(f"Error parsing redirect URLs: {e}")
-                continue
-        
-        return recommendations
-
-    def _count_technologies(self, findings):
-        """
-        Count the number of unique technologies detected across all entries.
-        """
-        # Handle both list and dict formats
-        if isinstance(findings, list):
-            results = findings
-        elif isinstance(findings, dict):
-            results = findings.get("results", [])
-        else:
-            return 0
-        
-        # Track unique technologies
-        technologies = set()
-        
-        for entry in results:
-            plugins = entry.get("plugins", {})
-            for plugin_name in plugins.keys():
-                technologies.add(plugin_name)
-        
+            technologies.update(entry.get("plugins", {}).keys())
         return len(technologies)
 
-    def _format_command_for_report(self):
+    def format_summary(self, findings):
+        """Bucket entries by normalized target URL and list detected techs.
+
+        Produces the JSON-array summary that v2 generated. Each item is a
+        single-key dict where the key is "<target> - HTTP <status>" and the
+        value is a semicolon-delimited list of detected technologies.
         """
-        Format the executed command for the report notes section.
-        Returns HTML-formatted command with dark blue color and monospace font.
-        """
-        if not self.command_executed:
-            return "Command not available"
-        
-        return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
+        results = self._results_list(findings)
+        if not results:
+            return [{"No findings": f"No findings were produced by {self.name}."}]
 
-    def _generate_summary(self, findings):
-            """
-            Generate a JSON-array summary from WhatWeb JSON output.
-            Each entry in the returned list is a single-key dict where
-            the key is "<target> - HTTP <status>" and the value is
-            a semicolon-delimited list of detected technologies.
-            """
-            # Ensure we have a list of results
-            results = findings.get("results") if isinstance(findings, dict) else None
-            if not results or not isinstance(results, list):
-                return [{"No findings": f"No findings were produced by {self.name}." }]
+        buckets: dict[str, list] = defaultdict(list)
+        for entry in results:
+            raw_target = entry.get("target", "unknown")
+            parsed = urlparse(raw_target)
+            normalized = urlunparse(parsed._replace(path=parsed.path.rstrip("/")))
+            buckets[normalized].append(entry)
 
-            # Bucket entries by normalized target URL
-            from collections import defaultdict
-            from urllib.parse import urlparse, urlunparse
+        summary_list = []
+        for target, entries in buckets.items():
+            for idx, entry in enumerate(entries, start=1):
+                status = entry.get("http_status", "N/A")
+                tech_list = []
+                for plugin_name, data in (entry.get("plugins") or {}).items():
+                    if not data:
+                        continue
+                    if "version" in data and data["version"]:
+                        tech_list.append(f"{plugin_name} (v{', '.join(data['version'])})")
+                    elif "string" in data and data["string"]:
+                        tech_list.append(f"{plugin_name} [{', '.join(data['string'])}]")
+                    else:
+                        tech_list.append(plugin_name)
+                techs = "; ".join(tech_list) if tech_list else "no detectable technologies"
+                label = target if len(entries) == 1 else f"{target} (#{idx})"
+                summary_list.append({f"{label} - HTTP {status}": techs})
+        return summary_list
 
-            buckets = defaultdict(list)
-            for entry in results:
-                raw_target = entry.get("target", "unknown")
-                parsed = urlparse(raw_target)
-                # Strip trailing slash from path
-                path = parsed.path.rstrip("/")
-                normalized = urlunparse(parsed._replace(path=path))
-                buckets[normalized].append(entry)
-
-            summary_list = []
-            for target, entries in buckets.items():
-                for idx, entry in enumerate(entries, start=1):
-                    status = entry.get("http_status", "N/A")
-                    plugins = entry.get("plugins", {})
-                    tech_list = []
-
-                    for plugin_name, data in plugins.items():
-                        if not data:
-                            continue
-                        if "version" in data and data["version"]:
-                            versions = ", ".join(data["version"])
-                            tech_list.append(f"{plugin_name} (v{versions})")
-                        elif "string" in data and data["string"]:
-                            examples = ", ".join(data["string"])
-                            tech_list.append(f"{plugin_name} [{examples}]")
-                        else:
-                            tech_list.append(plugin_name)
-
-                    techs = "; ".join(tech_list) if tech_list else "no detectable technologies"
-
-                    # If multiple entries share the same target, number them
-                    label = target if len(entries) == 1 else f"{target} (#{idx})"
-                    key = f"{label} - HTTP {status}"
-                    summary_list.append({key: techs})
-
-            return summary_list
+    def format_executive_summary(self, findings, issues):
+        """Recommend follow-up scans for any cross-domain redirect targets."""
+        recommendations = self._detect_domain_redirects(findings)
+        return "\n".join(recommendations) if recommendations else ""
 
     def get_dry_run_info(self, target, output_dir):
-        """
-        Return information about what WhatWeb would execute.
-        Builds the actual command with current configuration.
-        """
-        output_file = os.path.join(output_dir, "whatweb.json")
-        
-        # Build command with current configuration (same as run() method)
-        cmd = ["whatweb"]
-        
-        # Add aggression level
-        cmd.extend(["-a", str(self.aggression_level)])
-        
-        # Add read timeout if configured
-        if self.timeout:
-            cmd.extend(["--read-timeout", str(self.timeout)])
-        
-        # Add custom user-agent if configured
-        if self.user_agent:
-            cmd.extend(["--user-agent", self.user_agent])
-        
-        # Add redirect follow depth
-        if self.follow_redirects:
-            cmd.extend(["--max-redirects", str(self.follow_redirects)])
-        
-        # Add output file and target (target must come LAST)
-        cmd.extend(["--log-json", output_file, target])
-        
-        # Build operations description with config values
-        operations_desc = (
+        info = super().get_dry_run_info(target, output_dir)
+        info["operations"] = (
             f"Technology detection (aggression level {self.aggression_level}, "
             f"timeout {self.timeout}s, max redirects {self.follow_redirects})"
         )
-        
-        return {
-            "commands": [' '.join(cmd)],
-            "description": self.description,
-            "operations": operations_desc
-        }
+        return info
+
+    # -- WhatWeb-specific helpers ------------------------------------------
+
+    @staticmethod
+    def _results_list(findings) -> list:
+        """Return the inner results list regardless of wrapping shape."""
+        if isinstance(findings, dict):
+            return findings.get("results") or []
+        if isinstance(findings, list):
+            return findings
+        return []
+
+    def _detect_domain_redirects(self, findings) -> list[str]:
+        """Detect redirects that change the domain and recommend follow-up scans."""
+        recommendations = []
+        seen: set[tuple[str, str]] = set()
+        for entry in self._results_list(findings):
+            if entry.get("http_status") not in (301, 302):
+                continue
+            target = entry.get("target", "")
+            redirect_loc = (entry.get("plugins") or {}).get("RedirectLocation", {}).get("string", [])
+            if not redirect_loc:
+                continue
+            redirect_url = redirect_loc[0] if isinstance(redirect_loc, list) else redirect_loc
+            try:
+                target_domain = urlparse(target).netloc.lower()
+                redirect_domain = urlparse(redirect_url).netloc.lower()
+            except Exception as e:
+                self.debug(f"Error parsing redirect URLs: {e}")
+                continue
+            # v2 only skips when both sides resolve to the same domain (e.g.
+            # http→https on the same host). Empty redirect_domain (relative
+            # URLs like "login.php") still produces a recommendation — that
+            # output is malformed but preserved here for v2 byte-compat.
+            if target_domain == redirect_domain:
+                continue
+            key = (target_domain, redirect_domain)
+            if key in seen:
+                continue
+            seen.add(key)
+            recommendations.append(
+                f"Recommend running a scan on {redirect_domain}, which was the "
+                f"target redirection location from {target_domain}"
+            )
+        return recommendations
