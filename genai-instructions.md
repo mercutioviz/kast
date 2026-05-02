@@ -398,7 +398,7 @@ v3 handles long URLs and other long strings via CSS rules (`overflow-wrap: anywh
 1. **Local** — Docker-based ZAP on the local machine.
 2. **Remote** — connect to an existing ZAP via SSH + API.
 
-(The third mode, **Cloud** with Terraform-provisioned infrastructure, is migrating to kast-web in Phase D and is being removed from kast. Don't extend the cloud code paths.)
+(The third mode, **Cloud** with Terraform-provisioned infrastructure, is migrating to kast-web in Phase D and is being removed from kast. Don't extend the cloud code paths. As of Phase D9, invoking `execution_mode: cloud` emits a `DeprecationWarning` plus a console banner pointing at kast-web; cloud mode still functions until D10 removes it.)
 
 ### Architecture
 

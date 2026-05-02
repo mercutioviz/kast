@@ -72,6 +72,8 @@ The ZAP cloud-deployment subsystem is moving to kast-web in Phase D. The migrati
 
 **Do not add new features or fix non-critical bugs in this code within kast.** Bug fixes that affect cloud-mode users should be planned as part of the kast-web side of the migration. The `local` and `remote` execution modes of the ZAP plugin stay in kast.
 
+**Phase D9 LANDED:** when `zap_plugin.run()` resolves to cloud mode, it now calls `_warn_cloud_mode_deprecated()` which emits a `DeprecationWarning` and prints a yellow banner pointing at the kast-web migration. Cloud mode still works — D9 is a pure notice. D10 (actually removing cloud mode from kast) only happens after kast-web's cloud module is proven.
+
 ## Out of scope for v3.0
 
 Tier 2/3/4 items from the ideation pass (pre-meeting briefing, per-audience remediation, MCP server, "ask the report" agent, adaptive scan plan, sharable URLs, per-partner theming, findings diff, multi-target scan, continuous monitoring, industry benchmarking) are deliberately deferred to v3.1+. See section 8 of `03-design-and-migration.md` for the full deferred list.

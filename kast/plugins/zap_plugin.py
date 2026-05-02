@@ -680,9 +680,12 @@ class ZapPlugin(KastPlugin):
             # Create provider using factory
             factory = ZapProviderFactory(self.config, self.debug)
             self.provider = factory.create_provider()
-            
+
             provider_mode = self.provider.get_mode_name()
             self.debug(f"Using {provider_mode} provider for ZAP scan")
+
+            if provider_mode == "cloud":
+                self._warn_cloud_mode_deprecated()
             
             # Provision ZAP instance
             self.debug("Provisioning ZAP instance...")
@@ -856,6 +859,34 @@ class ZapPlugin(KastPlugin):
                 self.provider.cleanup()
         except Exception as e:
             self.debug(f"Cleanup error: {e}")
+
+    def _warn_cloud_mode_deprecated(self):
+        """Emit a one-shot deprecation notice when cloud mode runs.
+
+        Phase D moves the cloud-deployment subsystem (Terraform configs,
+        provider factory, SSH executor, infrastructure scripts) from kast
+        to kast-web. The ``cloud`` execution mode of this plugin will be
+        removed in kast 3.0 once kast-web's cloud module is proven.
+        Cloud-mode users should migrate to kast-web's managed cloud scan.
+        """
+        import warnings as _warnings
+        msg = (
+            "kast cloud execution mode is deprecated and will be removed "
+            "in a future v3 release. Cloud-deployment functionality is "
+            "moving to kast-web; see docs/v3-planning/03-design-and-migration.md "
+            "(Phase D). Local and remote modes are unaffected."
+        )
+        _warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        banner = (
+            "\033[93m"  # yellow
+            + "=" * 70 + "\n"
+            + "DEPRECATION: kast cloud execution mode\n"
+            + "=" * 70 + "\n"
+            + msg + "\n"
+            + "=" * 70 + "\033[0m"
+        )
+        print(banner)
+        self.debug("Cloud-mode deprecation warning emitted")
 
     def post_process(self, raw_output, output_dir):
         """Post-process ZAP results"""
