@@ -16,7 +16,7 @@ Phase 3 deliverable. Synthesizes Phase 1 audit (`01-audit.md`), Phase 2 ideation
 - **Phase B — Surface modernization (2–3 weeks).** New `kast scan / plugins / registry / doctor / self-update` subcommands as an additive layer. v2 argv contract preserved via a wrapper. Migrate two plugins to the new ExternalToolPlugin base as proof.
 - **Phase C — Tier 1 capability landings (4–6 weeks).** Build the AI adapter, the kast-web AI service (cost gating + review workflow), the LLM-generated executive summary (A1), the TCO appendix (F1), the WAF feature map (F2), and the extended AI surface detection (B1).
 - **Phase D — Cloud migration to kast-web (2–3 weeks, parallel with C).** Move Terraform configs, ZAP providers, SSH executor, infrastructure scripts from kast to kast-web. Add kast-web admin UI for cloud creds. Deprecate `execution_mode: cloud` in kast.
-- **Phase E — Polish + release (1–2 weeks).** pipx install model, `kast doctor`, Docker image, documentation rewrite, coordinated kast 3.0 + kast-web 3.0 release.
+- **Phase E — Polish + release (1–2 weeks).** pipx install model, `kast doctor`, Docker image, documentation rewrite, coordinated kast 3.0 + kast-web 2.0 release.
 
 **What v3 changes for users:**
 
@@ -447,7 +447,11 @@ def main():
 
 ---
 
-## 6. kast-web v3 additions
+## 6. kast-web v2.0 additions
+
+(Note: the section is labeled "v3" historically but kast-web's actual version line is v1.5 → v2.0. The two repos release as a coordinated bundle but maintain independent version histories.)
+
+
 
 The audit treated kast-web as the integration boundary; this plan re-introduces it as the home for new capability.
 
@@ -668,7 +672,7 @@ All of the above is purely **additive** to kast-web. The kast↔kast-web contrac
 | E5 | `genai-instructions.md` v3 rewrite | `genai-instructions.md` |
 | E6 | Migration guide for v2 → v3 users | `docs/MIGRATION_V2_TO_V3.md` (new) |
 | E7 | v3.0 release notes / breaking changes | `CHANGELOG.md` |
-| E8 | Coordinated kast 3.0 + kast-web 3.0 release tagging | git tags, release artifacts |
+| E8 | Coordinated kast 3.0 + kast-web 2.0 release tagging | git tags, release artifacts |
 | E9 | Smoke tests on Debian 12, 13, Ubuntu 24.04, Kali 2024+ | CI matrix |
 
 **Success criteria:**

@@ -17,6 +17,9 @@ We are on branch `refactor/v3.0`, executing the plan in `docs/v3-planning/`:
 - **`01-audit.md`** — Phase 1 audit of v2.14 (what's broken, what to keep)
 - **`02-ideation.md`** — Phase 2 capability menu and Tier 1 cut for v3
 - **`03-design-and-migration.md`** — Phase 3 v3 design and phased migration plan
+- **`04-kast-web-cloud-migration.md`** — Phase D detailed kast-web design (added 2026-05-02 after exploration revealed Phase D is a re-architecture, not a file-relocation)
+
+**Version-history note:** kast goes 2.14 → 3.0 on this branch. **kast-web** has its own independent version line and is going **v1.5 → v2.0** on its `refactor/v2.0` branch. The two repos release as a coordinated bundle, but the version numbers don't match. Earlier sections in `03-design-and-migration.md` that say "kast-web 3.0" were a mistake; they've been corrected to "kast-web 2.0."
 
 **Active phase: A — Foundation refactors.** Goal: fix audit-identified klunk without changing user-visible behavior. See section 7, Phase A in `03-design-and-migration.md` for the deliverable list.
 

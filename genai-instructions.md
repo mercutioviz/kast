@@ -36,7 +36,7 @@ This document provides guidance for GenAI assistants working with the KAST (Kali
 
 KAST is a modular, extensible Python framework for automating web-application security scanning tools. It orchestrates multiple security tools (Mozilla Observatory, WhatWeb, TestSSL, Wafw00f, Subfinder, Katana, Related Sites, FTAP, OWASP ZAP, AI Chatbot Detection, Org Discovery, Script Detection), aggregates findings, and generates HTML/PDF reports with executive summaries.
 
-KAST is paired with **kast-web** (separate repo at `/home/mscollins/kast-web/`), a Flask + Celery + Redis web frontend that shells out to the kast CLI installed at `/usr/local/bin/kast`. Stability of the kast↔kast-web boundary is a first-class concern — see [Frozen Contracts](#frozen-contracts).
+KAST is paired with **kast-web** (separate repo at `/home/mscollins/kast-web/`), a Flask + Celery + Redis web frontend that shells out to the kast CLI installed at `/usr/local/bin/kast`. Stability of the kast↔kast-web boundary is a first-class concern — see [Frozen Contracts](#frozen-contracts). The two repos maintain independent version histories (kast 2.14 → 3.0; kast-web 1.5 → 2.0) but release as a coordinated bundle.
 
 ### Core Purpose
 
