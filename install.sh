@@ -1569,10 +1569,13 @@ install_observatory() {
         log_info "Observatory already installed, skipping..."
         return 0
     fi
-    
+
     log_info "Installing MDN Observatory CLI tool..."
+    # libpq-dev provides pg_config, required to compile the libpq native binding
+    # that @mdn/mdn-http-observatory pulls in as a transitive dependency.
+    apt-get install -y libpq-dev
     npm install --global @mdn/mdn-http-observatory --unsafe-perm
-    
+
     save_checkpoint "$CHECKPOINT_OBSERVATORY"
     log_success "Observatory installed"
 }
