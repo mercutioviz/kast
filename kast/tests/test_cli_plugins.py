@@ -82,11 +82,11 @@ def test_plugins_show_active_plugin():
 
 
 def test_plugins_show_dependencies_serialized():
-    """ai_chatbot_detection has dependencies; they should appear in the JSON."""
+    """ai_surface_detection has dependencies; they should appear in the JSON."""
     runner = CliRunner()
-    result = runner.invoke(plugins_group, ["show", "ai_chatbot_detection", "--json"])
+    result = runner.invoke(plugins_group, ["show", "ai_surface_detection", "--json"])
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    # ai_chatbot_detection depends on katana, whatweb, script_detection
+    # ai_surface_detection depends on katana, whatweb, script_detection
     dep_names = {dep["plugin"] for dep in payload["dependencies"]}
     assert dep_names == {"katana", "whatweb", "script_detection"}

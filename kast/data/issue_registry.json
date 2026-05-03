@@ -747,5 +747,16 @@
     "remediation_approach": "waf",
     "code_fix_timeframe": "1-2 days",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "AI-SEARCH-001": {
+    "display_name": "AI Semantic Search / RAG Platform Detected",
+    "description": "An AI-powered semantic search or retrieval-augmented generation (RAG) platform was detected on the target website. These platforms index and expose organizational knowledge through natural-language queries, which can inadvertently surface sensitive internal content. Client-side SDKs from search-as-a-service providers may also introduce supply-chain risks and expose API keys embedded in front-end JavaScript.",
+    "remediation": "Audit the AI search integration to ensure it does not index or return sensitive internal content. Review client-side SDK configuration files for embedded API keys or index credentials that should be server-side only. Implement Content Security Policy (CSP) to restrict search SDK script sources. Rate-limit search API endpoints to prevent enumeration of the knowledge base. A WAF can help enforce access controls and monitor for unusual query patterns.",
+    "severity": "Medium",
+    "category": "AI Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

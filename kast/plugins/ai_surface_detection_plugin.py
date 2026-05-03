@@ -1,7 +1,8 @@
 """
-File: plugins/ai_chatbot_detection_plugin.py
+File: plugins/ai_surface_detection_plugin.py
 Description: Analyzes output from passive plugins (katana, whatweb, script_detection)
-             to detect indicators of agentic AI chatbots on the target website.
+             to detect AI-powered surfaces on the target website: chatbots, virtual
+             agents, semantic search platforms, and RAG-based knowledge tools.
 """
 
 import os
@@ -81,7 +82,33 @@ AI_CHATBOT_SCRIPT_PATTERNS = [
     (r"botpress.*cloud|cdn\.botpress\.cloud", "Botpress Cloud", "AI-powered chatbot cloud"),
 ]
 
-# URL path patterns that suggest chatbot / AI assistant endpoints
+# AI semantic search and RAG platform patterns
+AI_SEARCH_RAG_SCRIPT_PATTERNS = [
+    # Search-as-a-service with AI/semantic capabilities
+    (r"algolia\.net|algolia\.io|docsearch\.algolia|instantsearch\.js|algoliasearch", "Algolia AI Search", "AI-powered search-as-a-service platform"),
+    (r"coveo\.com|coveo-ui|coveo-headless|coveo\.js", "Coveo", "AI-powered enterprise search and recommendations"),
+    (r"glean\.com|glean-search|app\.glean\.com", "Glean", "AI-powered enterprise search and knowledge discovery"),
+    (r"yext\.com|yext-search|yext-answers|yext-js", "Yext AI Search", "AI-powered answers and search platform"),
+    (r"bloomreach\.com|brxm|bloomreach-search|bloomreach-discovery", "Bloomreach Discovery", "AI-powered e-commerce search"),
+    (r"searchspring\.com|searchspring-search", "Searchspring", "AI-powered search and merchandising"),
+    (r"constructor\.io|cnstrc\.com|constructor-search", "Constructor.io", "AI-powered product discovery"),
+    (r"swiftype\.com|swiftype-search|swiftype\.js", "Swiftype / Elastic Site Search", "AI-powered site search"),
+    (r"hawksearch\.com|hawksearch-widget|hawksearch\.js", "Hawksearch", "AI-powered search platform"),
+    (r"cludo\.com|cludo-search|cludo\.js", "Cludo", "AI-powered site search"),
+    (r"sitesearch360\.com|ss360-search|ss360\.js", "SiteSearch360", "AI-powered site search"),
+    (r"luigi.*box\.com|luigisbox\.com", "Luigi's Box", "AI-powered search and recommendations"),
+    # AI documentation / knowledge-base search overlays
+    (r"kapa\.ai|kapa-widget|kapa\.js", "Kapa.ai", "AI answer layer for technical documentation"),
+    (r"mendable\.ai|mendable-widget|mendable\.js", "Mendable", "AI-powered documentation search"),
+    (r"inkeep\.com|inkeep-widget|inkeep\.js", "Inkeep", "AI-powered support and search overlay"),
+    # RAG / vector-search infrastructure exposed via CDN or client SDK
+    (r"vectara\.com|vectara\.io|vectara-widget", "Vectara", "RAG-as-a-service platform"),
+    (r"trieve\.ai|trieve-search|trieve\.js", "Trieve", "Open-source RAG search infrastructure"),
+    # Perplexity AI embedded search
+    (r"perplexity\.ai/search|perplexity-widget|perplexity\.js", "Perplexity AI", "AI answer search integration"),
+]
+
+# URL path patterns for chatbot / AI assistant endpoints
 AI_CHATBOT_URL_PATTERNS = [
     (r"/chat[-_]?bot", "chatbot endpoint"),
     (r"/ai[-_]?chat", "AI chat endpoint"),
@@ -107,6 +134,19 @@ AI_CHATBOT_URL_PATTERNS = [
     (r"/messenger[-_]?bot", "messenger bot endpoint"),
 ]
 
+# URL path patterns for AI search / RAG endpoints
+AI_SEARCH_RAG_URL_PATTERNS = [
+    (r"/semantic[-_]?search", "semantic search endpoint"),
+    (r"/vector[-_]?search", "vector search endpoint"),
+    (r"/ai[-_]?search", "AI search endpoint"),
+    (r"/rag[-_]?(?:query|api|search)", "RAG query endpoint"),
+    (r"/embeddings(?:/|$)", "embeddings API endpoint"),
+    (r"/knowledge[-_]?(?:base|graph|search)", "knowledge base search endpoint"),
+    (r"/ask[-_]?docs", "AI docs search endpoint"),
+    (r"/ai[-_]?answers", "AI answers endpoint"),
+    (r"/neural[-_]?search", "neural search endpoint"),
+]
+
 # WhatWeb technology names that indicate chat / AI
 WHATWEB_CHAT_INDICATORS = [
     "drift", "intercom", "zendesk", "zopim", "livechat", "tidio",
@@ -115,31 +155,39 @@ WHATWEB_CHAT_INDICATORS = [
     "chatwoot", "kommunicate", "gorgias",
 ]
 
+# WhatWeb technology names that indicate AI search / RAG
+WHATWEB_SEARCH_INDICATORS = [
+    "algolia", "coveo", "swiftype", "searchspring", "bloomreach",
+    "yext", "constructor", "hawksearch",
+]
+
 # Confidence level ordering
 CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
 
-class AiChatbotDetectionPlugin(KastPlugin):
-    """
-    Analyzes data collected by passive plugins to detect indicators of
-    agentic AI chatbot presence on the target website.
 
-    This is an *analysis-only* plugin -- it runs no external tools.  Instead
-    it reads processed-JSON output files from katana, whatweb, and
-    script_detection, then searches for known chatbot / AI-assistant
-    signatures in URLs, external scripts, and technology fingerprints.
+class AiSurfaceDetectionPlugin(KastPlugin):
+    """
+    Analyzes data collected by passive plugins to detect AI-powered surfaces on
+    the target website: chatbots, virtual agents, semantic search, and RAG-based
+    knowledge tools.
+
+    This is an *analysis-only* plugin — it runs no external tools.  Instead it
+    reads processed-JSON output files from katana, whatweb, and script_detection,
+    then searches for known signatures in URLs, external scripts, and technology
+    fingerprints.
     """
 
     priority = 70  # Run after katana (60), whatweb (15), script_detection (10)
 
     config_schema = {
         "type": "object",
-        "title": "AI Chatbot Detection Configuration",
-        "description": "Settings for detecting agentic AI chatbots from passive scan data",
+        "title": "AI Surface Detection Configuration",
+        "description": "Settings for detecting AI-powered surfaces from passive scan data",
         "properties": {
             "enabled": {
                 "type": "boolean",
                 "default": True,
-                "description": "Enable or disable AI chatbot detection analysis"
+                "description": "Enable or disable AI surface detection analysis"
             },
             "confidence_threshold": {
                 "type": "string",
@@ -150,20 +198,14 @@ class AiChatbotDetectionPlugin(KastPlugin):
         }
     }
 
-    name = "ai_chatbot_detection"
-    display_name = "AI Chatbot Detection"
-    description = "Detects indicators of agentic AI chatbots from passive scan data."
+    name = "ai_surface_detection"
+    display_name = "AI Surface Detection"
+    description = "Detects AI-powered surfaces (chatbots, semantic search, RAG) from passive scan data."
     website_url = "https://github.com/mercutioviz/kast"
     scan_type = "passive"
     output_type = "analysis"
 
     def __init__(self, cli_args, config_manager=None):
-        # Declare dependencies so the orchestrator waits for data-source
-        # plugins to finish before running this analysis plugin (important
-        # for --parallel mode).  condition=lambda r: True means "just wait
-        # for the plugin to complete, regardless of its result".  If an
-        # upstream plugin was filtered out or unavailable the chatbot plugin
-        # still runs fine -- it gracefully handles missing files.
         self.dependencies = [
             {"plugin": "katana", "condition": lambda r: True},
             {"plugin": "whatweb", "condition": lambda r: True},
@@ -209,7 +251,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
                 unique.append(d)
 
         unique = self._apply_confidence_filter(unique)
-        self.debug(f"AI chatbot detection found {len(unique)} indicator(s)")
+        self.debug(f"AI surface detection found {len(unique)} indicator(s)")
 
         return self.get_result_dict("success", {"target": target, "detections": unique}, timestamp=ts)
 
@@ -244,12 +286,27 @@ class AiChatbotDetectionPlugin(KastPlugin):
                 if re.search(pat, ul):
                     detections.append(dict(platform=label, confidence="medium",
                                            source="katana_url", evidence=url,
-                                           description=f"URL path matches {label} pattern"))
+                                           description=f"URL path matches {label} pattern",
+                                           detection_type="chatbot"))
+                    break
+            for pat, label in AI_SEARCH_RAG_URL_PATTERNS:
+                if re.search(pat, ul):
+                    detections.append(dict(platform=label, confidence="medium",
+                                           source="katana_url", evidence=url,
+                                           description=f"URL path matches {label} pattern",
+                                           detection_type="ai_search"))
                     break
             for pat, plat, desc in AI_CHATBOT_SCRIPT_PATTERNS:
                 if re.search(pat, ul):
                     detections.append(dict(platform=plat, confidence="high",
-                                           source="katana_url", evidence=url, description=desc))
+                                           source="katana_url", evidence=url,
+                                           description=desc, detection_type="chatbot"))
+                    break
+            for pat, plat, desc in AI_SEARCH_RAG_SCRIPT_PATTERNS:
+                if re.search(pat, ul):
+                    detections.append(dict(platform=plat, confidence="high",
+                                           source="katana_url", evidence=url,
+                                           description=desc, detection_type="ai_search"))
                     break
         return detections
 
@@ -288,9 +345,24 @@ class AiChatbotDetectionPlugin(KastPlugin):
                             platform=f"{pname}{ver}", confidence="high",
                             source="whatweb_technology",
                             evidence=f"WhatWeb detected: {pname}{ver}",
-                            description=f"Technology fingerprint matches '{ind}'"))
+                            description=f"Technology fingerprint matches '{ind}'",
+                            detection_type="chatbot"))
                         break
-                # Check string values
+                for ind in WHATWEB_SEARCH_INDICATORS:
+                    if ind in pl:
+                        ver = ""
+                        if isinstance(pdata, dict):
+                            vl = pdata.get("version", [])
+                            if vl:
+                                ver = f" v{', '.join(vl)}"
+                        detections.append(dict(
+                            platform=f"{pname}{ver}", confidence="high",
+                            source="whatweb_technology",
+                            evidence=f"WhatWeb detected: {pname}{ver}",
+                            description=f"AI search technology fingerprint matches '{ind}'",
+                            detection_type="ai_search"))
+                        break
+                # Check string values against all script patterns
                 if isinstance(pdata, dict):
                     for s in pdata.get("string", []):
                         sl = s.lower() if isinstance(s, str) else ""
@@ -300,7 +372,15 @@ class AiChatbotDetectionPlugin(KastPlugin):
                                     platform=plat, confidence="high",
                                     source="whatweb_string",
                                     evidence=f"WhatWeb {pname}: {s}",
-                                    description=desc))
+                                    description=desc, detection_type="chatbot"))
+                                break
+                        for pat, plat, desc in AI_SEARCH_RAG_SCRIPT_PATTERNS:
+                            if re.search(pat, sl):
+                                detections.append(dict(
+                                    platform=plat, confidence="high",
+                                    source="whatweb_string",
+                                    evidence=f"WhatWeb {pname}: {s}",
+                                    description=desc, detection_type="ai_search"))
                                 break
         return detections
 
@@ -321,8 +401,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
 
         findings = data.get("findings", {})
 
-        # --- Real data format: findings.results.scripts[] ---
-        # Each script object has: url, hostname, path, origin, is_same_origin, ...
+        # Real data format: findings.results.scripts[]
         results = findings.get("results", {})
         if isinstance(results, dict):
             scripts_list = results.get("scripts", [])
@@ -330,7 +409,6 @@ class AiChatbotDetectionPlugin(KastPlugin):
                 for script in scripts_list:
                     if not isinstance(script, dict):
                         continue
-                    # Check the full URL
                     url = script.get("url", "")
                     ul = url.lower()
                     for pat, plat, desc in AI_CHATBOT_SCRIPT_PATTERNS:
@@ -338,27 +416,46 @@ class AiChatbotDetectionPlugin(KastPlugin):
                             detections.append(dict(
                                 platform=plat, confidence="high",
                                 source="script_detection_external",
-                                evidence=url, description=desc))
+                                evidence=url, description=desc,
+                                detection_type="chatbot"))
+                            break
+                    for pat, plat, desc in AI_SEARCH_RAG_SCRIPT_PATTERNS:
+                        if re.search(pat, ul):
+                            detections.append(dict(
+                                platform=plat, confidence="high",
+                                source="script_detection_external",
+                                evidence=url, description=desc,
+                                detection_type="ai_search"))
                             break
 
-            # Also scan unique_origins list for quick matches
             origins = results.get("unique_origins", [])
             if isinstance(origins, list):
                 for origin in origins:
                     ol = origin.lower() if isinstance(origin, str) else ""
                     for pat, plat, desc in AI_CHATBOT_SCRIPT_PATTERNS:
                         if re.search(pat, ol):
-                            # Only add if not already found via scripts[]
                             already = any(d["platform"] == plat and d["source"] == "script_detection_external"
                                           for d in detections)
                             if not already:
                                 detections.append(dict(
                                     platform=plat, confidence="high",
                                     source="script_detection_origin",
-                                    evidence=origin, description=desc))
+                                    evidence=origin, description=desc,
+                                    detection_type="chatbot"))
+                            break
+                    for pat, plat, desc in AI_SEARCH_RAG_SCRIPT_PATTERNS:
+                        if re.search(pat, ol):
+                            already = any(d["platform"] == plat and d["source"] == "script_detection_external"
+                                          for d in detections)
+                            if not already:
+                                detections.append(dict(
+                                    platform=plat, confidence="high",
+                                    source="script_detection_origin",
+                                    evidence=origin, description=desc,
+                                    detection_type="ai_search"))
                             break
 
-        # --- Legacy / fallback format: findings.external_scripts[] ---
+        # Legacy / fallback format: findings.external_scripts[]
         scripts = findings.get("external_scripts", [])
         if isinstance(scripts, list):
             for script in scripts:
@@ -369,10 +466,19 @@ class AiChatbotDetectionPlugin(KastPlugin):
                         detections.append(dict(
                             platform=plat, confidence="high",
                             source="script_detection_external",
-                            evidence=src, description=desc))
+                            evidence=src, description=desc,
+                            detection_type="chatbot"))
+                        break
+                for pat, plat, desc in AI_SEARCH_RAG_SCRIPT_PATTERNS:
+                    if re.search(pat, sl):
+                        detections.append(dict(
+                            platform=plat, confidence="high",
+                            source="script_detection_external",
+                            evidence=src, description=desc,
+                            detection_type="ai_search"))
                         break
 
-        # --- Legacy / fallback format: findings.inline_scripts[] ---
+        # Legacy / fallback format: findings.inline_scripts[]
         inline = findings.get("inline_scripts", [])
         if isinstance(inline, list):
             for snip in inline:
@@ -385,7 +491,16 @@ class AiChatbotDetectionPlugin(KastPlugin):
                             platform=plat, confidence="high",
                             source="script_detection_inline",
                             evidence=f"Inline script snippet: {short}",
-                            description=desc))
+                            description=desc, detection_type="chatbot"))
+                        break
+                for pat, plat, desc in AI_SEARCH_RAG_SCRIPT_PATTERNS:
+                    if re.search(pat, tl):
+                        short = txt[:200].replace("\n", " ")
+                        detections.append(dict(
+                            platform=plat, confidence="high",
+                            source="script_detection_inline",
+                            evidence=f"Inline script snippet: {short}",
+                            description=desc, detection_type="ai_search"))
                         break
         return detections
 
@@ -402,37 +517,43 @@ class AiChatbotDetectionPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def post_process(self, raw_output, output_dir):
-        """
-        Post-process raw scan results into a standardized processed JSON file.
-
-        :param raw_output: Result dict returned by run() via get_result_dict()
-        :param output_dir: Directory to write processed JSON
-        :return: Path to the processed JSON file
-        """
         ts = raw_output.get("timestamp", datetime.now(timezone.utc).isoformat(timespec="milliseconds"))
         results_data = raw_output.get("results", {})
         target = results_data.get("target", "unknown")
         detections = results_data.get("detections", [])
         n = len(detections)
 
+        chatbot_detections = [d for d in detections if d.get("detection_type") == "chatbot"]
+        search_detections = [d for d in detections if d.get("detection_type") == "ai_search"]
+        n_chatbot = len(chatbot_detections)
+        n_search = len(search_detections)
+
         # Build executive summary
         if n == 0:
-            exec_summary = "No AI chatbot indicators were detected on the target website."
+            exec_summary = "No AI surface indicators were detected on the target website."
         else:
             platforms = sorted({d["platform"] for d in detections})
+            parts = []
+            if n_chatbot:
+                parts.append(f"{n_chatbot} chatbot/virtual-agent indicator(s)")
+            if n_search:
+                parts.append(f"{n_search} AI search/RAG indicator(s)")
+            count_str = " and ".join(parts)
             exec_summary = (
-                f"{n} AI chatbot indicator(s) detected on the target. "
+                f"{n} AI surface indicator(s) detected on the target ({count_str}). "
                 f"Platform(s) identified: {', '.join(platforms)}. "
-                "Agentic AI chatbots can introduce security risks including prompt injection, "
-                "data leakage, and expanded attack surface via third-party integrations."
+                "AI-powered surfaces can introduce security risks including prompt injection, "
+                "data leakage, and expanded third-party attack surface."
             )
 
         # Map to issue registry
         registry_issues = []
-        if n > 0:
+        if n_chatbot > 0:
             registry_issues.append("AI-CHATBOT-001")
-        if n >= 3:
+        if n_chatbot >= 3:
             registry_issues.append("AI-CHATBOT-002")
+        if n_search > 0:
+            registry_issues.append("AI-SEARCH-001")
 
         # Build HTML widgets
         html = self._build_html(detections, target)
@@ -441,14 +562,13 @@ class AiChatbotDetectionPlugin(KastPlugin):
         # Build summary / details strings
         summary = self._generate_summary(detections)
         if n > 0:
-            detail_lines = [f"AI chatbot indicators found: {n}"]
+            detail_lines = [f"AI surface indicators found: {n}"]
             for d in detections:
                 detail_lines.append(f"  - {d['platform']} ({d['confidence']}): {d['description']}")
             details = "\n".join(detail_lines)
         else:
-            details = "No AI chatbot indicators detected."
+            details = "No AI surface indicators detected."
 
-        # Save processed JSON (standard KAST format)
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
@@ -479,10 +599,9 @@ class AiChatbotDetectionPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def _generate_summary(self, detections):
-        """Generate a short text summary of detections for the processed output."""
         n = len(detections)
         if n == 0:
-            return "No AI chatbot indicators detected."
+            return "No AI surface indicators detected."
         platforms = sorted({d["platform"] for d in detections})
         high = sum(1 for d in detections if d.get("confidence") == "high")
         medium = sum(1 for d in detections if d.get("confidence") == "medium")
@@ -496,7 +615,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
             parts.append(f"{low} low")
         conf_str = ", ".join(parts) if parts else "unknown"
         return (
-            f"Detected {n} AI chatbot indicator(s) ({conf_str} confidence). "
+            f"Detected {n} AI surface indicator(s) ({conf_str} confidence). "
             f"Platform(s): {', '.join(platforms)}."
         )
 
@@ -506,20 +625,22 @@ class AiChatbotDetectionPlugin(KastPlugin):
 
     def _build_html(self, detections, target):
         if not detections:
-            return "<p>No AI chatbot indicators detected.</p>"
+            return "<p>No AI surface indicators detected.</p>"
         rows = []
         for d in detections:
             conf_class = {"high": "danger", "medium": "warning", "low": "info"}.get(d["confidence"], "info")
+            dtype = d.get("detection_type", "")
+            type_badge = f'<span class="badge badge-secondary">{dtype}</span>' if dtype else ""
             rows.append(
-                f'<tr><td>{d["platform"]}</td>'
+                f'<tr><td>{d["platform"]} {type_badge}</td>'
                 f'<td><span class="badge badge-{conf_class}">{d["confidence"]}</span></td>'
                 f'<td>{d["source"]}</td>'
                 f'<td style="word-break:break-all;max-width:400px">{d["evidence"]}</td>'
                 f'<td>{d["description"]}</td></tr>'
             )
         return (
-            '<div class="ai-chatbot-results">'
-            f'<p><strong>{len(detections)}</strong> AI chatbot indicator(s) detected.</p>'
+            '<div class="ai-surface-results">'
+            f'<p><strong>{len(detections)}</strong> AI surface indicator(s) detected.</p>'
             '<table class="table table-striped table-sm">'
             '<thead><tr><th>Platform</th><th>Confidence</th><th>Source</th>'
             '<th>Evidence</th><th>Description</th></tr></thead>'
@@ -528,7 +649,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
 
     def _build_html_pdf(self, detections, target):
         if not detections:
-            return "<p>No AI chatbot indicators detected.</p>"
+            return "<p>No AI surface indicators detected.</p>"
         rows = []
         for d in detections:
             rows.append(
@@ -538,7 +659,7 @@ class AiChatbotDetectionPlugin(KastPlugin):
                 f'<td>{d["description"]}</td></tr>'
             )
         return (
-            f'<p><strong>{len(detections)}</strong> AI chatbot indicator(s) detected.</p>'
+            f'<p><strong>{len(detections)}</strong> AI surface indicator(s) detected.</p>'
             '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;width:100%">'
             '<tr><th>Platform</th><th>Confidence</th><th>Source</th><th>Description</th></tr>'
             f'{"".join(rows)}</table>'
@@ -552,9 +673,10 @@ class AiChatbotDetectionPlugin(KastPlugin):
         return {
             "description": self.description,
             "operations": [
-                "Read katana_processed.json / katana.txt for chatbot URL indicators",
-                "Read whatweb_processed.json for chatbot technology fingerprints",
-                "Read script_detection_processed.json for chatbot script indicators",
+                "Read katana_processed.json / katana.txt for AI surface URL indicators",
+                "Read whatweb_processed.json for AI surface technology fingerprints",
+                "Read script_detection_processed.json for AI surface script indicators",
                 f"Filter results by confidence >= {self.confidence_threshold}",
+                "Classify detections as chatbot/virtual-agent or AI search/RAG",
             ]
         }
