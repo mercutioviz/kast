@@ -1,8 +1,9 @@
 """AI adapter resolution: env vars > ~/.config/kast/ai.yaml > AIConfigError.
 
-For Phase C1 (kast CLI direct), only the Anthropic adapter is wired.
-The kast-web passthrough endpoint (``--ai-endpoint``) is C8 and not
-implemented here.
+Resolution order:
+1. ``endpoint_url`` kwarg (or ``KAST_AI_ENDPOINT`` env var) → HttpAdapter
+2. ``KAST_AI_API_KEY`` / ``~/.config/kast/ai.yaml`` → AnthropicAdapter
+3. raise ``AIConfigError``
 """
 
 from __future__ import annotations
@@ -21,10 +22,15 @@ CONFIG_PATH = Path.home() / ".config" / "kast" / "ai.yaml"
 def get_ai_adapter(
     adapter_name: str = "anthropic",
     model_override: str | None = None,
+    endpoint_url: str | None = None,
 ) -> AIAdapter:
     """Resolve and construct an AI adapter.
 
-    Precedence:
+    When ``endpoint_url`` is supplied (or ``KAST_AI_ENDPOINT`` env var is set),
+    an ``HttpAdapter`` is returned and all API-key / provider logic is bypassed.
+    The HTTP adapter routes AI requests to the kast-web AI service (Phase C8).
+
+    Direct-API precedence (no endpoint):
     1. ``KAST_AI_API_KEY`` environment variable
     2. ``~/.config/kast/ai.yaml``  (``{provider, api_key, model}``)
     3. raise ``AIConfigError``
@@ -33,6 +39,12 @@ def get_ai_adapter(
     ``KAST_AI_MODEL`` env var overrides the resolved model unless
     ``model_override`` is supplied.
     """
+    resolved_endpoint = endpoint_url or os.environ.get("KAST_AI_ENDPOINT")
+    if resolved_endpoint:
+        from kast.ai.http_adapter import HttpAdapter
+        token = os.environ.get("KAST_AI_ENDPOINT_TOKEN")
+        return HttpAdapter(endpoint_url=resolved_endpoint, bearer_token=token)
+
     file_cfg = _load_file_config()
     provider = (
         os.environ.get("KAST_AI_PROVIDER")

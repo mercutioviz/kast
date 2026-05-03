@@ -77,6 +77,9 @@ console = Console()
               help="Override AI model (default: claude-sonnet-4-6).")
 @click.option("--ai-adapter", "ai_adapter", type=click.Choice(["anthropic"]),
               default="anthropic", help="AI provider adapter (default: anthropic).")
+@click.option("--ai-endpoint", "ai_endpoint", default=None,
+              help="Route AI requests through a kast-web AI service URL instead of calling the "
+                   "provider API directly (Phase C8). Overrides --ai-adapter and KAST_AI_API_KEY.")
 @click.pass_context
 def scan(
     ctx: click.Context,
@@ -99,6 +102,7 @@ def scan(
     ai_summary_flag: bool,
     ai_model: str | None,
     ai_adapter: str,
+    ai_endpoint: str | None,
 ) -> None:
     """Run a security scan against TARGET, or manage past scans via subcommand."""
     # If a subcommand was given (list / show / rerun), defer to it.
@@ -114,6 +118,7 @@ def scan(
         httpx_rate_limit=httpx_rate_limit, zap_profile=zap_profile,
         config_path=config_path, set_overrides=set_overrides,
         ai_summary_flag=ai_summary_flag, ai_model=ai_model, ai_adapter=ai_adapter,
+        ai_endpoint=ai_endpoint,
     )
 
 
@@ -382,26 +387,30 @@ def scan_rerun(scan_dir: str, format_: str, logo: str | None) -> None:
 
 
 def _build_ai_info(enabled: bool, adapter: str, ai_summary: dict | None,
-                   ai_error: str | None) -> dict:
+                   ai_error: str | None, endpoint: str | None = None) -> dict:
     """Build the ``ai`` block for kast_info.json.
 
     Status is one of ``"success" | "error" | "disabled"``.
+    When ``endpoint`` is set, the ``adapter`` field is ``"http"`` and
+    ``endpoint`` records the kast-web URL used (Phase C8).
     """
+    resolved_adapter = "http" if endpoint else adapter
     if not enabled:
         return {"enabled": False, "status": "disabled", "adapter": None,
-                "model": None, "prompt_version": None,
+                "endpoint": None, "model": None, "prompt_version": None,
                 "tokens_in": None, "tokens_out": None,
                 "latency_ms": None, "error": None}
     if ai_summary is None:
-        return {"enabled": True, "status": "error", "adapter": adapter,
-                "model": None, "prompt_version": None,
+        return {"enabled": True, "status": "error", "adapter": resolved_adapter,
+                "endpoint": endpoint, "model": None, "prompt_version": None,
                 "tokens_in": None, "tokens_out": None,
                 "latency_ms": None, "error": ai_error}
     meta = ai_summary.get("_meta") or {}
     return {
         "enabled": True,
         "status": "success",
-        "adapter": adapter,
+        "adapter": resolved_adapter,
+        "endpoint": endpoint,
         "model": meta.get("model"),
         "prompt_version": meta.get("prompt_version"),
         "tokens_in": meta.get("tokens_in"),
@@ -435,7 +444,7 @@ def _run_scan(
     *, target, mode, output_dir, report_only_path, format_, dry_run,
     parallel, max_workers, verbose, log_dir, logo, run_only,
     httpx_rate_limit, zap_profile, config_path, set_overrides,
-    ai_summary_flag=False, ai_model=None, ai_adapter="anthropic",
+    ai_summary_flag=False, ai_model=None, ai_adapter="anthropic", ai_endpoint=None,
 ) -> None:
     """Execute a scan (or re-render in report-only mode).
 
@@ -602,7 +611,7 @@ def _run_scan(
             from kast.ai.config import get_ai_adapter
             from kast.ai.summary import generate_ai_summary
             from kast.report.data import collect_report_data
-            adapter = get_ai_adapter(ai_adapter, ai_model)
+            adapter = get_ai_adapter(ai_adapter, ai_model, endpoint_url=ai_endpoint)
             tmp_data = collect_report_data(plugin_results, target)
             ai_summary = generate_ai_summary(adapter, tmp_data)
             log.info(
@@ -630,7 +639,7 @@ def _run_scan(
                 "ai_summary": ai_summary_flag,
             },
             "plugins": orchestrator.get_plugin_timings(),
-            "ai": _build_ai_info(ai_summary_flag, ai_adapter, ai_summary, ai_error),
+            "ai": _build_ai_info(ai_summary_flag, ai_adapter, ai_summary, ai_error, endpoint=ai_endpoint),
         }
         info_file = out_dir / "kast_info.json"
         try:
