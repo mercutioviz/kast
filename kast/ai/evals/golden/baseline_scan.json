@@ -1,0 +1,16 @@
+{
+  "headline": "Deprecated TLS and missing security headers leave example.com exposed to interception and clickjacking, with 75% of findings addressable at the WAF/edge layer.",
+  "narrative": "The scan of example.com identified four issues spanning High, Medium, Low, and Informational severity. The most significant finding is active support for TLS 1.0, a deprecated protocol known to be vulnerable to BEAST and POODLE downgrade attacks. This is a direct transport-layer risk that can expose session data to a network-positioned attacker.\n\nThe absent X-Frame-Options header compounds the exposure: without this control, the application can be embedded in a third-party iframe, enabling clickjacking attacks against authenticated users. Combined with the TLS weakness, these two findings suggest the application's HTTP security baseline has not been reviewed against current standards.\n\nThe lower-severity SWEET32 finding indicates 64-bit block ciphers remain enabled in the TLS cipher suite. While exploitation requires capturing a large volume of traffic, the presence of legacy cipher support reinforces the pattern of deferred TLS hygiene. Passive reconnaissance also confirmed that standard organizational DNS and ASN records are publicly enumerable, which is expected but worth noting for attack-surface awareness.\n\nThree of the four findings (75%) are addressable at the WAF or CDN edge layer, meaning quick wins are available without requiring application code changes. The High-severity TLS issue and the Medium-severity header gap can both be mitigated at the edge while a code-level remediation is planned.",
+  "key_findings": [
+    "TLS 1.0 is enabled on the server — deprecated since 2018 and vulnerable to BEAST/POODLE; should be disabled in favor of TLS 1.2+ only.",
+    "X-Frame-Options header is absent, leaving the application open to clickjacking; a modern Content Security Policy with frame-ancestors would also address this.",
+    "64-bit block cipher suites (3DES) remain in the TLS negotiation order, contributing to SWEET32 exposure.",
+    "75% of identified findings (3 of 4) are WAF-addressable, offering a fast path to risk reduction without application redeployment."
+  ],
+  "recommended_actions": [
+    "Disable TLS 1.0 and TLS 1.1 at the server or load-balancer level; enforce TLS 1.2 as the minimum with a preference for TLS 1.3.",
+    "Add X-Frame-Options: SAMEORIGIN (or a Content Security Policy frame-ancestors directive) to all HTTP responses.",
+    "Remove 3DES and other 64-bit block cipher suites from the TLS configuration.",
+    "Deploy a WAF rule set targeting the three WAF-addressable findings for immediate risk reduction while infrastructure changes are scheduled."
+  ]
+}

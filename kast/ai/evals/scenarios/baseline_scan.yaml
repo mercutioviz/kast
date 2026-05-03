@@ -1,0 +1,68 @@
+# Baseline eval scenario — mirrors the fixture used in test_report_module.py.
+# One High, one Medium, one Low, one Informational issue across two plugins.
+# Used to verify that the prompt produces a well-structured summary for a
+# typical "mixed severity, small scan" input.
+name: baseline_scan
+report_data:
+  target: example.com
+  all_issues:
+    - id: TLSv1.0
+      display_name: "TLS 1.0 Protocol Enabled"
+      severity: High
+      category: "Transport Security"
+      reported_by: testssl
+      description: >
+        The server supports TLS 1.0, a deprecated protocol with known
+        weaknesses including POODLE and BEAST. Connections using TLS 1.0 are
+        vulnerable to downgrade attacks and protocol-level exploits. PCI-DSS
+        and modern security policy require TLS 1.2 or higher.
+    - id: x-frame-options-header-invalid
+      display_name: "X-Frame-Options Header Invalid or Missing"
+      severity: Medium
+      category: "HTTP Security Headers"
+      reported_by: whatweb
+      description: >
+        The X-Frame-Options response header is absent or misconfigured,
+        leaving the application susceptible to clickjacking attacks where an
+        attacker embeds the site in a hidden iframe to trick users into
+        unintended actions.
+    - id: SWEET32
+      display_name: "SWEET32 — 64-bit Block Cipher Vulnerability"
+      severity: Low
+      category: "Transport Security"
+      reported_by: testssl
+      description: >
+        The server supports cipher suites using 64-bit block ciphers (3DES/DES)
+        that are vulnerable to the SWEET32 birthday attack. An attacker capable
+        of capturing sufficient traffic can recover session cookies or other
+        plaintext data.
+    - id: ORG-DISC-001
+      display_name: "Organization Infrastructure Disclosure"
+      severity: Informational
+      category: "Information Disclosure"
+      reported_by: org_discovery
+      description: >
+        Passive reconnaissance revealed public DNS, ASN, and certificate
+        records that enumerate the organization's IP ranges and hostnames.
+        This information is available to any attacker performing passive recon.
+  scan_metadata:
+    total_issues: 4
+    severity_counts:
+      High: 1
+      Medium: 1
+      Low: 1
+      Informational: 1
+      Unknown: 0
+    waf_statistics:
+      total_issues: 4
+      waf_addressable_count: 3
+      waf_addressable_percentage: 75.0
+      non_waf_count: 1
+      high_severity_waf: 1
+      medium_severity_waf: 1
+      low_severity_waf: 1
+  plugin_executive_summaries:
+    - plugin_name: whatweb
+      summary: "Apache 2.4.41, PHP 7.4, and Drupal 9.2 detected. X-Frame-Options header absent."
+    - plugin_name: org_discovery
+      summary: "Organization DNS and ASN records enumerated via passive sources."
