@@ -312,9 +312,6 @@ class FtapPlugin(KastPlugin):
 
         self.debug(f"{self.name} raw findings:\n{pformat(findings)}")
 
-        # Extract issues - each exposed admin panel is an issue
-        # Filter out findings with confidence < 0.86
-        issues = []
         # Handle both direct results array and dict with results key
         if isinstance(findings, dict):
             results = findings.get("results", [])
@@ -322,12 +319,22 @@ class FtapPlugin(KastPlugin):
             results = findings
         else:
             results = []
-        
-        for panel in results:
-            if panel.get("found", False) and panel.get("confidence", 0) >= 0.86:
-                # Create issue entry for each exposed admin panel
-                issue_entry = "exposed_admin_panel"
-                issues.append(issue_entry)
+
+        exposed_panels = [
+            r for r in results
+            if r.get("found", False) and r.get("confidence", 0) >= 0.86
+        ]
+
+        # One issue entry regardless of panel count; description lists all URLs.
+        issues = []
+        if exposed_panels:
+            urls = [p.get("url", "N/A") for p in exposed_panels]
+            count = len(urls)
+            noun = "URL" if count == 1 else "URLs"
+            issues.append({
+                "id": "exposed_admin_panel",
+                "description": f"{count} exposed admin panel {noun} detected: {', '.join(urls)}",
+            })
 
         # Build details section with formatted information
         details = self._build_details(findings)
@@ -335,8 +342,8 @@ class FtapPlugin(KastPlugin):
         # Build executive summary with panel information
         executive_summary = self._build_executive_summary(findings)
 
-        # Calculate findings_count - count of exposed admin panels (confidence >= 0.86)
-        findings_count = len(issues)  # issues already filtered for confidence >= 0.86
+        # findings_count = number of distinct admin panel URLs, not issue entries
+        findings_count = len(exposed_panels)
 
         # Generate summary using helper method
         summary = self._generate_summary(findings)
