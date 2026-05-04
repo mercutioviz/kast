@@ -77,4 +77,4 @@ def main() -> None:
     translated = _translate_v2_argv(argv)
     if translated != argv:
         sys.argv = [sys.argv[0]] + translated
-    cli()
+    cli(prog_name="kast")
