@@ -114,7 +114,7 @@ def check_python_modules() -> List[CheckResult]:
 EXTERNAL_TOOLS = [
     ("whatweb",    "whatweb",       "sudo apt install whatweb"),
     ("wafw00f",    "wafw00f",       "sudo apt install wafw00f  (or: pip install wafw00f)"),
-    ("testssl.sh", "testssl",       "sudo apt install testssl.sh"),
+    ("testssl",    "testssl",       "sudo apt install testssl"),
     ("subfinder",  "subfinder",     "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"),
     ("katana",     "katana",        "go install github.com/projectdiscovery/katana/cmd/katana@latest"),
     ("httpx",      "related_sites", "go install github.com/projectdiscovery/httpx/cmd/httpx@latest"),
