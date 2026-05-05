@@ -158,7 +158,7 @@ informational (used for richer UI / detail views but not state),
 
 | Size (B) | File                                    | Role | Notes |
 |---------:|-----------------------------------------|:----:|-------|
-| 663      | `ai_chatbot_detection_processed.json`   | S    | completion marker for `ai_chatbot_detection` |
+| 663      | `ai_surface_detection_processed.json`   | S    | completion marker for `ai_surface_detection` |
 | 2,223    | `ftap.json`                             | S    | start marker for `ftap` |
 | 8,036    | `ftap_processed.json`                   | S    | completion marker for `ftap` |
 | 2,855    | `kast_info.json`                        | M    | scan metadata (cli args, timings, version) |
