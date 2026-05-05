@@ -63,10 +63,15 @@ def get_ai_adapter(
         or os.environ.get("KAST_AI_MODEL")
         or file_cfg.get("model")
     )
+    base_url = os.environ.get("KAST_AI_BASE_URL") or file_cfg.get("base_url") or None
 
     if provider == "anthropic":
         from kast.ai.anthropic_adapter import AnthropicAdapter, DEFAULT_MODEL
-        return AnthropicAdapter(api_key=api_key, model=model or DEFAULT_MODEL)
+        return AnthropicAdapter(
+            api_key=api_key,
+            model=model or DEFAULT_MODEL,
+            base_url=base_url,
+        )
 
     raise AIConfigError(f"Unknown AI provider: {provider!r}")
 

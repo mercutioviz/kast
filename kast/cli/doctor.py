@@ -448,6 +448,8 @@ def _apply_safe_fixes() -> List[CheckResult]:
                 "provider: anthropic\n"
                 "api_key: \"\"  # paste sk-ant-... here, or leave empty and use the env var\n"
                 "model: claude-sonnet-4-6\n"
+                "# base_url: \"\"  # optional: override the Anthropic API endpoint\n"
+                "#              # e.g. https://api.iq.cudasvc.com (KAST_AI_BASE_URL env var also works)\n"
             )
             ai_config.chmod(0o600)
             fixes.append(CheckResult(section=section, name="AI config template",

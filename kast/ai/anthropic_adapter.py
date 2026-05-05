@@ -20,9 +20,20 @@ DEFAULT_TIMEOUT_SECS = 60.0
 
 
 class AnthropicAdapter:
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = DEFAULT_MODEL,
+        base_url: str | None = None,
+    ):
         self.model = model
-        self._client = Anthropic(api_key=api_key, timeout=DEFAULT_TIMEOUT_SECS)
+        client_kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "timeout": DEFAULT_TIMEOUT_SECS,
+        }
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        self._client = Anthropic(**client_kwargs)
 
     def generate(
         self,
