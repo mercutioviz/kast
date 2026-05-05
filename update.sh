@@ -1194,7 +1194,34 @@ main() {
     
     # Mark update as complete
     save_checkpoint "$CHECKPOINT_COMPLETE"
-    
+
+    # Scaffold AI config if the user doesn't have one yet (never overwrite)
+    local orig_user="${SUDO_USER:-$USER}"
+    local orig_home
+    orig_home=$(getent passwd "$orig_user" | cut -d: -f6)
+    local ai_config="$orig_home/.config/kast/ai.yaml"
+    local sample="$INSTALL_DIR/kast/config/ai.yaml.sample"
+    if [[ ! -f "$ai_config" ]]; then
+        mkdir -p "$orig_home/.config/kast"
+        if [[ -f "$sample" ]]; then
+            cp "$sample" "$ai_config"
+        else
+            cat > "$ai_config" <<'EOF'
+# kast AI configuration — see kast/config/ai.yaml.sample for full options
+provider: anthropic
+api_key: ""   # paste sk-ant-... here, or set KAST_AI_API_KEY env var
+model: claude-sonnet-4-6
+# base_url: ""  # optional: e.g. https://api.iq.cudasvc.com
+EOF
+        fi
+        chown "$orig_user:$orig_user" "$orig_home/.config/kast" "$ai_config"
+        chmod 600 "$ai_config"
+        log_success "Created AI config template: $ai_config"
+        log_info "Edit $ai_config to add your API key before using --ai-summary."
+    else
+        log_info "AI config already exists, not overwriting: $ai_config"
+    fi
+
     # Display success message
     echo ""
     echo "======================================================================"

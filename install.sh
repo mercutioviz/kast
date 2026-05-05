@@ -1779,19 +1779,54 @@ EOF
     log_success "Launcher scripts created"
 }
 
+setup_ai_config() {
+    local user_config_dir="$ORIG_HOME/.config/kast"
+    local ai_config="$user_config_dir/ai.yaml"
+    local sample="$INSTALL_DIR/kast/config/ai.yaml.sample"
+
+    mkdir -p "$user_config_dir"
+    chown "$ORIG_USER:$ORIG_USER" "$user_config_dir"
+
+    if [[ -f "$ai_config" ]]; then
+        log_info "AI config already exists, not overwriting: $ai_config"
+        return 0
+    fi
+
+    if [[ -f "$sample" ]]; then
+        cp "$sample" "$ai_config"
+    else
+        # Fallback: write minimal template if sample is missing
+        cat > "$ai_config" <<'EOF'
+# kast AI configuration — see kast/config/ai.yaml.sample for full options
+provider: anthropic
+api_key: ""   # paste sk-ant-... here, or set KAST_AI_API_KEY env var
+model: claude-sonnet-4-6
+# base_url: ""  # optional: e.g. https://api.iq.cudasvc.com
+EOF
+    fi
+
+    chown "$ORIG_USER:$ORIG_USER" "$ai_config"
+    chmod 600 "$ai_config"
+    log_success "Created AI config template: $ai_config"
+    log_info "Edit $ai_config to add your API key before using --ai-summary."
+}
+
 finalize_installation() {
     log_info "Finalizing installation..."
-    
+
     # Create default target log directory
     mkdir -p /var/log/kast
     chown "$ORIG_USER:$ORIG_USER" /var/log/kast
-    
+
+    # Scaffold AI config for the installing user
+    setup_ai_config
+
     # Save version
     echo "$SCRIPT_VERSION" > "$INSTALL_DIR/$VERSION_FILE"
-    
+
     # Mark installation as complete
     save_checkpoint "$CHECKPOINT_COMPLETE"
-    
+
     log_success "Installation complete!"
 }
 

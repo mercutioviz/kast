@@ -1,0 +1,81 @@
+# kast AI adapter configuration
+#
+# Controls which AI provider and model are used when `kast scan --ai-summary`
+# is requested. Copy or rename this file to ~/.config/kast/ai.yaml and fill
+# in your API key.
+#
+# Environment variable overrides (take precedence over this file):
+#   KAST_AI_API_KEY      — API key
+#   KAST_AI_MODEL        — model name
+#   KAST_AI_BASE_URL     — custom API endpoint base URL
+#   KAST_AI_ENDPOINT     — route through kast-web AI service instead (see below)
+#   KAST_AI_ENDPOINT_TOKEN — bearer token for the kast-web endpoint
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# OPTION 1 — Anthropic (direct, default)
+# ─────────────────────────────────────────────────────────────────────────────
+# The default provider. Calls api.anthropic.com directly.
+# Get your API key at: https://console.anthropic.com/
+
+provider: anthropic
+api_key: ""       # paste sk-ant-api03-... here, or use KAST_AI_API_KEY env var
+model: claude-sonnet-4-6
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OPTION 2 — Anthropic via a custom / corporate API gateway
+# ─────────────────────────────────────────────────────────────────────────────
+# If your organisation routes Anthropic traffic through a proxy or private
+# gateway (e.g. Barracuda's internal AI service), set base_url to that host.
+# All other fields stay the same; only the network destination changes.
+#
+# provider: anthropic
+# api_key: ""     # your corporate-issued key for the gateway
+# model: claude-sonnet-4-6
+# base_url: "https://api.iq.cudasvc.com"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OPTION 3 — Route through kast-web AI service (recommended for team installs)
+# ─────────────────────────────────────────────────────────────────────────────
+# When a kast-web instance is available it acts as an authenticated AI proxy:
+# cost gating, usage tracking, and key management happen server-side.
+# Set the environment variable instead of editing this file:
+#
+#   export KAST_AI_ENDPOINT="https://your-kast-web-host/api/ai/generate"
+#   export KAST_AI_ENDPOINT_TOKEN="<token-issued-by-kast-web-admin>"
+#
+# Or pass the flag per-scan:
+#
+#   kast scan -t example.com --ai-summary \
+#       --ai-endpoint https://your-kast-web-host
+#
+# When KAST_AI_ENDPOINT is set, the api_key / base_url fields in this file
+# are ignored — the kast-web service handles all provider credentials.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FUTURE PROVIDERS (not yet supported in v3.0)
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenAI, AWS Bedrock, Azure OpenAI, and Ollama (local) support are planned
+# for a future release. When those adapters land, the configuration will look
+# similar to the blocks below.
+#
+# OpenAI (planned):
+# provider: openai
+# api_key: "sk-..."
+# model: gpt-4o
+#
+# AWS Bedrock (planned):
+# provider: bedrock
+# model: anthropic.claude-sonnet-4-6-v1
+# aws_region: us-east-1
+# # credentials come from ~/.aws/credentials or instance role
+#
+# Azure OpenAI (planned):
+# provider: azure_openai
+# api_key: "..."
+# model: gpt-4o
+# base_url: "https://<your-resource>.openai.azure.com/"
+#
+# Ollama / local LLM (planned):
+# provider: ollama
+# model: llama3.1
+# base_url: "http://localhost:11434"
