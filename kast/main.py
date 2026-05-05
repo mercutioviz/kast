@@ -9,7 +9,3 @@ and for any caller that imports ``kast.main:main``.
 """
 
 from kast.cli import main
-
-
-if __name__ == "__main__":
-    main()

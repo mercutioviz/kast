@@ -278,6 +278,7 @@ class ScannerOrchestrator:
                         completed_plugins[plugin_name] = error_result
                     del futures[done_future]
 
+
         return results
 
     def get_plugin_timings(self):
