@@ -355,11 +355,24 @@ def scan_show(scan_dir: str, json_output: bool) -> None:
               default="html", help="Report output format (default: html).")
 @click.option("--logo", type=click.Path(),
               help="Custom logo file (PNG/JPG) for reports.")
-def scan_rerun(scan_dir: str, format_: str, logo: str | None) -> None:
+@click.option("--ai-summary", "ai_summary_flag", is_flag=True,
+              help="Generate an AI executive summary using the configured AI provider.")
+@click.option("--ai-model", type=str, default=None,
+              help="Override the AI model (e.g. claude-opus-4-7).")
+@click.option("--ai-adapter", type=click.Choice(["anthropic"]), default="anthropic",
+              help="AI provider adapter (default: anthropic).")
+@click.option("--ai-endpoint", type=str, default=None, envvar="KAST_AI_ENDPOINT",
+              help="Route AI requests through a kast-web AI service endpoint.")
+def scan_rerun(scan_dir: str, format_: str, logo: str | None,
+               ai_summary_flag: bool, ai_model: str | None,
+               ai_adapter: str, ai_endpoint: str | None) -> None:
     """Re-render reports from an existing scan directory.
 
     Equivalent to ``kast scan --report-only DIR --format X`` — preserved
     for legacy compatibility; ``rerun`` is the canonical v3 form.
+
+    Pass ``--ai-summary`` to add an AI executive summary to the re-rendered
+    report without re-running any plugins.
     """
     _run_scan(
         target=None,
@@ -378,6 +391,10 @@ def scan_rerun(scan_dir: str, format_: str, logo: str | None) -> None:
         zap_profile=None,
         config_path=None,
         set_overrides=(),
+        ai_summary_flag=ai_summary_flag,
+        ai_model=ai_model,
+        ai_adapter=ai_adapter,
+        ai_endpoint=ai_endpoint,
     )
 
 
@@ -647,6 +664,19 @@ def _run_scan(
             log.info(f"Kast info written to {info_file}")
         except Exception as e:
             log.error(f"Failed to write kast_info.json: {e}")
+    elif not dry_run and is_report_only and ai_summary_flag:
+        # Update only the ai block in the existing kast_info.json so the
+        # re-rendered report's metadata stays consistent.
+        info_file = out_dir / "kast_info.json"
+        try:
+            existing = json.loads(info_file.read_text()) if info_file.exists() else {}
+            existing["ai"] = _build_ai_info(
+                ai_summary_flag, ai_adapter, ai_summary, ai_error, endpoint=ai_endpoint
+            )
+            write_json_atomic(info_file, existing)
+            log.info("kast_info.json ai block updated after rerun")
+        except Exception as e:
+            log.error(f"Failed to update kast_info.json: {e}")
 
     if processed_files:
         console.print("[green]Post-processed JSON files created:[/green]")
