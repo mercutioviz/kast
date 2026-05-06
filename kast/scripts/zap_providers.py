@@ -87,6 +87,7 @@ class LocalZapProvider(ZapInstanceProvider):
         self.container_name = None
         self.started_container = False
         self.temp_config_dir = None
+        self.plan_id = None
     
     def get_mode_name(self):
         return "local"
@@ -207,37 +208,85 @@ class LocalZapProvider(ZapInstanceProvider):
         return True, self.zap_client, self.instance_info
     
     def upload_automation_plan(self, plan_content, target_url):
-        """Upload automation plan to local container"""
-        if not self.temp_config_dir:
-            self.debug("No config directory available")
+        """Upload and run automation plan via ZAP API.
+
+        Uses the same two-step file-upload + runPlan approach as RemoteZapProvider.
+        The container is started with api.filexfer=true so this is always available.
+        """
+        if not self.zap_client:
+            self.debug("No ZAP client available")
             return False
-        
-        # Substitute target URL
+
         plan_content = plan_content.replace('${TARGET_URL}', target_url)
-        
-        # Write plan to config directory (mounted in container)
-        plan_path = self.temp_config_dir / 'automation_plan.yaml'
-        with open(plan_path, 'w') as f:
-            f.write(plan_content)
-        
-        self.debug(f"Automation plan written to {plan_path}")
-        
-        # Trigger automation via API
+
+        # Also write to the mounted config dir for debugging reference.
+        if self.temp_config_dir:
+            try:
+                plan_path = self.temp_config_dir / 'automation_plan.yaml'
+                with open(plan_path, 'w') as f:
+                    f.write(plan_content)
+                self.debug(f"Automation plan written to {plan_path}")
+            except Exception as e:
+                self.debug(f"Warning: could not write plan to config dir: {e}")
+
         try:
-            # Use docker exec to run autorun
-            cmd = [
-                'docker', 'exec', self.container_name,
-                'zap-cli', 'quick-scan', '--self-contained',
-                '--start-options', '-config api.disablekey=true',
-                target_url
-            ]
-            # Note: The automation framework will be triggered via the mounted plan
-            # For now, we'll rely on the API-based scanning
-            self.debug("Automation plan uploaded successfully")
-            return True
+            from io import BytesIO
+            target_filename = 'kast_automation_plan.yaml'
+
+            self.debug("Step 1: Uploading automation plan file to local ZAP...")
+            upload_response = self.zap_client._make_request(
+                '/OTHER/core/other/fileUpload/',
+                method='POST',
+                files={'fileContents': ('automation_plan.yaml',
+                                        BytesIO(plan_content.encode('utf-8')),
+                                        'application/octet-stream')},
+                data={'fileName': target_filename},
+            )
+
+            if not upload_response:
+                self.debug("Failed to upload automation plan file")
+                return False
+
+            uploaded_path = upload_response.get('Uploaded')
+            if not uploaded_path:
+                self.debug(f"Upload response missing 'Uploaded' path: {upload_response}")
+                return False
+
+            self.debug(f"Step 2: Running automation plan at: {uploaded_path}")
+            run_response = self.zap_client._make_request(
+                '/JSON/automation/action/runPlan/',
+                method='POST',
+                data={'filePath': uploaded_path},
+            )
+
+            if run_response and 'planId' in run_response:
+                self.plan_id = run_response['planId']
+                self.debug(f"Automation plan running (planId: {self.plan_id})")
+                return self.plan_id
+
+            if run_response and run_response.get('Result') == 'OK':
+                self.debug("Automation plan initiated (legacy response)")
+                return True
+
+            error = run_response.get('message', 'Unknown error') if run_response else 'No response'
+            self.debug(f"Failed to run automation plan: {error}")
+            return None
+
         except Exception as e:
-            self.debug(f"Error uploading plan: {e}")
+            self.debug(f"Error uploading automation plan: {e}")
             return False
+
+    def wait_for_plan_completion(self, timeout, poll_interval, output_dir=None):
+        """Wait for automation plan to complete."""
+        if not self.plan_id:
+            self.debug("No plan ID available for monitoring")
+            return False, None
+        return self.zap_client.wait_for_plan_completion(
+            self.plan_id,
+            timeout=timeout,
+            poll_interval=poll_interval,
+            output_dir=output_dir,
+        )
     
     def download_results(self, output_dir, report_name):
         """Download results from local container"""
