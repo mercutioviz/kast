@@ -4,6 +4,18 @@ OWASP ZAP (Zed Attack Proxy) is the engine behind kast's active and passive web-
 
 ---
 
+## Critical: ZAP scans require `-m active`
+
+ZAP has `scan_type = "active"`. The default kast scan mode is `passive`, which filters out all active plugins before they run. **Always include `-m active` when running ZAP scans**, or ZAP will be silently skipped:
+
+```bash
+kast scan -t https://example.com -m active --run-only zap ...
+```
+
+Without `-m active`, kast runs a passive-only scan with all non-ZAP plugins and exits immediately without touching ZAP.
+
+---
+
 ## Execution modes
 
 kast supports three ZAP execution modes, controlled by the `zap.execution_mode` config key.
@@ -151,7 +163,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
 ```
 
@@ -186,7 +198,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
 ```
 
@@ -223,7 +235,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
 ```
 
@@ -255,7 +267,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
 ```
 
@@ -306,7 +318,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
 ```
 
@@ -427,14 +439,14 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"     # must be /zap/reports in local mode (mounted volume)
+      reportDir: "/tmp"
       reportFile: "zap_report.json" # must match zap_config.report_name
 ```
 
 **Key constraints:**
 - `${TARGET_URL}` is the only template variable — kast performs a string substitution before uploading the plan.
-- `reportDir` must be `/zap/reports` in local mode; in remote mode ZAP writes to its own filesystem and kast downloads the report via the JSON API.
-- `reportFile` must match `zap_config.report_name` (default: `zap_report.json`).
+- `reportDir` must be a directory that exists inside the ZAP container. Use `/tmp` — it is always present in both local and remote mode. Do not use `/zap/reports`; that path only exists when kast starts the local Docker container itself and mounts a volume there, and `failOnError: true` will abort the whole plan if the directory is missing.
+- `reportFile` must match `zap_config.report_name` (default: `zap_report.json`). kast downloads the final report via ZAP's JSON API regardless of where the file is written, so `reportDir` only needs to be a valid writable path.
 - ZAP must be started with `-config api.filexfer=true` for the file-upload API to work. The local provider's `_start_zap_container()` includes this flag automatically.
 
 To use a custom plan:
@@ -445,7 +457,30 @@ kast scan -t https://example.com \
 
 ---
 
+## Remote ZAP: recommended Docker startup command
+
+```bash
+docker run --rm -u zap \
+  --name kast-zap \
+  --network host \
+  ghcr.io/zaproxy/zaproxy:stable \
+  zap.sh -daemon \
+    -host 0.0.0.0 \
+    -port 8081 \
+    -config api.key=YOUR_API_KEY \
+    -config "api.addrs.addr.name=.*" \
+    -config api.addrs.addr.regex=true \
+    -config api.filexfer=true
+```
+
+`--network host` is required when the scan target is on a private/VPN-routed network — without it the container is isolated on a Docker bridge and cannot reach internal hosts. On Linux, host networking makes the container share the host's full network stack including VPN routes and internal DNS.
+
+---
+
 ## Troubleshooting
+
+### ZAP plugin silently skipped — scan finishes immediately
+ZAP has `scan_type = "active"`. Without `-m active`, the orchestrator filters ZAP out and runs passive-only plugins instead. Add `-m active` to every `kast scan` invocation that should trigger ZAP.
 
 ### "Docker not available"
 Docker is not installed or the daemon is not running. Install Docker or switch to remote mode.
@@ -457,11 +492,11 @@ docker logs kast-zap-local
 ```
 ZAP prints `ZAP is now listening` when the API is ready.
 
+### Plan fails with "NoSuchFileException /zap/reports/zap_report.json"
+A custom automation plan has `reportDir: "/zap/reports"`. That directory only exists in kast's local mode (Docker volume mount). Change it to `reportDir: "/tmp"` — all built-in kast profiles already use `/tmp`.
+
 ### "Failed to upload automation plan file"
-ZAP was not started with `api.filexfer=true`. If using remote mode with a manually-started ZAP instance, restart it with:
-```bash
-zap.sh -daemon -port 8080 -config api.key=yourkey -config api.filexfer=true
-```
+ZAP was not started with `api.filexfer=true`. If using remote mode with a manually-started ZAP instance, restart it with that flag (see the recommended Docker startup command above).
 
 ### "ZAP connectivity test failed"
 In remote mode, kast cannot reach the ZAP API. Test manually:
@@ -481,7 +516,11 @@ kast scan -t https://example.com --set zap.zap_config.timeout_minutes=120
 Or switch to the `quick` profile for a faster run.
 
 ### ZAP finds no issues / very few issues
-The Ajax spider (`spiderClient`) requires a browser. If the local Docker container cannot launch a headless browser, fall back to the traditional `spider` job type (as used in the quick profile). Check the ZAP container logs for `Failed to start browser`.
+The Ajax spider (`spiderClient`) requires a browser. Confirm Firefox is present in the container:
+```bash
+docker exec <container_name> firefox --version
+```
+The `[NNN] Sandbox: CanCreateUserNamespace() clone() failure: EPERM` warning in that output is normal inside Docker and does not prevent Firefox from working. If Firefox is absent, use the `quick` profile which uses the traditional `spider` job instead. Check the ZAP container logs for `Failed to start browser` if the spider completes instantly with 0 URLs found.
 
 ### Port conflict on localhost:8080
 Another process is using port 8080. Change the local ZAP port:
