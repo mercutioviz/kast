@@ -53,6 +53,7 @@ echo "      kast will poll ZAP every 30 s and print progress."
 echo ""
 
 kast scan \
+    -m active \
     --target   "$TARGET" \
     --zap-profile "$PROFILE_NAME" \
     --set "zap.execution_mode=remote" \

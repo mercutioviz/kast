@@ -69,7 +69,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
       reportTitle: "KAST ZAP API Scan"
       reportDescription: "API-focused security scan for REST endpoints"

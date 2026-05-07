@@ -55,7 +55,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
       reportTitle: "KAST ZAP Passive Scan"
       reportDescription: "Passive-only security scan safe for production"

@@ -67,7 +67,7 @@ jobs:
   - type: "report"
     parameters:
       template: "traditional-json"
-      reportDir: "/zap/reports"
+      reportDir: "/tmp"
       reportFile: "zap_report.json"
       reportTitle: "KAST ZAP Thorough Scan"
       reportDescription: "Comprehensive deep security scan for pre-production"
