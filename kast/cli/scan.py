@@ -352,7 +352,7 @@ def scan_show(scan_dir: str, json_output: bool) -> None:
 @scan.command(name="rerun")
 @click.argument("scan_dir", type=click.Path(exists=True))
 @click.option("--format", "format_", type=click.Choice(["html", "pdf", "both"]),
-              default="html", help="Report output format (default: html).")
+              default="both", help="Report output format (default: both).")
 @click.option("--logo", type=click.Path(),
               help="Custom logo file (PNG/JPG) for reports.")
 @click.option("--ai-summary", "ai_summary_flag", is_flag=True,
@@ -373,6 +373,8 @@ def scan_rerun(scan_dir: str, format_: str, logo: str | None,
 
     Pass ``--ai-summary`` to add an AI executive summary to the re-rendered
     report without re-running any plugins.
+
+    Defaults to ``--format both`` so HTML and PDF are always kept in sync.
     """
     _run_scan(
         target=None,
