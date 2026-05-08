@@ -50,9 +50,8 @@ echo -e "  ${CYAN}Note:${RESET} Spider scoped to /api/* and /v[0-9]+/* paths."
 echo ""
 
 check_zap_connectivity "$ZAP_URL" "$API_KEY"
-reset_zap_session      "$ZAP_URL" "$API_KEY"
 
-echo -e "${BOLD}[3/3] Running kast scan (${PROFILE_NAME} profile)...${RESET}"
+echo -e "${BOLD}[2/2] Running kast scan (${PROFILE_NAME} profile)...${RESET}"
 echo "      kast will poll ZAP every 30 s and print progress."
 echo ""
 

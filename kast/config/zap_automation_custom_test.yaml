@@ -1,0 +1,74 @@
+# OWASP ZAP Automation Framework Plan - Custom plan to test manually feeding zap plan file to kast
+# Estimated duration: ~5 minutes
+
+env:
+  contexts:
+    - name: "target-context"
+      urls:
+        - "${TARGET_URL}"
+      includePaths:
+        - "${TARGET_URL}.*"
+      excludePaths:
+        - ".*logout.*"
+        - ".*signout.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  # Quick spider scan - limited depth (using traditional spider)
+  - type: "spider"
+    parameters:
+      context: "target-context"
+      maxDuration: 5
+      maxDepth: 3
+      maxChildren: 0
+      acceptCookies: true
+      handleODataParametersVisited: false
+      parseComments: true
+      parseGit: false
+      parseRobotsTxt: true
+      parseSitemapXml: true
+      parseSVNEntries: false
+      postForm: true
+      processForm: true
+      requestWaitTime: 200
+      sendRefererHeader: true
+      threadCount: 2
+
+  # Passive scan configuration
+  - type: "passiveScan-config"
+    parameters:
+      maxAlertsPerRule: 5
+      scanOnlyInScope: true
+      enableTags: false
+
+  # Wait for passive scan to complete
+  - type: "passiveScan-wait"
+    parameters:
+      maxDuration: 5
+
+  # Quick active scan - shorter duration
+  - type: "activeScan"
+    parameters:
+      context: "target-context"
+      policy: "Default Policy"
+      maxRuleDurationInMins: 3
+      maxScanDurationInMins: 15
+      addQueryParam: false
+      delayInMs: 5
+      handleAntiCSRFTokens: true
+      injectPluginIdInHeader: false
+      scanHeadersAllRequests: true
+      threadPerHost: 2
+
+  # Generate report
+  - type: "report"
+    parameters:
+      template: "traditional-json"
+      reportDir: "/tmp"
+      reportFile: "zap_report.json"
+      reportTitle: "KAST ZAP Quick Scan"
+      reportDescription: "Fast security scan for CI/CD pipelines"
+      displayReport: false

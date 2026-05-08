@@ -197,7 +197,9 @@ class LocalZapProvider(ZapInstanceProvider):
             if self.started_container:
                 self._cleanup_container()
             return False, None, {"error": "ZAP not ready"}
-        
+
+        self.zap_client.new_session()
+
         self.instance_info = {
             'mode': 'local',
             'container_name': self.container_name,
@@ -389,7 +391,9 @@ class RemoteZapProvider(ZapInstanceProvider):
         
         # Success - log version
         self.debug(f"✓ Connected to ZAP v{version} at {api_url}")
-        
+
+        self.zap_client.new_session()
+
         self.instance_info = {
             'mode': 'remote',
             'api_url': api_url,

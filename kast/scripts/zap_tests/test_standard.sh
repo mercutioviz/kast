@@ -46,9 +46,8 @@ OUTPUT_DIR="/tmp/kast-zap-${PROFILE_NAME}-${TIMESTAMP}"
 print_banner "$PROFILE_NAME" "$EST_TIME" "$TARGET" "$ZAP_URL" "$OUTPUT_DIR" "$TIMEOUT"
 
 check_zap_connectivity "$ZAP_URL" "$API_KEY"
-reset_zap_session      "$ZAP_URL" "$API_KEY"
 
-echo -e "${BOLD}[3/3] Running kast scan (${PROFILE_NAME} profile)...${RESET}"
+echo -e "${BOLD}[2/2] Running kast scan (${PROFILE_NAME} profile)...${RESET}"
 echo "      kast will poll ZAP every 30 s and print progress."
 echo ""
 

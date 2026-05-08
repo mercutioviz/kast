@@ -30,7 +30,7 @@ print_banner() {
 # Returns 0 on success, exits 1 on failure.
 check_zap_connectivity() {
     local zap_url="$1" api_key="$2"
-    echo -e "${BOLD}[1/3] Checking ZAP connectivity...${RESET}"
+    echo -e "${BOLD}[1/2] Checking ZAP connectivity...${RESET}"
 
     local response
     response=$(curl -sf --max-time 10 \
@@ -56,21 +56,10 @@ check_zap_connectivity() {
 }
 
 # ── reset_zap_session ────────────────────────────────────────────────────────
-# Usage: reset_zap_session "$ZAP_URL" "$API_KEY"
+# Kept for backwards compatibility; kast now calls newSession internally during
+# provision(), so this is a no-op stub. Test scripts no longer call it.
 reset_zap_session() {
-    local zap_url="$1" api_key="$2"
-    echo -e "${BOLD}[2/3] Resetting ZAP session...${RESET}"
-
-    local response
-    response=$(curl -sf --max-time 10 -X POST \
-        "${zap_url}/JSON/core/action/newSession/?apikey=${api_key}&overwrite=true" \
-        2>/dev/null) || true
-
-    if [[ -z "$response" ]]; then
-        echo -e "  ${YELLOW}⚠${RESET}  Session reset returned no response — continuing anyway."
-    else
-        echo -e "  ${GREEN}✓${RESET} Session reset. Previous scan data cleared."
-    fi
+    :
 }
 
 # ── print_results ────────────────────────────────────────────────────────────

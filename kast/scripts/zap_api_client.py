@@ -127,6 +127,24 @@ class ZAPAPIClient:
         except Exception as e:
             return False, None, f"Unexpected error: {str(e)}"
     
+    def new_session(self):
+        """
+        Start a new ZAP session, clearing all previous scan data (Sites tree, alerts, scan state).
+
+        :return: True if successful, False otherwise
+        """
+        try:
+            self._make_request(
+                '/JSON/core/action/newSession/',
+                method='POST',
+                params={'overwrite': 'true'},
+            )
+            self.debug("ZAP session reset — previous scan data cleared")
+            return True
+        except Exception as e:
+            self.debug(f"Session reset failed (non-fatal): {e}")
+            return False
+
     def wait_for_ready(self, timeout=300, poll_interval=10):
         """
         Wait for ZAP to be ready
