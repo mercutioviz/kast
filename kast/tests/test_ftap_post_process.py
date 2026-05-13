@@ -100,9 +100,11 @@ class TestFtapPostProcess(unittest.TestCase):
         self.assertIn("summary", processed)
         self.assertIn("details", processed)
         
-        # Verify issues were extracted
-        self.assertEqual(len(processed["issues"]), 4)
-        self.assertTrue(all(issue == "exposed_admin_panel" for issue in processed["issues"]))
+        # Verify issues were extracted — one consolidated entry regardless of panel count
+        self.assertEqual(len(processed["issues"]), 1)
+        issue = processed["issues"][0]
+        self.assertEqual(issue["id"], "exposed_admin_panel")
+        self.assertIn("4 exposed admin panel", issue["description"])
         
         # Verify summary
         self.assertIn("4 exposed admin panels", processed["summary"])
