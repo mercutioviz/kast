@@ -13,6 +13,54 @@ from kast.plugins.base import KastPlugin
 from kast.scripts.zap_providers import LocalZapProvider, RemoteZapProvider
 from kast.core.atomic import write_json_atomic
 
+# Substrings (lowercase) that indicate a WAF can address the finding.
+# Checked against the alert name with case-insensitive substring match.
+_WAF_ADDRESSABLE_SUBSTRINGS = frozenset({
+    "sql injection",
+    "cross site scripting",
+    " xss",
+    "path traversal",
+    "remote file inclusion",
+    "command injection",
+    "os command",
+    "ldap injection",
+    "header injection",
+    "external redirect",
+    "open redirect",
+    "content security policy",
+    "x-frame-options",
+    "x-content-type-options",
+    "strict-transport-security",
+    "application error",
+    "buffer overflow",
+    "format string",
+    "cross-site request forgery",
+    "csrf",
+    "clickjacking",
+    "anti-clickjacking",
+    "information disclosure",
+    "server leaks",
+    "x-powered-by",
+    "directory browsing",
+    "directory listing",
+    "source code disclosure",
+    "cookie without samesite",
+    "cookie no httponly",
+    "cookie samesite",
+    "referrer-policy",
+    "web browser xss",
+    "server information",
+    "missing anti",
+    "csp header",
+    "http only site",
+})
+
+
+def _is_waf_addressable(alert_name: str) -> bool:
+    name_lower = alert_name.lower()
+    return any(s in name_lower for s in _WAF_ADDRESSABLE_SUBSTRINGS)
+
+
 class ZapPlugin(KastPlugin):
     priority = 200  # Run later (higher number = lower priority)
     
@@ -860,31 +908,41 @@ class ZapPlugin(KastPlugin):
             '0': 'Informational'
         }
         
-        # Group by risk
+        # Group by risk, tag WAF-addressable
         risk_counts = {'High': 0, 'Medium': 0, 'Low': 0, 'Informational': 0}
         issues = []
-        
+        waf_addressable_count = 0
+        code_fix_count = 0
+
         for alert in all_alerts:
-            # Get risk from riskcode (preferred) or risk field
             riskcode = alert.get('riskcode', '0')
             risk = risk_map.get(str(riskcode), alert.get('risk', 'Informational'))
-            
             risk_counts[risk] = risk_counts.get(risk, 0) + 1
-            
-            # Include alert name and risk level
+
             alert_name = alert.get('alert', alert.get('name', 'Unknown'))
+            if _is_waf_addressable(alert_name):
+                waf_addressable_count += 1
+            else:
+                code_fix_count += 1
             issues.append(f"{alert_name} [{risk}]")
-        
+
         # Calculate findings_count - total number of security alerts/vulnerabilities
         findings_count = total = sum(risk_counts.values())
-        
+
         # Build summary
         if total == 0:
             summary = "No vulnerabilities detected"
             executive_summary = f"ZAP scan completed using {provider_mode} mode. No security issues found."
         else:
-            summary = f"Found {total} issues: {risk_counts['High']} High, {risk_counts['Medium']} Medium, {risk_counts['Low']} Low"
-            executive_summary = f"ZAP scan ({provider_mode} mode) identified {total} security findings requiring attention."
+            summary = (
+                f"Found {total} issues: {risk_counts['High']} High, "
+                f"{risk_counts['Medium']} Medium, {risk_counts['Low']} Low — "
+                f"{waf_addressable_count} WAF-addressable, {code_fix_count} require code fix"
+            )
+            executive_summary = (
+                f"ZAP scan ({provider_mode} mode) identified {total} security findings. "
+                f"{waf_addressable_count} of {total} are directly addressable by a WAF."
+            )
         
         self.debug(f"{self.name} findings_count: {findings_count}")
         
@@ -919,7 +977,9 @@ class ZapPlugin(KastPlugin):
             "issues": issues[:50],  # Limit to 50 issues
             "executive_summary": executive_summary,
             "provider_mode": provider_mode,
-            "instance_info": instance_info
+            "instance_info": instance_info,
+            "waf_addressable_count": waf_addressable_count,
+            "code_fix_count": code_fix_count,
         }
         
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")

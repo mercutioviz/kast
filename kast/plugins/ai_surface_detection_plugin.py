@@ -8,9 +8,23 @@ Description: Analyzes output from passive plugins (katana, whatweb, script_detec
 import os
 import re
 import json
+import requests
+import urllib3
 from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Paths probed on the target to find accessible AI service configuration endpoints.
+_AI_PROBE_PATHS = [
+    "/.well-known/ai-plugin.json",          # OpenAI Actions/Plugin manifest
+    "/.well-known/openai-configuration",
+    "/chatbot-config.json",
+    "/widget/api/v1/settings",              # Generic widget bootstrap
+    "/api/widget/boot",
+    "/api/v1/widget/initialize",
+]
 
 # ---------------------------------------------------------------------------
 # Indicator databases
@@ -513,6 +527,34 @@ class AiSurfaceDetectionPlugin(KastPlugin):
         return [d for d in detections if CONFIDENCE_ORDER.get(d.get("confidence", "low"), 0) >= thresh]
 
     # ------------------------------------------------------------------
+    # Endpoint probing
+    # ------------------------------------------------------------------
+
+    def _probe_ai_endpoints(self, target: str) -> list:
+        """Probe the target for publicly accessible AI service configuration endpoints.
+
+        Returns a list of URLs that responded with HTTP 200 and a non-trivial body,
+        indicating an accessible configuration or bootstrap endpoint.
+        """
+        if not target or target == "unknown":
+            return []
+
+        base = target.rstrip("/")
+        if not base.startswith(("http://", "https://")):
+            base = f"https://{base}"
+
+        accessible = []
+        for path in _AI_PROBE_PATHS:
+            url = base + path
+            try:
+                resp = requests.get(url, timeout=5, verify=False, allow_redirects=False)
+                if resp.status_code == 200 and len(resp.content) > 50:
+                    accessible.append(url)
+                    self.debug(f"Accessible AI endpoint: {url} ({len(resp.content)} bytes)")
+            except Exception as e:
+                self.debug(f"Probe failed for {url}: {e}")
+        return accessible
+
     # Post-process
     # ------------------------------------------------------------------
 
@@ -555,6 +597,13 @@ class AiSurfaceDetectionPlugin(KastPlugin):
         if n_search > 0:
             registry_issues.append("AI-SEARCH-001")
 
+        # Probe for accessible AI configuration endpoints when surfaces detected
+        accessible_endpoints = []
+        if n > 0:
+            accessible_endpoints = self._probe_ai_endpoints(target)
+            if accessible_endpoints:
+                registry_issues.append("ai-endpoint-unauthenticated")
+
         # Build HTML widgets
         html = self._build_html(detections, target)
         html_pdf = self._build_html_pdf(detections, target)
@@ -565,6 +614,10 @@ class AiSurfaceDetectionPlugin(KastPlugin):
             detail_lines = [f"AI surface indicators found: {n}"]
             for d in detections:
                 detail_lines.append(f"  - {d['platform']} ({d['confidence']}): {d['description']}")
+            if accessible_endpoints:
+                detail_lines.append(f"\nAccessible AI configuration endpoint(s) ({len(accessible_endpoints)}):")
+                for ep in accessible_endpoints:
+                    detail_lines.append(f"  - {ep}")
             details = "\n".join(detail_lines)
         else:
             details = "No AI surface indicators detected."

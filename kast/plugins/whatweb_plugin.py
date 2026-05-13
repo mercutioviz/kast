@@ -18,6 +18,21 @@ from kast.plugins.external_tool import ExternalToolPlugin
 class WhatWebPlugin(ExternalToolPlugin):
     priority = 15  # High priority
 
+    # (safe_major, safe_minor): detected version < boundary → EOL
+    _EOL_TECHNOLOGIES: dict = {
+        "PHP": (8, 0),
+        "jQuery": (3, 0),
+        "jQuery UI": (1, 13),
+        "Bootstrap": (4, 0),
+        "AngularJS": (2, 0),
+        "Angular": (2, 0),
+        "Lodash": (4, 17),
+        "Apache": (2, 4),
+        "WordPress": (6, 0),
+        "Drupal": (9, 0),
+        "Ruby on Rails": (6, 0),
+    }
+
     name = "whatweb"
     display_name = "WhatWeb"
     description = "Identifies technologies used by a website."
@@ -153,7 +168,40 @@ class WhatWebPlugin(ExternalToolPlugin):
         )
         return info
 
+    def extract_issues(self, findings) -> list[str]:
+        """Emit whatweb-eol-technology when a detected technology version is EOL."""
+        results = self._results_list(findings)
+        for entry in results:
+            plugins = entry.get("plugins") or {}
+            for plugin_name, data in plugins.items():
+                if not isinstance(data, dict):
+                    continue
+                versions = data.get("version") or []
+                if not isinstance(versions, list):
+                    versions = [versions]
+                boundary = self._EOL_TECHNOLOGIES.get(plugin_name)
+                if boundary is None:
+                    continue
+                for version_str in versions:
+                    parsed = self._parse_version(str(version_str))
+                    if parsed and parsed < boundary:
+                        self.debug(
+                            f"EOL technology: {plugin_name} {version_str} "
+                            f"(safe boundary: {boundary[0]}.{boundary[1]})"
+                        )
+                        return ["whatweb-eol-technology"]
+        return []
+
     # -- WhatWeb-specific helpers ------------------------------------------
+
+    @staticmethod
+    def _parse_version(version_str: str):
+        """Parse 'major.minor[.patch]' to (major, minor) tuple, or None on failure."""
+        try:
+            parts = str(version_str).split(".")
+            return (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+        except (ValueError, IndexError, AttributeError):
+            return None
 
     @staticmethod
     def _results_list(findings) -> list:

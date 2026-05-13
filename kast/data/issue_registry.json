@@ -868,5 +868,82 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-2 days",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "whatweb-eol-technology": {
+    "display_name": "End-of-Life Technology Detected",
+    "description": "WhatWeb identified a technology component that has reached end-of-life and no longer receives security patches (e.g., PHP 7.x, jQuery 1.x/2.x, AngularJS 1.x). Running EOL software exposes the application to known, unpatched vulnerabilities.",
+    "remediation": "Upgrade the identified component to a supported, actively maintained version. A WAF can apply virtual patching rules to block known exploits targeting the EOL version while an upgrade is planned.",
+    "severity": "Medium",
+    "category": "Technology Risk",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "outdated-js-library": {
+    "display_name": "Outdated JavaScript Library Detected",
+    "description": "A client-side JavaScript library with a known-vulnerable version was detected in the page's script tags (e.g., jQuery 1.x has CVE-published XSS vulnerabilities; AngularJS 1.x is EOL). Outdated client-side libraries can enable XSS, prototype pollution, and other client-side attacks.",
+    "remediation": "Update the library to the latest supported version. If loaded via CDN, update the CDN URL and add Subresource Integrity (SRI) attributes. Remove unused libraries entirely when possible.",
+    "severity": "Medium",
+    "category": "Client-Side Security",
+    "waf_addressable": false,
+    "remediation_approach": "code",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "N/A"
+  },
+  "missing-coep": {
+    "display_name": "Missing Cross-Origin-Embedder-Policy Header",
+    "description": "The Cross-Origin-Embedder-Policy (COEP) header is not set. Without COEP, the page cannot use powerful browser APIs (SharedArrayBuffer, high-resolution timers) safely, and cross-origin resources may be included without explicit permission, enabling Spectre-class side-channel attacks.",
+    "remediation": "Set the COEP header to 'require-corp' or 'credentialless'. Ensure all embedded cross-origin resources include the appropriate CORP or CORS headers. A WAF can inject the COEP header for all responses.",
+    "severity": "Low",
+    "category": "HTTP Headers",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "missing-coop": {
+    "display_name": "Missing Cross-Origin-Opener-Policy Header",
+    "description": "The Cross-Origin-Opener-Policy (COOP) header is not set. Without COOP, a cross-origin page can maintain a reference to this page's window object, enabling cross-origin attacks including XS-Leaks and Spectre-class side-channel information disclosure.",
+    "remediation": "Set the COOP header to 'same-origin' or 'same-origin-allow-popups'. A WAF can inject the COOP header for all HTML responses.",
+    "severity": "Low",
+    "category": "HTTP Headers",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "missing-permissions-policy": {
+    "display_name": "Missing Permissions-Policy Header",
+    "description": "The Permissions-Policy header (formerly Feature-Policy) is not set. Without it, all browser features and APIs (camera, microphone, geolocation, payment, USB) are available to the page and any embedded third-party scripts by default, increasing the risk of feature abuse by malicious scripts.",
+    "remediation": "Set a Permissions-Policy header that restricts browser features to only those the application requires (e.g., 'camera=(), microphone=(), geolocation=(self)'). A WAF can inject this header for all HTML responses.",
+    "severity": "Low",
+    "category": "HTTP Headers",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "related-sites-http-exposure": {
+    "display_name": "Related Subdomains Serving Content Over HTTP",
+    "description": "Multiple related subdomains were found serving content over plain HTTP without HTTPS. HTTP connections are vulnerable to eavesdropping and man-in-the-middle attacks, exposing user data and credentials in transit.",
+    "remediation": "Enable HTTPS on all subdomains with certificates from a trusted CA. Configure HTTP-to-HTTPS redirects. A WAF can terminate TLS at the edge and enforce HTTPS for all subdomains under management.",
+    "severity": "Medium",
+    "category": "Transport Security",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "ai-endpoint-unauthenticated": {
+    "display_name": "AI Service Configuration Endpoint Accessible Without Authentication",
+    "description": "A configuration or bootstrap endpoint associated with an AI chatbot or search platform was found accessible without authentication. These endpoints can expose API keys, widget configuration, allowed origins, backend service URLs, or other sensitive configuration data.",
+    "remediation": "Restrict access to AI platform configuration endpoints using authentication or IP allowlisting. Rotate any exposed API keys or tokens. A WAF can block direct access to known AI platform configuration endpoint paths.",
+    "severity": "Medium",
+    "category": "AI Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

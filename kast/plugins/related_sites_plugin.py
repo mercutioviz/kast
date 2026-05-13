@@ -717,6 +717,16 @@ class RelatedSitesPlugin(KastPlugin):
             if redirect_count > 0:
                 summary_points.append(f"{redirect_count} redirect response(s) configured")
         
+        # HTTP-only (no HTTPS) subdomains
+        http_only = [
+            h for h in live_hosts
+            if 80 in h.get("ports", []) and 443 not in h.get("ports", [])
+        ]
+        if http_only:
+            summary_points.append(
+                f"{len(http_only)} related subdomain(s) serving over HTTP only — no HTTPS detected"
+            )
+
         # CDN and WebSocket stats
         cdn_count = stats.get("cdn_protected", 0)
         if cdn_count > 0:
@@ -765,13 +775,18 @@ class RelatedSitesPlugin(KastPlugin):
         return "\n".join(lines)
 
     def _identify_issues(self, findings):
-        """Identify security issues from findings."""
+        """Identify security issues from cross-subdomain correlation."""
         issues = []
-        
-        # This plugin is primarily for discovery
-        # Issues would be identified by other plugins analyzing the discovered hosts
-        # For now, return empty list
-        
+        live_hosts = findings.get("live_hosts", [])
+
+        # Flag when multiple related subdomains serve over HTTP only (no HTTPS)
+        http_only = [
+            h for h in live_hosts
+            if 80 in h.get("ports", []) and 443 not in h.get("ports", [])
+        ]
+        if len(http_only) >= 2:
+            issues.append("related-sites-http-exposure")
+
         return issues
 
     def _generate_custom_html(self, findings):

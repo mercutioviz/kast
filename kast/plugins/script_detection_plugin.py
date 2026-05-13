@@ -5,6 +5,7 @@ Description: Detects and analyzes external JavaScript files loaded by target web
 
 import os
 import json
+import re
 import requests
 from datetime import datetime, timezone
 from urllib.parse import urlparse, urljoin
@@ -12,6 +13,17 @@ from bs4 import BeautifulSoup
 from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
 from pprint import pformat
+
+# (regex, library_name, (safe_major, safe_minor))
+# Matches versioned filenames like jquery-1.12.4.min.js or lodash/4.17.15/lodash.min.js
+_VULNERABLE_JS_PATTERNS = [
+    (re.compile(r"jquery[-/.](\d+)\.(\d+)", re.I), "jQuery", (3, 0)),
+    (re.compile(r"angular[-/.](\d+)\.(\d+)", re.I), "AngularJS", (2, 0)),
+    (re.compile(r"bootstrap[-/.](\d+)\.(\d+)", re.I), "Bootstrap", (4, 0)),
+    (re.compile(r"lodash[-/.](\d+)\.(\d+)", re.I), "Lodash", (4, 17)),
+    (re.compile(r"underscore[-/.](\d+)\.(\d+)", re.I), "Underscore.js", (1, 13)),
+    (re.compile(r"backbone[-/.](\d+)\.(\d+)", re.I), "Backbone.js", (1, 4)),
+]
 
 class ScriptDetectionPlugin(KastPlugin):
     priority = 10  # Run after Observatory (priority 5)
@@ -380,24 +392,27 @@ class ScriptDetectionPlugin(KastPlugin):
             
             # Try to correlate with Observatory
             observatory_correlation = self._correlate_with_observatory(output_dir)
-            
+
+            # Detect outdated/vulnerable JS libraries
+            vulnerable_libs = self._detect_vulnerable_libraries(findings.get('scripts', []))
+
             # Generate summary
-            summary = self._generate_summary(findings)
-            
+            summary = self._generate_summary(findings, vulnerable_libs=vulnerable_libs)
+
             # Generate executive summary
-            executive_summary = self._generate_executive_summary(findings, observatory_correlation)
-            
+            executive_summary = self._generate_executive_summary(findings, observatory_correlation, vulnerable_libs=vulnerable_libs)
+
             # Identify issues
-            issues = self._find_issues(findings, observatory_correlation)
-            
+            issues = self._find_issues(findings, observatory_correlation, vulnerable_libs=vulnerable_libs)
+
             # Generate details
             details = self._generate_details(findings)
-            
+
             # Calculate findings_count - total number of external scripts detected
             findings_count = findings.get('total_scripts', 0)
-            
-            self.debug(f"{self.name} findings_count: {findings_count}")
-            
+
+            self.debug(f"{self.name} findings_count: {findings_count}, vulnerable_libs: {len(vulnerable_libs)}")
+
             processed = {
                 "plugin-name": self.name,
                 "plugin-description": self.description,
@@ -411,8 +426,9 @@ class ScriptDetectionPlugin(KastPlugin):
                 "issues": issues,
                 "executive_summary": executive_summary,
                 "report": f"Analyzed {findings.get('total_scripts', 0)} external JavaScript files",
-                "custom_html": self._generate_custom_html(findings),
-                "observatory_correlation": observatory_correlation
+                "custom_html": self._generate_custom_html(findings, vulnerable_libs=vulnerable_libs),
+                "observatory_correlation": observatory_correlation,
+                "vulnerable_libraries": vulnerable_libs,
             }
         
         # Save processed results
@@ -421,44 +437,53 @@ class ScriptDetectionPlugin(KastPlugin):
         
         return processed_path
 
-    def _generate_summary(self, findings):
+    def _generate_summary(self, findings, vulnerable_libs=None):
         """Generate human-readable summary"""
         total = findings.get('total_scripts', 0)
         cross_origin = findings.get('cross_origin_count', 0)
         without_sri = findings.get('scripts_without_sri', 0)
         unique_origins = findings.get('unique_origin_count', 0)
-        
-        return (
+
+        summary = (
             f"Detected {total} external scripts: "
             f"{cross_origin} cross-origin from {unique_origins} unique origins, "
             f"{without_sri} without SRI protection"
         )
+        if vulnerable_libs:
+            lib_names = ", ".join(f"{v['library']} {v['version']}" for v in vulnerable_libs)
+            summary += f"; outdated libraries detected: {lib_names}"
+        return summary
 
-    def _generate_executive_summary(self, findings, observatory_correlation):
+    def _generate_executive_summary(self, findings, observatory_correlation, vulnerable_libs=None):
         """Generate executive summary with Observatory correlation"""
         lines = []
-        
+
         total = findings.get('total_scripts', 0)
         cross_origin = findings.get('cross_origin_count', 0)
         without_sri = findings.get('scripts_without_sri', 0)
         unique_origins = findings.get('unique_origin_count', 0)
-        
+
         lines.append(f"Website loads {total} external JavaScript files")
-        
+
         if cross_origin > 0:
             lines.append(f"{cross_origin} scripts from {unique_origins} third-party origins")
-        
+
         if without_sri > 0:
-            lines.append(f"⚠️ {without_sri} scripts lack Subresource Integrity (SRI) protection")
-        
-        # Add Observatory correlation if available
+            lines.append(f"{without_sri} scripts lack Subresource Integrity (SRI) protection")
+
+        if vulnerable_libs:
+            for v in vulnerable_libs:
+                lines.append(
+                    f"Outdated library detected: {v['library']} {v['version']} — "
+                    "update to current supported release"
+                )
+
         if observatory_correlation and observatory_correlation.get('observatory_available'):
             grade = observatory_correlation.get('observatory_grade', 'Unknown')
             csp_issues = observatory_correlation.get('csp_sri_issues', [])
-            
             if csp_issues:
                 lines.append(f"Mozilla Observatory (Grade: {grade}) identified {len(csp_issues)} CSP/SRI issues")
-        
+
         return "\n".join(lines)
 
     def _generate_details(self, findings):
@@ -473,51 +498,81 @@ class ScriptDetectionPlugin(KastPlugin):
         
         return "\n".join(lines)
 
-    def _find_issues(self, findings, observatory_correlation):
+    def _detect_vulnerable_libraries(self, scripts):
+        """Return list of dicts for outdated/vulnerable JS libraries found in script URLs."""
+        vulnerable = []
+        seen_libs = set()
+        for script in scripts:
+            url = script.get('url', '')
+            # Check filename component and full URL path
+            filename = url.rsplit('/', 1)[-1].lower()
+            url_lower = url.lower()
+            for pattern, lib_name, (safe_major, safe_minor) in _VULNERABLE_JS_PATTERNS:
+                m = pattern.search(filename) or pattern.search(url_lower)
+                if not m:
+                    continue
+                major, minor = int(m.group(1)), int(m.group(2))
+                if (major, minor) < (safe_major, safe_minor) and lib_name not in seen_libs:
+                    seen_libs.add(lib_name)
+                    vulnerable.append({
+                        'library': lib_name,
+                        'version': f"{major}.{minor}",
+                        'url': url,
+                    })
+                break
+        return vulnerable
+
+    def _find_issues(self, findings, observatory_correlation, vulnerable_libs=None):
         """
         Identify security issues based on script analysis.
         These issues should map to issue_registry.json entries.
         """
         issues = []
-        
+
         cross_origin_no_sri = [
             s for s in findings.get('scripts', [])
             if s['is_cross_origin'] and not s['has_sri'] and s['is_https']
         ]
-        
+
         if cross_origin_no_sri:
-            # This matches existing entry in issue_registry.json
             issues.append("sri-not-implemented-but-external-scripts-loaded-securely")
-        
-        # Check for insecure (HTTP) external scripts
+
         insecure_external = [
             s for s in findings.get('scripts', [])
             if s['is_cross_origin'] and not s['is_https']
         ]
-        
+
         if insecure_external:
-            # This matches existing entry in issue_registry.json
             issues.append("sri-not-implemented-and-external-scripts-not-loaded-securely")
-        
-        # Check for high count of external scripts
+
         if findings.get('cross_origin_count', 0) > 10:
             issues.append("high-external-script-count")
-        
+
+        if vulnerable_libs:
+            issues.append("outdated-js-library")
+
         return issues
 
-    def _generate_custom_html(self, findings):
+    def _generate_custom_html(self, findings, vulnerable_libs=None):
         """
         Generate custom HTML widget for report display.
         Similar to Katana's URL widget.
         """
         scripts_by_origin = findings.get('scripts_by_origin', {})
-        
+
         html_parts = []
         html_parts.append('<div class="script-analysis-widget">')
-        html_parts.append(f'<h4>📊 External JavaScript Analysis</h4>')
         html_parts.append(f'<p><strong>Total Scripts:</strong> {findings.get("total_scripts", 0)}</p>')
         html_parts.append(f'<p><strong>Cross-Origin:</strong> {findings.get("cross_origin_count", 0)} from {findings.get("unique_origin_count", 0)} origins</p>')
         html_parts.append(f'<p><strong>Without SRI:</strong> {findings.get("scripts_without_sri", 0)}</p>')
+
+        if vulnerable_libs:
+            html_parts.append('<div style="background:#fff3cd;border:1px solid #ffc107;padding:8px 12px;margin:8px 0;border-radius:4px;">')
+            html_parts.append('<strong>Outdated JavaScript Libraries:</strong>')
+            html_parts.append('<ul style="margin:4px 0 0 16px;">')
+            for v in vulnerable_libs:
+                html_parts.append(f'<li>{v["library"]} {v["version"]} — update to current release</li>')
+            html_parts.append('</ul></div>')
         
         if findings.get('insecure_http_scripts', 0) > 0:
             html_parts.append(f'<p style="color: #dc3545;"><strong>⚠️ Insecure HTTP Scripts:</strong> {findings.get("insecure_http_scripts", 0)}</p>')

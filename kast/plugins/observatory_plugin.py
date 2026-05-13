@@ -12,6 +12,35 @@ from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
 from pprint import pformat
 
+# Maps Observatory test result strings to issue_registry.json IDs.
+# Keys are the raw result values Observatory emits; values are issue_ids.
+# Unmapped results are kept as-is (raw string) for forward compatibility.
+_OBSERVATORY_RESULT_TO_ISSUE = {
+    # CSP
+    "csp-not-implemented": "csp-not-implemented",
+    "content-security-policy-not-implemented": "csp-not-implemented",
+    "csp-implemented-with-unsafe-inline": "csp-implemented-with-unsafe-inline",
+    "csp-not-implemented-but-reporting-enabled": "csp-not-implemented-but-reporting-enabled",
+    # HSTS
+    "hsts-not-implemented": "hsts-not-implemented",
+    "hsts-header-invalid": "hsts-header-invalid",
+    "hsts-invalid-cert": "hsts-invalid-cert",
+    "hsts-implemented-max-age-less-than-six-months": "hsts-implemented-max-age-less-than-six-months",
+    # X-Frame-Options
+    "x-frame-options-not-implemented": "x-frame-options-not-implemented",
+    "x-frame-options-header-invalid": "x-frame-options-header-invalid",
+    # X-Content-Type-Options
+    "x-content-type-options-not-implemented": "x-content-type-options-not-implemented",
+    "x-content-type-options-header-invalid": "x-content-type-options-header-invalid",
+    # Referrer-Policy
+    "referrer-policy-unsafe": "referrer-policy-unsafe",
+    # Modern isolation headers (mapped to new registry entries)
+    "cross-origin-embedder-policy-not-implemented": "missing-coep",
+    "cross-origin-opener-policy-not-implemented": "missing-coop",
+    "permissions-policy-not-implemented": "missing-permissions-policy",
+    "permissions-policy-header-not-set": "missing-permissions-policy",
+}
+
 class ObservatoryPlugin(KastPlugin):
     priority = 5  # High priority (lower number = higher priority)
     
@@ -301,16 +330,19 @@ class ObservatoryPlugin(KastPlugin):
     def _find_issues(self, findings):
         """
         Extract failed tests from Mozilla Observatory findings.
-        Returns a list of failed test result strings.
+        Maps known result strings to issue_registry.json IDs; unknown results
+        are kept as raw strings for forward compatibility.
         """
         issues = []
         tests = findings.get("results", {}).get("tests", {})
-        
+
         for test_name, test_data in tests.items():
-            if test_data.get("pass") is False:  # Explicitly check for False
-                result = test_data.get("result", "Unknown issue")
-                issues.append(result)
-        
+            if test_data.get("pass") is False:
+                result = test_data.get("result", "")
+                issue_id = _OBSERVATORY_RESULT_TO_ISSUE.get(result, result)
+                if issue_id:
+                    issues.append(issue_id)
+
         return issues
 
     def _generate_summary(self, findings):
