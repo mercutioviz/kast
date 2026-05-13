@@ -813,5 +813,60 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-2 days",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "exposed-env-file": {
+    "display_name": "Environment File Publicly Accessible",
+    "description": "A .env or similar environment configuration file is publicly accessible. These files commonly contain database credentials, API keys, secret tokens, and other sensitive configuration that should never be exposed to the public internet.",
+    "remediation": "Immediately remove or restrict access to the file. Rotate all credentials and secrets it contains. Configure the web server to deny requests for dotfiles. A WAF can block requests for .env and similar configuration files.",
+    "severity": "Critical",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "exposed-git-repository": {
+    "display_name": "Git Repository Publicly Accessible",
+    "description": "The .git directory or its contents are publicly accessible. An attacker can reconstruct the full source code, history, credentials committed by mistake, and internal infrastructure details from an exposed git repository.",
+    "remediation": "Block access to the .git directory via web server configuration. Remove the directory from the web root if it was accidentally deployed. A WAF can block requests for /.git/ paths immediately.",
+    "severity": "High",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "exposed-debug-endpoint": {
+    "display_name": "Debug or Diagnostic Endpoint Publicly Accessible",
+    "description": "A debug or diagnostic endpoint (such as phpinfo.php, /actuator/env, /server-status, or /_profiler/) is publicly accessible. These endpoints expose server configuration, environment variables, loaded modules, memory usage, and request logs that give attackers detailed intelligence for targeting the application.",
+    "remediation": "Disable or remove debug endpoints in production. Restrict access to internal networks or authenticated administrators only. A WAF can block access to known debug endpoint paths immediately.",
+    "severity": "High",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "exposed-api-docs": {
+    "display_name": "API Documentation Publicly Accessible",
+    "description": "API documentation (Swagger UI, OpenAPI spec, or similar) is publicly accessible. While not always a direct vulnerability, exposed API docs enumerate all endpoints, parameters, authentication schemes, and data models — providing an attacker with a complete attack surface map without any active reconnaissance.",
+    "remediation": "Restrict API documentation to authenticated users or internal networks. If public access is required, ensure documentation does not expose internal-only endpoints or sensitive parameter names. A WAF can restrict access to documentation paths.",
+    "severity": "Informational",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1 week",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "exposed-backup-file": {
+    "display_name": "Backup or Archive File Publicly Accessible",
+    "description": "A backup or archive file (such as a .sql dump, .zip archive, or .tar.gz) is publicly accessible in the web root. These files can contain full database contents, source code, and configuration data that should never be served over HTTP.",
+    "remediation": "Immediately remove the file from the web root and store backups outside the document root or in a storage service with no public HTTP access. A WAF can block requests for common backup file extensions and names.",
+    "severity": "Critical",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

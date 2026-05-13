@@ -1,13 +1,6 @@
 """
 File: plugins/ftap_plugin.py
-Description: KAST plugin for Find The Admin Panel
-
-TODO: Customize the following sections:
-  1. Command structure in run() method
-  2. Output parsing in post_process() method
-  3. Issue extraction logic
-  4. Executive summary generation
-  5. Update _generate_summary() if needed
+Description: KAST plugin for Find The Admin Panel + sensitive path probing
 """
 
 import subprocess
@@ -18,6 +11,41 @@ from datetime import datetime, timezone
 from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
 from pprint import pformat
+
+# Curated list of high-value paths to probe with HTTP GET.
+# Each entry maps a path to the issue ID it should emit on HTTP 200.
+SENSITIVE_PROBE_PATHS = [
+    # Environment / secrets files
+    {"path": "/.env",            "issue_id": "exposed-env-file"},
+    {"path": "/.env.local",      "issue_id": "exposed-env-file"},
+    {"path": "/.env.production", "issue_id": "exposed-env-file"},
+    {"path": "/.env.backup",     "issue_id": "exposed-env-file"},
+    # Git repository exposure
+    {"path": "/.git/HEAD",       "issue_id": "exposed-git-repository"},
+    {"path": "/.git/config",     "issue_id": "exposed-git-repository"},
+    # Debug / diagnostic endpoints
+    {"path": "/phpinfo.php",     "issue_id": "exposed-debug-endpoint"},
+    {"path": "/server-status",   "issue_id": "exposed-debug-endpoint"},
+    {"path": "/server-info",     "issue_id": "exposed-debug-endpoint"},
+    {"path": "/_profiler/",      "issue_id": "exposed-debug-endpoint"},
+    {"path": "/actuator/env",    "issue_id": "exposed-debug-endpoint"},
+    {"path": "/actuator/beans",  "issue_id": "exposed-debug-endpoint"},
+    {"path": "/console",         "issue_id": "exposed-debug-endpoint"},
+    # API documentation exposure
+    {"path": "/swagger.json",    "issue_id": "exposed-api-docs"},
+    {"path": "/swagger-ui/",     "issue_id": "exposed-api-docs"},
+    {"path": "/swagger-ui.html", "issue_id": "exposed-api-docs"},
+    {"path": "/openapi.json",    "issue_id": "exposed-api-docs"},
+    {"path": "/api-docs/",       "issue_id": "exposed-api-docs"},
+    {"path": "/api-docs",        "issue_id": "exposed-api-docs"},
+    # Backup / archive files
+    {"path": "/backup.zip",      "issue_id": "exposed-backup-file"},
+    {"path": "/backup.tar.gz",   "issue_id": "exposed-backup-file"},
+    {"path": "/backup.sql",      "issue_id": "exposed-backup-file"},
+    {"path": "/db.sql",          "issue_id": "exposed-backup-file"},
+    {"path": "/database.sql",    "issue_id": "exposed-backup-file"},
+    {"path": "/dump.sql",        "issue_id": "exposed-backup-file"},
+]
 
 class FtapPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
@@ -95,18 +123,16 @@ class FtapPlugin(KastPlugin):
         }
     }
 
-    name = "ftap"  # Set name before calling parent __init__
+    name = "ftap"
+    display_name = "Find The Admin Panel"
+    description = "Scans target for exposed admin login pages and sensitive paths"
+    website_url = "https://github.com/DV64/Find-The-Admin-Panel"
+    scan_type = "passive"
+    output_type = "file"
 
     def __init__(self, cli_args, config_manager=None):
         super().__init__(cli_args, config_manager)
-        self.display_name = "Find The Admin Panel"  # Human-readable name for reports
-        self.description = "Scans target for exposed admin login pages"
-        self.website_url = "https://github.com/DV64/Find-The-Admin-Panel"
-        self.scan_type = "passive"
-        self.output_type = "file"
         self.command_executed = None
-        
-        # Load plugin configuration values into instance variables
         self._load_plugin_config()
     
     def _load_plugin_config(self):
@@ -271,6 +297,9 @@ class FtapPlugin(KastPlugin):
                 else:
                     results = f.read()
 
+            # Run sensitive path probing alongside the admin panel scan
+            self._probe_sensitive_paths(target, output_dir)
+
             return self.get_result_dict(
                 disposition="success",
                 results=results,
@@ -325,6 +354,16 @@ class FtapPlugin(KastPlugin):
             if r.get("found", False) and r.get("confidence", 0) >= 0.86
         ]
 
+        # Read sensitive path probe results written by run()
+        sensitive_findings = []
+        sensitive_path = os.path.join(output_dir, "ftap_sensitive.json")
+        if os.path.exists(sensitive_path):
+            try:
+                with open(sensitive_path) as f:
+                    sensitive_findings = json.load(f)
+            except Exception as e:
+                self.debug(f"Could not read ftap_sensitive.json: {e}")
+
         # One issue entry regardless of panel count; description lists all URLs.
         issues = []
         if exposed_panels:
@@ -336,17 +375,29 @@ class FtapPlugin(KastPlugin):
                 "description": f"{count} exposed admin panel {noun} detected: {', '.join(urls)}",
             })
 
+        # One issue entry per unique sensitive-path issue_id; lists all found URLs.
+        if sensitive_findings:
+            grouped: dict = {}
+            for item in sensitive_findings:
+                grouped.setdefault(item["issue_id"], []).append(item["url"])
+            for issue_id, urls in grouped.items():
+                noun = "URL" if len(urls) == 1 else "URLs"
+                issues.append({
+                    "id": issue_id,
+                    "description": f"{len(urls)} {noun} found: {', '.join(urls)}",
+                })
+
         # Build details section with formatted information
-        details = self._build_details(findings)
+        details = self._build_details(findings, sensitive_findings)
 
         # Build executive summary with panel information
-        executive_summary = self._build_executive_summary(findings)
+        executive_summary = self._build_executive_summary(findings, sensitive_findings)
 
-        # findings_count = number of distinct admin panel URLs, not issue entries
-        findings_count = len(exposed_panels)
+        # findings_count = distinct admin panel URLs + distinct sensitive paths
+        findings_count = len(exposed_panels) + len(sensitive_findings)
 
         # Generate summary using helper method
-        summary = self._generate_summary(findings)
+        summary = self._generate_summary(findings, sensitive_findings)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -382,81 +433,85 @@ class FtapPlugin(KastPlugin):
 
         return processed_path
 
-    def _generate_summary(self, findings):
-        """
-        Generate a human-readable summary from findings.
-        """
+    def _generate_summary(self, findings, sensitive_findings=None):
+        """Generate a human-readable summary from findings."""
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
-        self.debug(f"_generate_summary findings content: {pformat(findings)}")
-        
-        if not findings:
-            self.debug("No findings, returning default message")
-            return f"No findings were produced by {self.name}."
-        
-        # Extract results array and filter by confidence >= 0.86
+
         results = findings.get("results", []) if isinstance(findings, dict) else []
         found_count = len([r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86])
-        
-        if found_count == 0:
-            return f"No exposed admin panels were found."
-        elif found_count == 1:
-            return f"Found 1 exposed admin panel."
-        else:
-            return f"Found {found_count} exposed admin panels."
+        sensitive_count = len(sensitive_findings or [])
 
-    def _build_details(self, findings):
-        """
-        Build detailed information about discovered admin panels.
-        Returns formatted string with panel details.
-        """
+        parts = []
+        if found_count == 1:
+            parts.append("Found 1 exposed admin panel.")
+        elif found_count > 1:
+            parts.append(f"Found {found_count} exposed admin panels.")
+        else:
+            parts.append("No exposed admin panels were found.")
+
+        if sensitive_count:
+            parts.append(f"{sensitive_count} sensitive path(s) found.")
+
+        return " ".join(parts)
+
+    def _build_details(self, findings, sensitive_findings=None):
+        """Build detailed information about discovered admin panels and sensitive paths."""
         results = findings.get("results", []) if isinstance(findings, dict) else []
-        
-        # Filter results by confidence >= 0.86
         high_confidence_results = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
-        
-        if not high_confidence_results:
-            return "No admin panels detected."
-        
+
         details_lines = []
-        details_lines.append("Exposed Admin Panels:")
-        details_lines.append("")
-        
-        for idx, panel in enumerate(high_confidence_results, 1):
-            url = panel.get("url", "N/A")
-            title = panel.get("title", "N/A")
-            confidence = panel.get("confidence", 0)
-            status_code = panel.get("status_code", "N/A")
-            has_login = panel.get("has_login_form", False)
-            technologies = panel.get("technologies", [])
-            
-            details_lines.append(f"Panel #{idx}:")
-            details_lines.append(f"  URL: {url}")
-            details_lines.append(f"  Title: {title}")
-            details_lines.append(f"  Confidence: {confidence:.1%}")
-            details_lines.append(f"  Status Code: {status_code}")
-            details_lines.append(f"  Login Form Detected: {'Yes' if has_login else 'No'}")
-            if technologies:
-                details_lines.append(f"  Technologies: {', '.join(technologies)}")
+
+        if high_confidence_results:
+            details_lines.append("Exposed Admin Panels:")
             details_lines.append("")
-        
+            for idx, panel in enumerate(high_confidence_results, 1):
+                url = panel.get("url", "N/A")
+                title = panel.get("title", "N/A")
+                confidence = panel.get("confidence", 0)
+                status_code = panel.get("status_code", "N/A")
+                has_login = panel.get("has_login_form", False)
+                technologies = panel.get("technologies", [])
+                details_lines.append(f"Panel #{idx}:")
+                details_lines.append(f"  URL: {url}")
+                details_lines.append(f"  Title: {title}")
+                details_lines.append(f"  Confidence: {confidence:.1%}")
+                details_lines.append(f"  Status Code: {status_code}")
+                details_lines.append(f"  Login Form Detected: {'Yes' if has_login else 'No'}")
+                if technologies:
+                    details_lines.append(f"  Technologies: {', '.join(technologies)}")
+                details_lines.append("")
+        else:
+            details_lines.append("No admin panels detected.")
+
+        if sensitive_findings:
+            details_lines.append("")
+            details_lines.append(f"Sensitive Paths Found ({len(sensitive_findings)}):")
+            for item in sensitive_findings:
+                details_lines.append(f"  • {item['path']}  [{item['issue_id']}]  HTTP {item['status_code']}")
+
         return "\n".join(details_lines)
 
-    def _build_executive_summary(self, findings):
-        """
-        Build executive summary - simple one-sentence format.
-        """
+    def _build_executive_summary(self, findings, sensitive_findings=None):
+        """Build executive summary — one to two sentences."""
         results = findings.get("results", []) if isinstance(findings, dict) else []
-        # Filter by confidence >= 0.86
         found_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
-        
         panel_count = len(found_panels)
-        
+        sensitive_count = len(sensitive_findings or [])
+
+        parts = []
         if panel_count == 0:
-            return "No admin panels found."
+            parts.append("No admin panels found.")
         elif panel_count == 1:
-            return "Found 1 admin panel."
+            parts.append("Found 1 admin panel.")
         else:
-            return f"Found {panel_count} admin panels."
+            parts.append(f"Found {panel_count} admin panels.")
+
+        if sensitive_count == 1:
+            parts.append("1 sensitive path found.")
+        elif sensitive_count > 1:
+            parts.append(f"{sensitive_count} sensitive paths found.")
+
+        return " ".join(parts)
 
     def _format_command_for_report(self):
         """
@@ -688,6 +743,47 @@ class FtapPlugin(KastPlugin):
         html += '</div>'
         
         return html
+
+    def _probe_sensitive_paths(self, target, output_dir):
+        """
+        Probe target for exposed sensitive files and endpoints via HTTP GET.
+        Saves results to ftap_sensitive.json and returns the list of found items.
+        Only HTTP 200 responses are reported as confirmed findings.
+        """
+        try:
+            import requests
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        except ImportError:
+            self.debug("requests not available; skipping sensitive path probing")
+            return []
+
+        from urllib.parse import urlparse
+
+        raw = target if target.startswith(("http://", "https://")) else f"https://{target}"
+        parsed = urlparse(raw)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+
+        found = []
+        for entry in SENSITIVE_PROBE_PATHS:
+            url = base + entry["path"]
+            try:
+                resp = requests.get(url, timeout=5, verify=False, allow_redirects=False)
+                if resp.status_code == 200:
+                    found.append({
+                        "url": url,
+                        "path": entry["path"],
+                        "issue_id": entry["issue_id"],
+                        "status_code": resp.status_code,
+                    })
+                    self.debug(f"Sensitive path found: {url} [200]")
+            except Exception as e:
+                self.debug(f"Probe error for {url}: {e}")
+
+        sensitive_path = os.path.join(output_dir, "ftap_sensitive.json")
+        write_json_atomic(sensitive_path, found)
+        self.debug(f"Sensitive probe complete: {len(found)} finding(s) saved to {sensitive_path}")
+        return found
 
     def get_dry_run_info(self, target, output_dir):
         """

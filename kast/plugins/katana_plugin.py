@@ -12,6 +12,34 @@ from kast.plugins.base import KastPlugin
 from kast.core.atomic import write_json_atomic
 from pprint import pformat
 
+# Categories ordered by security priority (first-match wins per URL).
+INTERESTING_PATH_PATTERNS = {
+    "Config / Exposed Files": [
+        "/.env", "/.git/", "/web.config", "/config.", "/settings.",
+        "/swagger", "/openapi", "/api-docs", "/redoc",
+    ],
+    "Admin / CMS": [
+        "/admin/", "/wp-admin/", "/wp-login", "/administrator/",
+        "/manage/", "/management/", "/backoffice/", "/cms/", "/cpanel",
+        "/dashboard/",
+    ],
+    "Debug / Diagnostics": [
+        "/debug/", "/actuator/", "/_profiler/", "/phpinfo",
+        "/console/", "/server-status", "/health/", "/metrics/", "/trace/",
+    ],
+    "Authentication": [
+        "/login", "/signin", "/auth/", "/oauth", "/sso/", "/saml",
+        "/logout", "/signout", "/register", "/signup", "/forgot-password",
+        "/reset-password",
+    ],
+    "API Endpoints": [
+        "/api/", "/graphql", "/rest/", "/rpc/", "/gql",
+    ],
+    "Upload / Storage": [
+        "/upload/", "/uploads/", "/files/", "/media/", "/private/",
+    ],
+}
+
 class KatanaPlugin(KastPlugin):
     priority = 60  # Set plugin run order (lower runs earlier)
     
@@ -370,21 +398,32 @@ class KatanaPlugin(KastPlugin):
         
         self.debug(f"{self.name} parsed {len(raw_urls)} raw URLs into {len(parsed_urls)} unique URL paths")
 
-        # Initialize issues (empty as requested)
+        # Identify security-relevant paths observed during crawl (informational only)
+        interesting_endpoints = self._find_interesting_paths(parsed_urls)
+
+        # Initialize issues (empty — Katana is pure discovery)
         issues = []
-        
+
         # Generate details and summaries
         url_count = len(parsed_urls)
-        details = f"Detected {url_count} unique URL(s)."
-        summary = self._generate_summary(parsed_urls)
-        executive_summary = self._generate_executive_summary(parsed_urls)
-        
+        interesting_count = sum(len(v) for v in interesting_endpoints.values())
+        if interesting_count:
+            details = (
+                f"Detected {url_count} unique URL(s). "
+                f"{interesting_count} security-relevant path(s) observed across "
+                f"{len(interesting_endpoints)} category(s) — see Interesting Endpoints below."
+            )
+        else:
+            details = f"Detected {url_count} unique URL(s)."
+        summary = self._generate_summary(parsed_urls, interesting_endpoints)
+        executive_summary = self._generate_executive_summary(parsed_urls, interesting_endpoints)
+
         # Calculate findings_count - count of URLs found
         findings_count = len(parsed_urls)
-        
+
         # Generate both HTML and PDF versions of URL display
-        custom_html = self._generate_url_display_html(parsed_urls)
-        custom_html_pdf = self._generate_pdf_url_list(parsed_urls)
+        custom_html = self._generate_url_display_html(parsed_urls, interesting_endpoints)
+        custom_html_pdf = self._generate_pdf_url_list(parsed_urls, interesting_endpoints)
         
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
@@ -402,6 +441,7 @@ class KatanaPlugin(KastPlugin):
             "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "findings": {"urls": parsed_urls},
             "findings_count": findings_count,
+            "interesting_endpoints": interesting_endpoints,
             "summary": summary or f"{self.name} did not produce any findings",
             "details": details,
             "issues": issues,
@@ -453,71 +493,133 @@ class KatanaPlugin(KastPlugin):
         self.debug(f"Target '{target}' not found in URL: {full_url}")
         return None
 
-    def _generate_summary(self, parsed_urls):
+    def _find_interesting_paths(self, parsed_urls):
         """
-        Generate a human-readable summary from katana findings.
+        Identify security-relevant paths observed during crawl.
+        Returns {category: [matching_paths]} — first-match-wins across categories.
         """
+        results = {cat: [] for cat in INTERESTING_PATH_PATTERNS}
+        seen = set()
+
+        for url in parsed_urls:
+            url_lower = url.lower()
+            for category, patterns in INTERESTING_PATH_PATTERNS.items():
+                matched = False
+                for pattern in patterns:
+                    if url_lower.startswith(pattern.lower()) or pattern.lower() in url_lower:
+                        matched = True
+                        break
+                if matched and url not in seen:
+                    results[category].append(url)
+                    seen.add(url)
+                    break  # first-match-wins: stop checking other categories
+
+        return {cat: paths for cat, paths in results.items() if paths}
+
+    def _generate_summary(self, parsed_urls, interesting_endpoints=None):
+        """Generate a human-readable summary from katana findings."""
         self.debug(f"_generate_summary called with parsed_urls type: {type(parsed_urls)}")
-        self.debug(f"_generate_summary parsed_urls content: {pformat(parsed_urls)}")
-        
+
         if not parsed_urls:
             return "No URLs were found."
-        
+
         count = len(parsed_urls)
+        interesting_count = sum(len(v) for v in (interesting_endpoints or {}).values())
+        if interesting_count:
+            return f"Detected {count} unique URL(s) including {interesting_count} security-relevant path(s)."
         return f"Detected {count} unique URL(s)."
 
-    def _generate_executive_summary(self, parsed_urls):
-        """
-        Generate a simple executive summary for katana results.
-        """
+    def _generate_executive_summary(self, parsed_urls, interesting_endpoints=None):
+        """Generate an executive summary for katana results."""
         if not parsed_urls:
             return "No URLs detected."
-        
-        count = len(parsed_urls)
-        if count == 0:
-            return "No URLs detected."
-        elif count == 1:
-            return "Detected 1 URL."
-        else:
-            return f"Detected {count} URLs."
 
-    def _generate_url_display_html(self, parsed_urls):
+        count = len(parsed_urls)
+        interesting_count = sum(len(v) for v in (interesting_endpoints or {}).values())
+        cats = list((interesting_endpoints or {}).keys())
+
+        if not interesting_count:
+            return f"Detected {count} URL(s) during crawl."
+
+        cat_str = ", ".join(cats[:3])
+        if len(cats) > 3:
+            cat_str += f", and {len(cats) - 3} more"
+        return (
+            f"Detected {count} URL(s) during crawl. "
+            f"{interesting_count} security-relevant path(s) observed: {cat_str}."
+        )
+
+    def _generate_interesting_endpoints_html(self, interesting_endpoints):
+        """Render the Interesting Endpoints Observed section for the HTML report."""
+        if not interesting_endpoints:
+            return ""
+
+        total = sum(len(v) for v in interesting_endpoints.values())
+        html = f'''
+        <div style="background:#fff8e6;border:1px solid #f0c040;border-radius:6px;padding:1em 1.2em;margin-bottom:1.2em;">
+            <div style="font-weight:700;font-size:1em;color:#7a5200;margin-bottom:0.4em;">
+                Interesting Endpoints Observed ({total} paths)
+            </div>
+            <div style="font-size:0.85em;color:#5a4000;margin-bottom:0.8em;">
+                Paths encountered during normal site crawl that may warrant security review.
+                No active probing was performed; these were found through ordinary site traversal.
+            </div>
+        '''
+        for category, paths in interesting_endpoints.items():
+            html += f'''
+            <div style="margin-bottom:0.6em;">
+                <div style="font-weight:600;color:#7a5200;font-size:0.9em;margin-bottom:0.25em;">
+                    {category} ({len(paths)})
+                </div>
+                <div style="padding-left:1em;">
+        '''
+            for path in paths:
+                safe = path.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                html += f'<code style="display:block;font-size:0.82em;color:#333;padding:0.1em 0;">{safe}</code>'
+            html += '</div></div>'
+
+        html += '</div>'
+        return html
+
+    def _generate_url_display_html(self, parsed_urls, interesting_endpoints=None):
         """
         Generate custom HTML for displaying URLs with grouping, search, and pagination.
         URLs are grouped by file extension for better organization.
         """
         if not parsed_urls:
             return "<p>No URLs found.</p>"
-        
+
         # Group URLs by file extension
         url_groups = self._group_urls_by_extension(parsed_urls)
-        
+
         # Generate unique ID for this instance (in case multiple plugins use this)
         widget_id = f"katana-url-widget-{id(self)}"
-        
-        html = f'''
+
+        html = self._generate_interesting_endpoints_html(interesting_endpoints or {})
+
+        html += f'''
         <div class="url-display-widget" id="{widget_id}">
             <div class="url-search-container">
-                <input type="text" 
-                       class="url-search-input" 
+                <input type="text"
+                       class="url-search-input"
                        placeholder="🔍 Search URLs (e.g., /api, .js, admin)..."
                        onkeyup="filterKatanaUrls('{widget_id}')">
                 <span class="url-count-badge">Total: {len(parsed_urls)} URLs</span>
             </div>
-            
+
             <div class="url-groups-container">
         '''
-        
+
         # Generate HTML for each group
         for group_name, urls in sorted(url_groups.items(), key=lambda x: (-len(x[1]), x[0])):
             group_id = f"{widget_id}-{group_name.replace('.', '-').replace(' ', '-')}"
             html += self._generate_group_html(group_name, urls, group_id)
-        
+
         html += '''
             </div>
         </div>
         '''
-        
+
         return html
 
     def _group_urls_by_extension(self, urls):
@@ -637,41 +739,49 @@ class KatanaPlugin(KastPlugin):
         }
         return icons.get(group_name, '📄')
 
-    def _generate_pdf_url_list(self, parsed_urls, max_urls=75):
+    def _generate_pdf_url_list(self, parsed_urls, interesting_endpoints=None, max_urls=75):
         """
-        Generate a PDF-friendly truncated URL list.
-        Shows the first max_urls URLs in a simple list format with a truncation notice.
-        
-        Args:
-            parsed_urls: List of URL paths
-            max_urls: Maximum number of URLs to display (default: 75)
-            
-        Returns:
-            HTML string with truncated URL list
+        Generate a PDF-friendly truncated URL list, preceded by the Interesting Endpoints table.
         """
+        html = ""
+
+        # Interesting endpoints section
+        if interesting_endpoints:
+            total_interesting = sum(len(v) for v in interesting_endpoints.values())
+            html += f'<div style="background:#fff8e6;border:1px solid #f0c040;border-radius:4px;padding:0.8em;margin-bottom:1em;">'
+            html += f'<div style="font-weight:700;font-size:0.9em;color:#7a5200;margin-bottom:0.3em;">Interesting Endpoints Observed ({total_interesting})</div>'
+            html += f'<div style="font-size:0.8em;color:#5a4000;margin-bottom:0.5em;">Paths found during normal crawl that may warrant security review.</div>'
+            for category, paths in interesting_endpoints.items():
+                html += f'<div style="margin-bottom:0.4em;"><strong style="font-size:0.85em;">{category}:</strong>'
+                html += '<ul style="margin:0.2em 0 0.2em 1.2em;padding:0;">'
+                for path in paths:
+                    safe = path.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    html += f'<li style="font-size:0.8em;"><code>{safe}</code></li>'
+                html += '</ul></div>'
+            html += '</div>'
+
         if not parsed_urls:
-            return "<p>No URLs found.</p>"
-        
+            html += "<p>No URLs found.</p>"
+            return html
+
         total_count = len(parsed_urls)
         display_urls = parsed_urls[:max_urls]
         truncated_count = total_count - len(display_urls)
-        
-        html = '<div class="pdf-url-list">'
+
+        html += '<div class="pdf-url-list">'
         html += f'<div class="pdf-url-header"><strong>Discovered URLs</strong> (showing {len(display_urls)} of {total_count})</div>'
         html += '<ul class="pdf-url-items">'
-        
+
         for url in display_urls:
-            # Escape HTML characters in URL
             safe_url = url.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
             html += f'<li class="pdf-url-item"><code>{safe_url}</code></li>'
-        
+
         html += '</ul>'
-        
+
         if truncated_count > 0:
-            html += f'<div class="pdf-url-truncation">📋 <strong>Note:</strong> {truncated_count} additional URL(s) not shown in PDF. View the full interactive HTML report for complete URL list with search and filtering capabilities.</div>'
-        
+            html += f'<div class="pdf-url-truncation"><strong>Note:</strong> {truncated_count} additional URL(s) not shown in PDF. View the full interactive HTML report for the complete list.</div>'
+
         html += '</div>'
-        
         return html
 
     def get_dry_run_info(self, target, output_dir):
