@@ -49,6 +49,11 @@ class TestsslPlugin(KastPlugin):
                 "type": "boolean",
                 "default": True,
                 "description": "Suppress connection warnings for batch mode"
+            },
+            "test_server_defaults": {
+                "type": "boolean",
+                "default": True,
+                "description": "Test server defaults including certificate expiry and chain (-S flag)"
             }
         }
     }
@@ -75,12 +80,14 @@ class TestsslPlugin(KastPlugin):
         self.timeout = self.get_config('timeout', 300)
         self.test_vulnerabilities = self.get_config('test_vulnerabilities', True)
         self.test_ciphers = self.get_config('test_ciphers', True)
+        self.test_server_defaults = self.get_config('test_server_defaults', True)
         self.connect_timeout = self.get_config('connect_timeout', 10)
         self.warnings_batch_mode = self.get_config('warnings_batch_mode', True)
-        
+
         self.debug(f"TestSSL config loaded: timeout={self.timeout}, "
                   f"vulnerabilities={self.test_vulnerabilities}, "
                   f"ciphers={self.test_ciphers}, "
+                  f"server_defaults={self.test_server_defaults}, "
                   f"connect_timeout={self.connect_timeout}, "
                   f"warnings_batch={self.warnings_batch_mode}")
 
@@ -108,19 +115,21 @@ class TestsslPlugin(KastPlugin):
         cmd = ["testssl"]
         
         # Add test flags based on configuration
+        if self.test_server_defaults:
+            cmd.append("-S")
         if self.test_vulnerabilities:
             cmd.append("-U")
         if self.test_ciphers:
             cmd.append("-E")
-        
+
         # Add connection timeout if configured
         if self.connect_timeout:
             cmd.extend(["--connect-timeout", str(self.connect_timeout)])
-        
+
         # Add warnings batch mode flag
         if self.warnings_batch_mode:
             cmd.append("--warnings=batch")
-        
+
         # Add JSON output and target
         cmd.extend(["-oJ", output_file, target])
 
@@ -260,77 +269,83 @@ class TestsslPlugin(KastPlugin):
             
             return processed_path
         
-        # Extract vulnerabilities and cipher tests
+        # Extract vulnerabilities, cipher tests, and server defaults
         vulnerabilities = scan_data.get("vulnerabilities", [])
         cipher_tests = scan_data.get("cipherTests", [])
-        
+        server_defaults = scan_data.get("serverDefaults", [])
+
         # Process vulnerabilities
         vuln_issues = []
         for vuln in vulnerabilities:
             finding = vuln.get("finding", "")
             vuln_id = vuln.get("id", "unknown")
             severity = vuln.get("severity", "UNKNOWN")
-            
-            # Exclude OK and INFO severity items and findings that indicate no vulnerability
+
             if severity not in ["OK", "INFO"] and finding.lower() not in ["not vulnerable", "supported"]:
-                # Use only the vulnerability ID as the issue identifier
                 vuln_issues.append(vuln_id)
                 self.debug(f"Vulnerability issue found: {vuln_id} [{severity}]")
-        
+
         # Process TLS 1.2+ cipher tests
         cipher_issues = []
         for cipher in cipher_tests:
             cipher_id = cipher.get("id", "")
             severity = cipher.get("severity", "")
-            finding = cipher.get("finding", "")
-            
-            # Only process TLS 1.2+ ciphers with non-OK severity
+
             if "tls1_2" in cipher_id and severity not in ["OK", "INFO"]:
-                # Use only the cipher ID as the issue identifier
                 cipher_issues.append(cipher_id)
                 self.debug(f"Cipher issue found: {cipher_id} [{severity}]")
-        
+
+        # Process server defaults (certificate info)
+        cert_issues, cert_detail_lines = self._process_server_defaults(server_defaults)
+
         # Combine all issues
-        issues = vuln_issues + cipher_issues
-        
+        issues = vuln_issues + cipher_issues + cert_issues
+
         # Build details section
         details_parts = []
-        
+
+        if cert_issues:
+            details_parts.append(f"Certificate Issues ({len(cert_issues)}):")
+            for line in cert_detail_lines:
+                details_parts.append(f"  • {line}")
+
         if vuln_issues:
-            details_parts.append(f"Vulnerabilities Found ({len(vuln_issues)}):")
+            details_parts.append(f"\nVulnerabilities Found ({len(vuln_issues)}):")
             for issue in vuln_issues:
                 details_parts.append(f"  • {issue}")
-        
+
         if cipher_issues:
             details_parts.append(f"\nTLS 1.2+ Cipher Issues ({len(cipher_issues)}):")
             for issue in cipher_issues:
                 details_parts.append(f"  • {issue}")
-        
+
         if not issues:
-            details_parts.append("No SSL/TLS vulnerabilities or cipher issues detected.")
-        
+            details_parts.append("No SSL/TLS vulnerabilities, cipher issues, or certificate problems detected.")
+
         details = "\n".join(details_parts)
-        
+
         # Build executive summary
+        vuln_count = len(vuln_issues)
+        cipher_count = len(cipher_issues)
+        cert_count = len(cert_issues)
+
         if not issues:
-            executive_summary = "SSL/TLS configuration appears secure. No vulnerabilities or weak ciphers detected in TLS 1.2+."
+            executive_summary = "SSL/TLS configuration appears secure. No vulnerabilities, weak ciphers, or certificate issues detected."
         else:
-            vuln_count = len(vuln_issues)
-            cipher_count = len(cipher_issues)
-            
             summary_parts = []
+            if cert_count > 0:
+                summary_parts.append(f"{cert_count} certificate issue(s)")
             if vuln_count > 0:
                 summary_parts.append(f"{vuln_count} vulnerability issue(s)")
             if cipher_count > 0:
                 summary_parts.append(f"{cipher_count} TLS 1.2+ cipher issue(s)")
-            
-            executive_summary = f"SSL/TLS scan identified {' and '.join(summary_parts)}. Review recommended."
 
-        # Calculate findings_count - count of total issues (vulnerabilities + cipher issues)
+            executive_summary = f"SSL/TLS scan identified {', '.join(summary_parts)}. Review recommended."
+
+        # Calculate findings_count
         findings_count = len(issues)
-        
-        # Generate summary based on actual vulnerability and cipher issue counts
-        summary = self._generate_summary(findings, vuln_count=len(vuln_issues), cipher_count=len(cipher_issues))
+
+        summary = self._generate_summary(findings, vuln_count=vuln_count, cipher_count=cipher_count, cert_count=cert_count)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -366,39 +381,82 @@ class TestsslPlugin(KastPlugin):
 
         return processed_path
 
-    def _generate_summary(self, findings, vuln_count=None, cipher_count=None):
+    def _process_server_defaults(self, server_defaults):
         """
-        Generate a human-readable summary from findings.
-        If vuln_count and cipher_count are provided, generates a summary based on actual findings.
-        Otherwise falls back to basic summary.
+        Extract certificate issues and detail lines from the serverDefaults section.
+        Returns (cert_issues, cert_detail_lines).
         """
+        cert_issues = []
+        cert_detail_lines = []
+        expiry_date = None
+
+        for entry in server_defaults:
+            id_ = entry.get("id", "")
+            severity = entry.get("severity", "")
+            finding = entry.get("finding", "")
+
+            # Always capture the raw expiry date for the details section
+            if id_ == "cert_notAfter":
+                expiry_date = finding
+                continue
+
+            if severity in ("OK", "INFO"):
+                continue
+
+            if id_ == "cert_expirationStatus":
+                finding_lower = finding.lower()
+                if "expired" in finding_lower:
+                    cert_issues.append("cert-expired")
+                    cert_detail_lines.append(f"Certificate EXPIRED — {finding}")
+                elif "expires" in finding_lower:
+                    cert_issues.append("cert-expiring-soon")
+                    cert_detail_lines.append(f"Certificate expiring soon — {finding}")
+            elif id_ == "cert_chain_of_trust":
+                cert_issues.append("cert-chain-invalid")
+                cert_detail_lines.append(f"Certificate chain not trusted — {finding}")
+            elif id_ == "cert_selfSigned":
+                cert_issues.append("cert-self-signed")
+                cert_detail_lines.append(f"Self-signed certificate — {finding}")
+            elif id_ == "cert_keySize":
+                cert_issues.append("cert-weak-key")
+                cert_detail_lines.append(f"Weak certificate key — {finding}")
+
+        # Prepend the expiry date as context even when there's no expiry issue
+        if expiry_date:
+            cert_detail_lines.insert(0, f"Certificate expires: {expiry_date}")
+
+        self.debug(f"Certificate issues found: {cert_issues}")
+        return cert_issues, cert_detail_lines
+
+    def _generate_summary(self, findings, vuln_count=None, cipher_count=None, cert_count=None):
+        """Generate a human-readable summary from findings."""
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
-        self.debug(f"_generate_summary vuln_count: {vuln_count}, cipher_count: {cipher_count}")
-        
+        self.debug(f"_generate_summary vuln_count: {vuln_count}, cipher_count: {cipher_count}, cert_count: {cert_count}")
+
         if not findings:
             self.debug("No findings, returning default message")
             return f"No findings were produced by {self.name}."
-        
-        # If vulnerability and cipher counts are provided, use them for accurate summary
+
         if vuln_count is not None and cipher_count is not None:
-            if vuln_count == 0 and cipher_count == 0:
-                return "No vulnerabilities or cipher issues detected."
-            
+            cert_count = cert_count or 0
+            if vuln_count == 0 and cipher_count == 0 and cert_count == 0:
+                return "No vulnerabilities, cipher issues, or certificate problems detected."
+
             summary_parts = []
+            if cert_count > 0:
+                summary_parts.append(f"{cert_count} certificate issue(s)")
             if vuln_count > 0:
                 summary_parts.append(f"{vuln_count} vulnerability issue(s)")
             if cipher_count > 0:
                 summary_parts.append(f"{cipher_count} TLS 1.2+ cipher issue(s)")
-            
-            return f"Found {' and '.join(summary_parts)}."
-        
-        # Fallback to basic summary for backward compatibility
+
+            return f"Found {', '.join(summary_parts)}."
+
+        # Fallback for backward compatibility
         if isinstance(findings, dict):
-            count = len(findings)
-            return f"{self.name} produced {count} finding(s)."
+            return f"{self.name} produced {len(findings)} finding(s)."
         elif isinstance(findings, list):
-            count = len(findings)
-            return f"{self.name} produced {count} result(s)."
+            return f"{self.name} produced {len(findings)} result(s)."
         else:
             return f"{self.name} produced findings of type: {type(findings).__name__}"
 
@@ -466,19 +524,21 @@ class TestsslPlugin(KastPlugin):
         cmd = ["testssl"]
         
         # Add test flags based on configuration
+        if self.test_server_defaults:
+            cmd.append("-S")
         if self.test_vulnerabilities:
             cmd.append("-U")
         if self.test_ciphers:
             cmd.append("-E")
-        
+
         # Add connection timeout if configured
         if self.connect_timeout:
             cmd.extend(["--connect-timeout", str(self.connect_timeout)])
-        
+
         # Add warnings batch mode flag
         if self.warnings_batch_mode:
             cmd.append("--warnings=batch")
-        
+
         # Add JSON output and target
         cmd.extend(["-oJ", output_file, target])
         

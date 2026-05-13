@@ -758,5 +758,60 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "2-4 weeks",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "cert-expired": {
+    "display_name": "SSL/TLS Certificate Expired",
+    "description": "The server's SSL/TLS certificate has expired. Browsers and clients will display security warnings and may refuse to connect, causing service disruption and loss of user trust.",
+    "remediation": "Renew the certificate immediately through your certificate authority. A WAF can terminate TLS at the edge with a valid certificate, restoring secure access while the origin certificate is replaced.",
+    "severity": "Critical",
+    "category": "Certificate",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cert-expiring-soon": {
+    "display_name": "SSL/TLS Certificate Expiring Within 30 Days",
+    "description": "The server's SSL/TLS certificate will expire within 30 days. Failure to renew before expiry will cause browser security warnings and potential service disruption.",
+    "remediation": "Renew the certificate before it expires. Consider automating certificate renewal with tools like Certbot/ACME. A WAF can terminate TLS at the edge and manage certificate lifecycle independently of the origin server.",
+    "severity": "High",
+    "category": "Certificate",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cert-chain-invalid": {
+    "display_name": "SSL/TLS Certificate Chain Not Trusted",
+    "description": "The server's certificate chain is incomplete or contains an untrusted certificate. Clients that enforce strict chain validation will reject the connection or display security warnings.",
+    "remediation": "Ensure the server presents the full certificate chain including all intermediate certificates. A WAF can terminate TLS at the edge with a properly configured certificate chain, eliminating chain errors for end users.",
+    "severity": "High",
+    "category": "Certificate",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cert-self-signed": {
+    "display_name": "Self-Signed SSL/TLS Certificate",
+    "description": "The server is using a self-signed certificate not issued by a trusted certificate authority. Browsers will display prominent security warnings, eroding user trust and making the site appear malicious to visitors.",
+    "remediation": "Replace the self-signed certificate with one issued by a trusted CA (e.g., Let's Encrypt for free certificates). A WAF can terminate TLS at the edge with a CA-signed certificate while the origin continues to use a self-signed cert internally.",
+    "severity": "High",
+    "category": "Certificate",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cert-weak-key": {
+    "display_name": "Weak SSL/TLS Certificate Key",
+    "description": "The server's certificate uses a key that is too small to be considered secure (e.g., 1024-bit RSA). Weak keys can be factored by a well-resourced attacker, potentially allowing decryption of intercepted traffic.",
+    "remediation": "Reissue the certificate with a key of at least 2048-bit RSA or 256-bit ECDSA. A WAF can terminate TLS at the edge with a strong key, protecting clients regardless of the origin certificate key size.",
+    "severity": "Medium",
+    "category": "Certificate",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }
