@@ -809,6 +809,32 @@ update_version_file() {
     fi
 }
 
+# List of plugin files removed in past releases that must be deleted on upgrade.
+# rsync (no --delete) leaves these behind, so we clean them up explicitly.
+DEPRECATED_PLUGINS=(
+    "kast/plugins/ai_chatbot_detection_plugin.py"
+)
+
+remove_deprecated_plugins() {
+    log_info "Removing deprecated plugin files..."
+    local removed=0
+    for rel_path in "${DEPRECATED_PLUGINS[@]}"; do
+        local full_path="$INSTALL_DIR/$rel_path"
+        if [[ -f "$full_path" ]]; then
+            rm -f "$full_path"
+            local module_name
+            module_name=$(basename "$full_path" .py)
+            find "$(dirname "$full_path")/__pycache__" \
+                -name "${module_name}.cpython-*.pyc" -delete 2>/dev/null || true
+            log_success "  Removed deprecated plugin: $rel_path"
+            ((removed++))
+        fi
+    done
+    if [[ $removed -eq 0 ]]; then
+        log_info "  No deprecated plugins found"
+    fi
+}
+
 generate_update_summary() {
     local update_type=$1
     
@@ -1138,7 +1164,10 @@ main() {
         exit 1
     fi
     save_checkpoint "$CHECKPOINT_FILE_SYNC"
-    
+
+    # Step 4b: Remove plugin files deleted in this release
+    remove_deprecated_plugins
+
     # Step 5: Check and install external tools
     echo ""
     log_info "Step 5/7: Checking external tools..."

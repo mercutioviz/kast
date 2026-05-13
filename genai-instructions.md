@@ -100,19 +100,7 @@ CLI dispatcher (kast/cli/main.py — Click)
 2. **Template Method** — `ExternalToolPlugin.run()` and `.post_process()` define the skeleton; subclass hooks fill in the variation.
 3. **Registry** — `PluginRegistry` owns discovery, instantiation, and lookup.
 4. **Builder** — `collect_report_data` + `render_*` for reports.
-5. **Provider** — `ZapInstanceProvider` ABC with Local and Remote implementations (Cloud is migrating to kast-web; see below).
-
-### What's moving out of kast
-
-The ZAP cloud-deployment subsystem is migrating to kast-web in Phase D. Files involved:
-
-- `kast/terraform/{aws,azure,gcp}/`
-- `kast/scripts/zap_provider_factory.py`, `zap_providers.py`, `zap_api_client.py`
-- `kast/scripts/{ssh_executor,terraform_manager,monitor_zap,cleanup_orphaned_resources,diagnose_infrastructure,find_zap_url}.py`
-- `kast/config/zap_cloud_config.yaml`, `kast/config/nginx/`
-- The `cloud` execution mode of `kast/plugins/zap_plugin.py`
-
-**Do not add new features or fix non-critical bugs in this code within kast.** Bug fixes that affect cloud-mode users get planned as part of the kast-web side of the migration. The `local` and `remote` execution modes of the ZAP plugin stay in kast.
+5. **Provider** — `ZapInstanceProvider` ABC with Local and Remote implementations only. Cloud infrastructure was removed in Phase D and now lives in kast-web.
 
 ---
 
@@ -214,7 +202,7 @@ The base provides `is_available()` (via `shutil.which(tool_binary)`), `run()` (s
 
 ### Pure-Python plugins — `KastPlugin` directly
 
-A handful of plugins don't wrap a CLI tool (HTTP API calls, file-system analysis, etc.). These inherit from `KastPlugin` directly and implement `is_available`, `run`, and `post_process` themselves. See `mozilla_observatory_plugin.py` and `ai_chatbot_detection_plugin.py` for the shape.
+A handful of plugins don't wrap a CLI tool (HTTP API calls, file-system analysis, etc.). These inherit from `KastPlugin` directly and implement `is_available`, `run`, and `post_process` themselves. See `mozilla_observatory_plugin.py` and `ai_surface_detection_plugin.py` for the shape.
 
 ### Plugin lifecycle
 
@@ -249,7 +237,7 @@ The orchestrator gates execution: a plugin is launched only when each declared d
 | `ftap`                  | Find The Admin Panel      | Passive | 50       | `KastPlugin`          | None                 |
 | `testssl`               | Test SSL                  | Passive | 50       | `KastPlugin`          | None                 |
 | `katana`                | Katana                    | Passive | 60       | `KastPlugin`          | None                 |
-| `ai_chatbot_detection`  | AI Chatbot Detection      | Passive | 70       | `KastPlugin`          | None                 |
+| `ai_surface_detection`  | AI Surface Detection      | Passive | 70       | `KastPlugin`          | None                 |
 | `zap`                   | OWASP ZAP                 | Active  | 200      | `KastPlugin`          | None                 |
 
 Lower priority number = runs earlier.
@@ -396,9 +384,9 @@ v3 handles long URLs and other long strings via CSS rules (`overflow-wrap: anywh
 ### Execution modes (in kast)
 
 1. **Local** — Docker-based ZAP on the local machine.
-2. **Remote** — connect to an existing ZAP via SSH + API.
+2. **Remote** — connect to an existing ZAP via HTTP API.
 
-(The third mode, **Cloud** with Terraform-provisioned infrastructure, is migrating to kast-web in Phase D and is being removed from kast. Don't extend the cloud code paths. As of Phase D9, invoking `execution_mode: cloud` emits a `DeprecationWarning` plus a console banner pointing at kast-web; cloud mode still functions until D10 removes it.)
+The **Cloud** mode (Terraform-provisioned infrastructure) was removed in Phase D10. Cloud ZAP provisioning is now handled entirely by kast-web before the kast CLI is invoked; kast receives the resulting URL and API key via `--set zap.execution_mode=remote`.
 
 ### Architecture
 
@@ -454,7 +442,7 @@ PYTHONPATH=. pytest --cov=kast kast/tests/        # coverage
 
 - **CLI** — `test_cli_scan`, `test_cli_plugins`, `test_cli_registry`, `test_cli_doctor`, `test_cli_self_update`, `test_cli_v2_compat`
 - **Plugin base** — `test_external_tool_base`
-- **Per-plugin** — `test_ftap_*`, `test_katana_*`, `test_observatory_*`, `test_related_sites_*`, `test_subfinder_*`, `test_testssl_*`, `test_wafw00f_*`, `test_whatweb_*`, `test_zap_*`, `test_ai_chatbot_detection`
+- **Per-plugin** — `test_ftap_*`, `test_katana_*`, `test_observatory_*`, `test_related_sites_*`, `test_subfinder_*`, `test_testssl_*`, `test_wafw00f_*`, `test_whatweb_*`, `test_zap_*`, `test_ai_surface_detection`
 - **Reports** — `test_report_builder`, `test_report_only`, `test_html_list_structure`, `test_pdf_navigation`, `test_baseline_render`
 - **Core** — `test_atomic`, `test_registry`, `test_config_manager_schemas`
 - **General** — `test_executive_summary`, `test_kast_info`, `test_tool_index`
@@ -570,20 +558,16 @@ kast/
 
   config/
     default_config.yaml      - default configuration
-    zap_automation_*.yaml    - ZAP scan profiles (5)
-    nginx/                   - cloud nginx configs (migrating out)
-    zap_cloud_config.yaml    - cloud ZAP (migrating out)
+    zap_automation_*.yaml    - ZAP scan profiles (5: quick, standard, thorough, api, passive)
+    zap_config.yaml          - ZAP plugin configuration defaults
 
   data/
     issue_registry.json      - central issue database
 
   scripts/
     create_plugin.py         - plugin creation wizard (v2-shaped output)
-    zap_*.py                 - ZAP provider system (cloud parts migrating out)
-    ssh_executor.py
-    monitor_zap.py
-    cleanup_orphaned_resources.py    - cloud cleanup (migrating out)
-    diagnose_infrastructure.py       - cloud diagnostics (migrating out)
+    zap_api_client.py        - ZAP HTTP API wrapper
+    zap_providers.py         - LocalZapProvider and RemoteZapProvider
 
   templates/
     report_template.html         - interactive HTML template
@@ -592,9 +576,6 @@ kast/
     partials/                    - shared blocks (empty, see README)
     kast_style.css               - HTML styles
     kast_style_pdf.css           - PDF styles (WeasyPrint)
-
-  terraform/
-    aws/, azure/, gcp/           - cloud provider modules (migrating out)
 
   tests/
     test_*.py                    - tests
@@ -632,7 +613,7 @@ kast-web watches the scan output directory and parses `*_processed.json` files. 
 
 ### ZAP provider chain
 
-`ZapPlugin` → `ZapProviderFactory` → `LocalZapProvider | RemoteZapProvider` → `ZAPAPIClient`. Remote mode additionally uses `SSHExecutor`. The cloud provider chain (Terraform-driven) is migrating to kast-web.
+`ZapPlugin` → `LocalZapProvider | RemoteZapProvider` → `ZAPAPIClient`. `ZapProviderFactory`, `SSHExecutor`, and the Terraform-driven cloud provider chain were removed in Phase D10.
 
 ---
 
@@ -675,7 +656,7 @@ When working with KAST as a GenAI assistant:
 13. **`is_available()`** must return False gracefully when the tool is missing.
 14. **Never crash the orchestrator** — wrap external calls in try/except and return a fail-disposition result dict.
 15. **Don't change frozen contracts** without explicit coordinated planning — see [Frozen Contracts](#frozen-contracts).
-16. **Don't extend cloud-mode code in kast** — that subsystem is migrating to kast-web.
+16. **There is no cloud-mode code in kast** — that subsystem was removed in Phase D10 and lives in kast-web.
 
 ### Common tasks
 

@@ -179,10 +179,9 @@ class ZapPlugin(KastPlugin):
         """
         Check if ZAP plugin can run
         
-        For multi-mode support, we consider the plugin available if:
-        - Docker is installed (for local mode), OR
-        - Terraform is installed (for cloud mode)
-        - Remote mode is always available if config is provided
+        The plugin is available if Docker is installed (for local mode) or if
+        remote mode config is provided. Always returns True since remote mode
+        requires no local tool.
         """
         import shutil
         
@@ -202,7 +201,6 @@ class ZapPlugin(KastPlugin):
         2. ~/.config/kast/config.yaml (user) - plugins.zap section
         3. /etc/kast/config.yaml (system) - plugins.zap section
         4. kast/config/zap_config.yaml (installation - backward compat)
-        5. kast/config/zap_cloud_config.yaml (legacy - backward compat)
         
         :return: Configuration dictionary
         """

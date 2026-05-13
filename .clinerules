@@ -27,7 +27,7 @@ KAST (Kali Automated Scan Tool) is a modular Python framework that orchestrates 
 - **Atomic writes:** all state-bearing JSON via `write_json_atomic` from `kast/core/atomic.py`. Never raw `json.dump`.
 - **Reports:** unified pipeline at `kast/report/`. `collect_report_data(...)` builds a dict; `render_html` and `render_pdf` consume the same data.
 - **CLI:** Click subcommands under `kast/cli/`. v2 argv shape preserved via `_translate_v2_argv()` for kast-web compatibility.
-- **ZAP:** Local + Remote modes only. Cloud (Terraform) is migrating out of kast → kast-web in Phase D.
+- **ZAP:** Local + Remote modes only. Cloud (Terraform) was removed in Phase D10 and now lives in kast-web.
 
 ### File Locations
 
@@ -39,8 +39,7 @@ KAST (Kali Automated Scan Tool) is a modular Python framework that orchestrates 
 - Templates: `kast/templates/` (with `_macros.html`, `partials/`)
 - Data: `kast/data/issue_registry.json`
 - Configuration: `kast/config/`
-- Scripts: `kast/scripts/` (cloud parts migrating out)
-- Terraform: `kast/terraform/` (migrating out)
+- Scripts: `kast/scripts/` (ZAP providers, plugin wizard, demo scripts)
 - v3 planning: `docs/v3-planning/`
 - Baseline scans: `docs/baseline-v2.14/`
 
@@ -58,7 +57,7 @@ KAST (Kali Automated Scan Tool) is a modular Python framework that orchestrates 
 | `ftap`                  | Find The Admin Panel      | Passive | 50       | `KastPlugin`          | None                 |
 | `testssl`               | Test SSL                  | Passive | 50       | `KastPlugin`          | None                 |
 | `katana`                | Katana                    | Passive | 60       | `KastPlugin`          | None                 |
-| `ai_chatbot_detection`  | AI Chatbot Detection      | Passive | 70       | `KastPlugin`          | None                 |
+| `ai_surface_detection`  | AI Surface Detection      | Passive | 70       | `KastPlugin`          | None                 |
 | `zap`                   | OWASP ZAP                 | Active  | 200      | `KastPlugin`          | None                 |
 
 `template_plugin.py` is the canonical v3 starter and is deliberately skipped by discovery.
@@ -128,7 +127,7 @@ For a non-wrapper plugin (no CLI tool — HTTP API, file analysis, etc.): inheri
 6. **Handle `report_only=True`** in plugin `run()` (the `ExternalToolPlugin` base does this for you).
 7. **Always include `findings_count`** (integer) in processed output.
 8. **Plugins emit a single rich payload** for report widgets — the v2 dual `custom_html` / `custom_html_pdf` requirement is gone.
-9. **Don't extend cloud-mode code in kast** — that subsystem is migrating to kast-web.
+9. **There is no cloud-mode code in kast** — that subsystem was removed in Phase D10 and lives in kast-web.
 10. **Don't change frozen contracts** without explicit coordinated planning. See `docs/web-integration.md`.
 
 ## Before Making Changes

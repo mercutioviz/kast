@@ -455,14 +455,6 @@ class TestsslPlugin(KastPlugin):
         
         return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
-    def _deduplicate_findings(self, findings):
-        """
-        Remove duplicate findings from the results.
-        This is a stub function to be implemented when needed.
-        """
-        # TODO: Implement deduplication logic if needed for testssl results
-        return findings
-
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what testssl would execute.

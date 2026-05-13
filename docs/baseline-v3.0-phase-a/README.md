@@ -4,6 +4,10 @@ Snapshot of a complete report render produced at the end of Phase A.
 Used as the gold standard for ongoing regression testing while v3
 work continues into Phase B and beyond.
 
+## Note on plugin naming
+
+This baseline was captured at Phase A (2026-05-01), **before** the Phase C7 rename of `ai_chatbot_detection` → `ai_surface_detection`. The file `ai_chatbot_detection_processed.json` and its references in `kast_info.json` reflect the old name intentionally — this is historical data, not a bug. The regression test in `test_baseline_render.py` is aware of this and does not assert on the `ai_chatbot_detection` plugin name specifically.
+
 ## What this directory contains
 
 A complete kast scan output dir as it would land on disk after

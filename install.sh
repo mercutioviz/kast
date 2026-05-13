@@ -37,7 +37,7 @@ CHECKPOINT_NODEJS="nodejs"
 CHECKPOINT_GO_TOOLS="go_tools"
 CHECKPOINT_GECKO="geckodriver"
 CHECKPOINT_DOCKER="docker"
-CHECKPOINT_TERRAFORM="terraform"
+# CHECKPOINT_TERRAFORM removed — Terraform is no longer installed by kast (Phase D moved cloud infra to kast-web)
 CHECKPOINT_OBSERVATORY="observatory"
 CHECKPOINT_LIBPANGO="libpango"
 CHECKPOINT_FILES="file_copy"
@@ -188,7 +188,6 @@ checkpoint_completed() {
         "$CHECKPOINT_GO_TOOLS"
         "$CHECKPOINT_GECKO"
         "$CHECKPOINT_DOCKER"
-        "$CHECKPOINT_TERRAFORM"
         "$CHECKPOINT_OBSERVATORY"
         "$CHECKPOINT_LIBPANGO"
         "$CHECKPOINT_FILES"
@@ -1549,20 +1548,6 @@ install_docker() {
     log_success "Docker installed"
 }
 
-install_terraform() {
-    if checkpoint_completed "$CHECKPOINT_TERRAFORM"; then
-        log_info "Terraform already installed, skipping..."
-        return 0
-    fi
-    
-    log_info "Installing Terraform..."
-    wget -4 -O - https://apt.releases.hashicorp.com/gpg | gpg --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
-    apt update && apt install -y terraform
-    
-    save_checkpoint "$CHECKPOINT_TERRAFORM"
-    log_success "Terraform installed"
-}
 
 install_observatory() {
     if checkpoint_completed "$CHECKPOINT_OBSERVATORY"; then
@@ -1690,17 +1675,47 @@ copy_project_files() {
         log_info "Project files already copied, skipping..."
         return 0
     fi
-    
+
     log_info "Copying project files to $INSTALL_DIR..."
     mkdir -p "$INSTALL_DIR"
-    
+
     echo "Skipping $(basename "$0")"
     echo "Skipping .git"
-    
+
     rsync -av --exclude="$(basename "$0")" --exclude=".git" --exclude="*.backup.*" ./ "$INSTALL_DIR/"
-    
+
+    remove_deprecated_plugins
+
     save_checkpoint "$CHECKPOINT_FILES"
     log_success "Project files copied"
+}
+
+# List of plugin files removed in past releases that must be deleted on upgrade.
+# rsync (no --delete) leaves these behind, so we clean them up explicitly.
+DEPRECATED_PLUGINS=(
+    "kast/plugins/ai_chatbot_detection_plugin.py"
+)
+
+remove_deprecated_plugins() {
+    log_info "Removing deprecated plugin files..."
+    local removed=0
+    for rel_path in "${DEPRECATED_PLUGINS[@]}"; do
+        local full_path="$INSTALL_DIR/$rel_path"
+        if [[ -f "$full_path" ]]; then
+            rm -f "$full_path"
+            # Remove any compiled bytecode for this file
+            local base="${full_path%.py}"
+            local module_name
+            module_name=$(basename "$full_path" .py)
+            find "$(dirname "$full_path")/__pycache__" \
+                -name "${module_name}.cpython-*.pyc" -delete 2>/dev/null || true
+            log_success "  Removed deprecated plugin: $rel_path"
+            ((removed++))
+        fi
+    done
+    if [[ $removed -eq 0 ]]; then
+        log_info "  No deprecated plugins found"
+    fi
 }
 
 setup_python_venv() {
@@ -1913,11 +1928,6 @@ verify_installation() {
             log_warning "docker daemon is not running"
             ((failed++))
         fi
-    fi
-    
-    if ! command -v terraform &>/dev/null; then
-        log_warning "terraform not found in PATH"
-        ((failed++))
     fi
     
     # testssl.sh has different command names on different systems
@@ -2441,7 +2451,6 @@ main() {
     install_go_tools
     install_geckodriver
     install_docker
-    install_terraform
     install_observatory
     install_libpango
     install_pdf_fonts

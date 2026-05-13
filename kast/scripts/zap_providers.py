@@ -74,7 +74,7 @@ class ZapInstanceProvider(ABC):
         """
         Get human-readable name of this provider mode
         
-        :return: Mode name (e.g., "local", "remote", "cloud")
+        :return: Mode name (e.g., "local", "remote")
         """
         pass
 

@@ -396,7 +396,7 @@ kast scan \
   --set zap.remote.api_key=ephemeral-key-abc123
 ```
 
-kast does not know or care that the ZAP instance is cloud-hosted — from its perspective this is identical to any other remote mode scan. kast-web owns the Terraform provisioning lifecycle before the scan starts and the teardown after `kast_info.json` signals completion.
+kast does not know or care that the ZAP instance is cloud-hosted — from its perspective this is identical to any other remote mode scan. kast-web owns the cloud provisioning lifecycle (Terraform, on the kast-web side) before the scan starts and the teardown after `kast_info.json` signals completion.
 
 ---
 

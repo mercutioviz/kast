@@ -229,7 +229,7 @@ If the AI call fails (no key, network error, schema mismatch), the report still 
 | `ftap`                  | Find The Admin Panel      | Passive | 50       | Admin-panel discovery                    |
 | `testssl`               | Test SSL                  | Passive | 50       | TLS configuration audit                  |
 | `katana`                | Katana                    | Passive | 60       | Web crawler                              |
-| `ai_chatbot_detection`  | AI Chatbot Detection      | Passive | 70       | LLM widget detection                     |
+| `ai_surface_detection`  | AI Surface Detection      | Passive | 70       | Chatbot, virtual agent, and AI search/RAG surface detection |
 | `zap`                   | OWASP ZAP                 | Active  | 200      | Active vulnerability scanner             |
 
 Lower priority numbers run earlier. ZAP supports two execution modes: `local` (Docker-based) and `remote` (connect to an existing ZAP via SSH+API). Cloud-mode ZAP is managed by kast-web.
