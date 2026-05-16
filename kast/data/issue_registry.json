@@ -945,5 +945,104 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-2 days",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-wildcard-origin": {
+    "display_name": "CORS Wildcard Origin (Access-Control-Allow-Origin: *)",
+    "description": "The server returns a wildcard Access-Control-Allow-Origin header, allowing any website to read non-credentialed responses cross-origin. While lower risk than reflected origins, this permits broad cross-origin access to public API responses.",
+    "remediation": "Replace the wildcard with an explicit allowlist of trusted origins. A WAF can rewrite the CORS response header to enforce a strict origin allowlist.",
+    "severity": "Low",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-arbitrary-origin-reflected": {
+    "display_name": "Arbitrary CORS Origin Reflected",
+    "description": "The server reflects any Origin header value back in Access-Control-Allow-Origin, granting any website cross-origin read access to application responses. This allows malicious sites to make cross-origin requests and read the returned data.",
+    "remediation": "Implement a strict origin allowlist and only reflect origins that are explicitly authorized. A WAF can enforce exact-match CORS origin validation at the edge.",
+    "severity": "High",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-credentials-with-reflected-origin": {
+    "display_name": "CORS Arbitrary Origin Reflected with Credentials",
+    "description": "The server reflects arbitrary Origin headers and also sets Access-Control-Allow-Credentials: true. This is the highest-severity CORS misconfiguration: any website can make authenticated cross-origin requests and read the responses, potentially exposing session data and user-specific content.",
+    "remediation": "Implement a strict origin allowlist — never combine a dynamically reflected origin with credentials: true. A WAF can enforce exact-match CORS origin validation and strip the Allow-Credentials header for unauthorized origins.",
+    "severity": "Critical",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-credentials-with-wildcard": {
+    "display_name": "CORS Wildcard Origin with Credentials Header (Misconfigured)",
+    "description": "The server returns both Access-Control-Allow-Origin: * and Access-Control-Allow-Credentials: true. Browsers reject this combination per spec, but it indicates a misconfigured CORS policy that may produce unsafe behavior in non-browser clients or after future spec changes.",
+    "remediation": "Remove the credentials header when using a wildcard origin, or replace the wildcard with an explicit origin allowlist. A WAF can normalize CORS response headers to a valid configuration.",
+    "severity": "Medium",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-null-origin-allowed": {
+    "display_name": "Null Origin Accepted in CORS Policy",
+    "description": "The server accepts the 'null' Origin value and returns Access-Control-Allow-Origin: null. The null origin can be sent by sandboxed iframes, local HTML files, and certain redirects — it is not a safe trusted source and should not be in the CORS allowlist.",
+    "remediation": "Remove 'null' from the CORS origin allowlist. A WAF can block CORS responses that grant access to the null origin.",
+    "severity": "Medium",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-bypass-subdomain": {
+    "display_name": "CORS Subdomain Bypass",
+    "description": "The server's CORS origin validation accepts arbitrary subdomains (e.g., evil.example.com is accepted as a trusted origin for example.com). An attacker who controls any subdomain — via XSS, subdomain takeover, or domain registration — can read cross-origin application responses.",
+    "remediation": "Use exact-match origin validation rather than suffix or prefix matching. A WAF can enforce an exact-match origin allowlist at the edge.",
+    "severity": "High",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-bypass-suffix": {
+    "display_name": "CORS Suffix-Match Bypass",
+    "description": "The server's CORS origin validation uses suffix matching, accepting origins like example.com.evil.com as trusted for example.com. An attacker can register a domain with example.com as a suffix and bypass the origin check entirely.",
+    "remediation": "Use exact-match or prefix-anchored origin validation. Ensure the allowed-origin check includes a boundary check (e.g., '.' or end-of-string) after the expected domain. A WAF can enforce exact-match CORS origin validation.",
+    "severity": "High",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "cors-bypass-http-downgrade": {
+    "display_name": "HTTP Origin Accepted for HTTPS CORS Policy",
+    "description": "The server's CORS policy accepts the HTTP version of its own origin (e.g., http://example.com) as a trusted origin for the HTTPS site. HTTP origins provide no transport security, so an on-path attacker can forge them to gain cross-origin read access.",
+    "remediation": "Only include HTTPS origins in the CORS allowlist. A WAF can enforce HTTPS-only origin validation.",
+    "severity": "Medium",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "jsonp-endpoint-detected": {
+    "display_name": "JSONP Endpoint Detected",
+    "description": "A JSONP (JSON with Padding) endpoint was detected. JSONP endpoints return JavaScript function calls wrapping JSON data, allowing any website to include the endpoint as a script tag and read the response — bypassing CORS entirely. JSONP is a legacy pattern that is unnecessary in modern applications.",
+    "remediation": "Replace JSONP endpoints with standard JSON endpoints that use proper CORS headers to control access. A WAF can block callback parameter usage on API endpoints.",
+    "severity": "Medium",
+    "category": "CORS",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }
