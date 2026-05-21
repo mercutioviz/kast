@@ -43,6 +43,17 @@
     "code_fix_timeframe": "N/A",
     "infrastructure_fix_timeframe": "1-3 days"
   },
+  "csp-implemented-with-insecure-scheme": {
+    "display_name": "Content Security Policy Allows Insecure HTTP Scheme",
+    "description": "The Content Security Policy (CSP) is implemented but includes http: as an allowed source scheme. This permits resources to be loaded over unencrypted HTTP, exposing the page to man-in-the-middle attacks that could inject malicious scripts or styles.",
+    "remediation": "Remove http: from all CSP directives and replace with explicit HTTPS origins or the https: scheme. Ensure all permitted resource sources are served over HTTPS. A WAF can rewrite the Content-Security-Policy response header to remove the insecure HTTP scheme allowance.",
+    "severity": "Medium",
+    "category": "Content Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
   "csp-implemented-with-unsafe-inline": {
     "display_name": "Content Security Policy with unsafe-inline",
     "description": "The Content Security Policy (CSP) allows 'unsafe-inline' scripts or styles, which can expose the application to cross-site scripting (XSS) attacks.",
