@@ -20,6 +20,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import click
 from rich.console import Console
@@ -482,6 +483,13 @@ def _run_scan(
             "or `kast scan rerun`."
         )
         sys.exit(1)
+
+    # Normalize target: strip scheme and trailing path so plugins always receive
+    # a bare hostname (with port if present). Users often paste directly from the
+    # browser address bar, e.g. "https://example.com/".
+    if target:
+        _parsed = urlparse(target if "://" in target else f"https://{target}")
+        target = _parsed.netloc or target
 
     args = make_args_namespace(
         target=target, mode=mode, output_dir=output_dir,
