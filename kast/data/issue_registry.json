@@ -43,6 +43,17 @@
     "code_fix_timeframe": "N/A",
     "infrastructure_fix_timeframe": "1-3 days"
   },
+  "login-portal-detected": {
+    "display_name": "Login Portal Detected",
+    "description": "A public-facing login portal was found on the target. Login portals are a primary attack surface for credential stuffing, password spraying, and brute-force attacks. Automated bots continuously probe exposed login pages for valid credentials.",
+    "remediation": "Protect the login portal with multi-factor authentication, account lockout policies, and CAPTCHA. A WAF can provide credential stuffing protection, bot management, and login rate limiting to defend the portal from automated attacks without requiring application changes.",
+    "severity": "Low",
+    "category": "Authentication",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "2-4 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
   "csp-implemented-with-insecure-scheme": {
     "display_name": "Content Security Policy Allows Insecure HTTP Scheme",
     "description": "The Content Security Policy (CSP) is implemented but includes http: as an allowed source scheme. This permits resources to be loaded over unencrypted HTTP, exposing the page to man-in-the-middle attacks that could inject malicious scripts or styles.",

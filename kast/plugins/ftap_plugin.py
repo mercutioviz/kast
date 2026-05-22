@@ -47,6 +47,34 @@ SENSITIVE_PROBE_PATHS = [
     {"path": "/dump.sql",        "issue_id": "exposed-backup-file"},
 ]
 
+# High-confidence login portal paths to probe. A 200 response is only reported
+# when the body also contains a password input field, preventing false positives
+# from redirect pages or custom 200-status error responses.
+LOGIN_PROBE_PATHS = [
+    "/login",
+    "/signin",
+    "/sign-in",
+    "/log-in",
+    "/login.php",
+    "/login.aspx",
+    "/login.html",
+    "/user/login",
+    "/users/sign_in",
+    "/account/login",
+    "/account/signin",
+    "/auth/login",
+    "/portal/login",
+    "/members/login",
+    "/customer/login",
+    "/secure/login",
+    "/wp-login.php",
+    "/portal",
+    "/client-portal",
+    "/partner-portal",
+    "/partners",
+    "/my-portal",
+]
+
 class FtapPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
     
@@ -297,8 +325,9 @@ class FtapPlugin(KastPlugin):
                 else:
                     results = f.read()
 
-            # Run sensitive path probing alongside the admin panel scan
+            # Run sensitive path and login portal probing alongside the admin panel scan
             self._probe_sensitive_paths(target, output_dir)
+            self._probe_login_portals(target, output_dir)
 
             return self.get_result_dict(
                 disposition="success",
@@ -364,6 +393,16 @@ class FtapPlugin(KastPlugin):
             except Exception as e:
                 self.debug(f"Could not read ftap_sensitive.json: {e}")
 
+        # Read login portal probe results written by run()
+        login_findings = []
+        login_path = os.path.join(output_dir, "ftap_login.json")
+        if os.path.exists(login_path):
+            try:
+                with open(login_path) as f:
+                    login_findings = json.load(f)
+            except Exception as e:
+                self.debug(f"Could not read ftap_login.json: {e}")
+
         # One issue entry regardless of panel count; description lists all URLs.
         issues = []
         if exposed_panels:
@@ -387,17 +426,26 @@ class FtapPlugin(KastPlugin):
                     "description": f"{len(urls)} {noun} found: {', '.join(urls)}",
                 })
 
+        # One issue entry for login portals; lists all confirmed URLs.
+        if login_findings:
+            urls = [f["url"] for f in login_findings]
+            noun = "portal" if len(urls) == 1 else "portals"
+            issues.append({
+                "id": "login-portal-detected",
+                "description": f"{len(urls)} login {noun} detected: {', '.join(urls)}",
+            })
+
         # Build details section with formatted information
-        details = self._build_details(findings, sensitive_findings)
+        details = self._build_details(findings, sensitive_findings, login_findings)
 
         # Build executive summary with panel information
-        executive_summary = self._build_executive_summary(findings, sensitive_findings)
+        executive_summary = self._build_executive_summary(findings, sensitive_findings, login_findings)
 
-        # findings_count = distinct admin panel URLs + distinct sensitive paths
-        findings_count = len(exposed_panels) + len(sensitive_findings)
+        # findings_count = distinct admin panel URLs + sensitive paths + login portals
+        findings_count = len(exposed_panels) + len(sensitive_findings) + len(login_findings)
 
         # Generate summary using helper method
-        summary = self._generate_summary(findings, sensitive_findings)
+        summary = self._generate_summary(findings, sensitive_findings, login_findings)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -408,7 +456,10 @@ class FtapPlugin(KastPlugin):
 
         # Generate custom HTML for interactive display
         custom_html = self._generate_panel_display_html(findings)
-        custom_html_pdf = self._generate_pdf_panel_list(findings)
+        login_html = self._generate_login_portal_html(login_findings)
+        if login_html:
+            custom_html = custom_html + "\n" + login_html
+        custom_html_pdf = self._generate_pdf_panel_list(findings, login_findings=login_findings)
 
         processed = {
             "plugin-name": self.name,
@@ -433,13 +484,14 @@ class FtapPlugin(KastPlugin):
 
         return processed_path
 
-    def _generate_summary(self, findings, sensitive_findings=None):
+    def _generate_summary(self, findings, sensitive_findings=None, login_findings=None):
         """Generate a human-readable summary from findings."""
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
 
         results = findings.get("results", []) if isinstance(findings, dict) else []
         found_count = len([r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86])
         sensitive_count = len(sensitive_findings or [])
+        login_count = len(login_findings or [])
 
         parts = []
         if found_count == 1:
@@ -452,10 +504,15 @@ class FtapPlugin(KastPlugin):
         if sensitive_count:
             parts.append(f"{sensitive_count} sensitive path(s) found.")
 
+        if login_count == 1:
+            parts.append("1 login portal detected.")
+        elif login_count > 1:
+            parts.append(f"{login_count} login portals detected.")
+
         return " ".join(parts)
 
-    def _build_details(self, findings, sensitive_findings=None):
-        """Build detailed information about discovered admin panels and sensitive paths."""
+    def _build_details(self, findings, sensitive_findings=None, login_findings=None):
+        """Build detailed information about discovered admin panels, sensitive paths, and login portals."""
         results = findings.get("results", []) if isinstance(findings, dict) else []
         high_confidence_results = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
 
@@ -489,14 +546,21 @@ class FtapPlugin(KastPlugin):
             for item in sensitive_findings:
                 details_lines.append(f"  • {item['path']}  [{item['issue_id']}]  HTTP {item['status_code']}")
 
+        if login_findings:
+            details_lines.append("")
+            details_lines.append(f"Login Portals Detected ({len(login_findings)}):")
+            for item in login_findings:
+                details_lines.append(f"  • {item['url']}  (probed path: {item['path']})")
+
         return "\n".join(details_lines)
 
-    def _build_executive_summary(self, findings, sensitive_findings=None):
+    def _build_executive_summary(self, findings, sensitive_findings=None, login_findings=None):
         """Build executive summary — one to two sentences."""
         results = findings.get("results", []) if isinstance(findings, dict) else []
         found_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
         panel_count = len(found_panels)
         sensitive_count = len(sensitive_findings or [])
+        login_count = len(login_findings or [])
 
         parts = []
         if panel_count == 0:
@@ -510,6 +574,17 @@ class FtapPlugin(KastPlugin):
             parts.append("1 sensitive path found.")
         elif sensitive_count > 1:
             parts.append(f"{sensitive_count} sensitive paths found.")
+
+        if login_count == 1:
+            parts.append(
+                "1 login portal detected. A WAF can provide credential stuffing protection, "
+                "bot management, and login rate limiting at this endpoint."
+            )
+        elif login_count > 1:
+            parts.append(
+                f"{login_count} login portals detected. A WAF can provide credential stuffing "
+                "protection, bot management, and login rate limiting at these endpoints."
+            )
 
         return " ".join(parts)
 
@@ -703,46 +778,80 @@ class FtapPlugin(KastPlugin):
         
         return html
 
-    def _generate_pdf_panel_list(self, findings, max_panels=50):
+    def _generate_pdf_panel_list(self, findings, max_panels=50, login_findings=None):
         """
-        Generate a PDF-friendly list of admin panels.
-        Shows only high-confidence panels (≥0.86) with truncation notice.
+        Generate a PDF-friendly list of admin panels and login portals.
+        Shows only high-confidence admin panels (≥0.86) with truncation notice.
         """
         results = findings.get("results", []) if isinstance(findings, dict) else []
         exposed_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
-        
-        if not exposed_panels:
-            return "<p>No admin panels found.</p>"
-        
-        total_count = len(exposed_panels)
-        display_panels = exposed_panels[:max_panels]
-        truncated_count = total_count - len(display_panels)
-        
-        html = '<div class="pdf-url-list">'
-        html += f'<div class="pdf-url-header"><strong>Exposed Admin Panels</strong> (showing {len(display_panels)} of {total_count})</div>'
-        html += '<ul class="pdf-url-items">'
-        
-        for panel in display_panels:
-            url = panel.get("url", "N/A")
-            title = panel.get("title", "Unknown")
-            confidence = panel.get("confidence", 0)
-            
-            safe_url = url.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            html += f'''
-            <li class="pdf-url-item">
-                <div><strong>{title}</strong> - Confidence: {confidence:.1%}</div>
-                <div><code>{safe_url}</code></div>
-            </li>
-            '''
-        
-        html += '</ul>'
-        
-        if truncated_count > 0:
-            html += f'<div class="pdf-url-truncation">📋 <strong>Note:</strong> {truncated_count} additional panel(s) not shown in PDF. View the full interactive HTML report for complete details.</div>'
-        
-        html += '</div>'
-        
+
+        html = ""
+
+        if exposed_panels:
+            total_count = len(exposed_panels)
+            display_panels = exposed_panels[:max_panels]
+            truncated_count = total_count - len(display_panels)
+
+            html += '<div class="pdf-url-list">'
+            html += f'<div class="pdf-url-header"><strong>Exposed Admin Panels</strong> (showing {len(display_panels)} of {total_count})</div>'
+            html += '<ul class="pdf-url-items">'
+
+            for panel in display_panels:
+                url = panel.get("url", "N/A")
+                title = panel.get("title", "Unknown")
+                confidence = panel.get("confidence", 0)
+                safe_url = url.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                html += f'<li class="pdf-url-item"><div><strong>{title}</strong> - Confidence: {confidence:.1%}</div><div><code>{safe_url}</code></div></li>'
+
+            html += '</ul>'
+            if truncated_count > 0:
+                html += f'<div class="pdf-url-truncation"><strong>Note:</strong> {truncated_count} additional panel(s) not shown. View the HTML report for full details.</div>'
+            html += '</div>'
+
+        if login_findings:
+            html += '<div class="pdf-url-list" style="margin-top:1em;">'
+            html += f'<div class="pdf-url-header"><strong>Login Portals Detected</strong> ({len(login_findings)})</div>'
+            html += '<ul class="pdf-url-items">'
+            for item in login_findings:
+                safe_url = item["url"].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                html += f'<li class="pdf-url-item"><div><strong>{item.get("title", "Login Portal")}</strong></div><div><code>{safe_url}</code></div></li>'
+            html += '</ul></div>'
+
+        if not html:
+            html = "<p>No admin panels or login portals found.</p>"
+
         return html
+
+    def _generate_login_portal_html(self, login_findings):
+        """Generate an HTML table of confirmed login portals for the report."""
+        if not login_findings:
+            return ""
+
+        rows = []
+        for f in login_findings:
+            safe_url = f["url"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            rows.append(
+                f'<tr>'
+                f'<td style="word-break:break-all"><a href="{safe_url}" target="_blank">{safe_url}</a></td>'
+                f'<td>{f.get("title", "Login Portal")}</td>'
+                f'<td><code>{f["path"]}</code></td>'
+                f'</tr>'
+            )
+
+        return (
+            '<div class="login-portal-section" style="margin-top:1.2em;">'
+            '<h5 style="color:#083344;margin-bottom:0.4em;">Login Portals Detected</h5>'
+            '<p style="color:#555;font-size:0.9em;margin-bottom:0.8em;">'
+            'Login portals are a primary attack surface for credential stuffing and brute-force attacks. '
+            'A WAF can enforce bot protection, rate limiting, and credential stuffing defenses at these endpoints.'
+            '</p>'
+            '<table class="table table-sm table-striped">'
+            '<thead><tr><th>URL</th><th>Page Title</th><th>Probed Path</th></tr></thead>'
+            '<tbody>' + "\n".join(rows) + '</tbody>'
+            '</table>'
+            '</div>'
+        )
 
     def _probe_sensitive_paths(self, target, output_dir):
         """
@@ -783,6 +892,64 @@ class FtapPlugin(KastPlugin):
         sensitive_path = os.path.join(output_dir, "ftap_sensitive.json")
         write_json_atomic(sensitive_path, found)
         self.debug(f"Sensitive probe complete: {len(found)} finding(s) saved to {sensitive_path}")
+        return found
+
+    def _probe_login_portals(self, target, output_dir):
+        """
+        Probe target for public-facing login portals via HTTP GET.
+        A path is only reported when the 200 response body contains a password
+        input field, filtering out redirect pages and 200-status error pages.
+        Deduplicates by final URL so multiple paths that redirect to the same
+        login page are recorded only once.
+        """
+        try:
+            import requests
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        except ImportError:
+            self.debug("requests not available; skipping login portal probing")
+            return []
+
+        import re
+        from urllib.parse import urlparse
+
+        raw = target if target.startswith(("http://", "https://")) else f"https://{target}"
+        parsed = urlparse(raw)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+
+        found = []
+        seen_urls: set = set()
+
+        for path in LOGIN_PROBE_PATHS:
+            url = base + path
+            try:
+                resp = requests.get(url, timeout=8, verify=False, allow_redirects=True)
+                if resp.status_code != 200:
+                    continue
+                body = resp.text
+                if not re.search(r'type\s*=\s*["\']password["\']', body, re.I):
+                    continue
+                final_url = resp.url
+                if final_url in seen_urls:
+                    self.debug(f"Skipping duplicate login portal URL: {final_url}")
+                    continue
+                seen_urls.add(final_url)
+                title_match = re.search(r'<title[^>]*>([^<]+)</title>', body, re.I)
+                title = title_match.group(1).strip() if title_match else "Login Portal"
+                found.append({
+                    "url": final_url,
+                    "path": path,
+                    "issue_id": "login-portal-detected",
+                    "status_code": resp.status_code,
+                    "title": title,
+                })
+                self.debug(f"Login portal found: {final_url} ({title})")
+            except Exception as e:
+                self.debug(f"Login probe error for {url}: {e}")
+
+        login_path = os.path.join(output_dir, "ftap_login.json")
+        write_json_atomic(login_path, found)
+        self.debug(f"Login portal probe complete: {len(found)} finding(s) saved to {login_path}")
         return found
 
     def get_dry_run_info(self, target, output_dir):
