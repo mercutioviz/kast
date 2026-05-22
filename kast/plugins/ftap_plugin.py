@@ -3,6 +3,7 @@ File: plugins/ftap_plugin.py
 Description: KAST plugin for Find The Admin Panel + sensitive path probing
 """
 
+import re
 import subprocess
 import shutil
 import json
@@ -894,13 +895,71 @@ class FtapPlugin(KastPlugin):
         self.debug(f"Sensitive probe complete: {len(found)} finding(s) saved to {sensitive_path}")
         return found
 
-    def _probe_login_portals(self, target, output_dir):
+    # Compiled patterns used by _probe_login_portals — defined once at class scope
+    # to avoid recompiling on every scan.
+    _LOGIN_TITLE_RE = re.compile(
+        r'\b(log[\s\-]?in|sign[\s\-]?in|log[\s\-]?on|logon|sign[\s\-]?on|authentication)\b',
+        re.I,
+    )
+    _LOGIN_LINK_RE = re.compile(r'href=["\']([^"\']+)["\']', re.I)
+    _LOGIN_URL_RE = re.compile(
+        r'/(login|signin|sign-in|log-in|logon|log-on|auth|sso|authentication)',
+        re.I,
+    )
+
+    @staticmethod
+    def _is_login_page(body: str) -> bool:
+        """Return True if the page looks like a login portal.
+
+        Accepts either a visible password input field (standard forms) OR a
+        page title that names the page as a login/authentication screen
+        (covers stepped/SSO flows that render the password field via JS).
         """
-        Probe target for public-facing login portals via HTTP GET.
-        A path is only reported when the 200 response body contains a password
-        input field, filtering out redirect pages and 200-status error pages.
-        Deduplicates by final URL so multiple paths that redirect to the same
-        login page are recorded only once.
+        if re.search(r'type\s*=\s*["\']password["\']', body, re.I):
+            return True
+        title_m = re.search(r'<title[^>]*>([^<]+)</title>', body, re.I)
+        return bool(title_m and FtapPlugin._LOGIN_TITLE_RE.search(title_m.group(1)))
+
+    def _extract_login_links(self, body: str, base_url: str) -> list:
+        """Extract up to 5 login-looking hrefs from a page body.
+
+        Used as a fallback when a probed path returns a 200 page that is not
+        itself a login form but may link to an SSO portal on another domain.
+        Resolves relative and protocol-relative hrefs against base_url.
+        """
+        from urllib.parse import urljoin
+        seen: set = set()
+        results = []
+        for href in self._LOGIN_LINK_RE.findall(body):
+            href = href.strip()
+            if not href or href.startswith(("javascript:", "mailto:", "#")):
+                continue
+            absolute = urljoin(base_url, href)
+            if not absolute.startswith(("http://", "https://")):
+                continue
+            if not self._LOGIN_URL_RE.search(absolute):
+                continue
+            if absolute not in seen:
+                seen.add(absolute)
+                results.append(absolute)
+            if len(results) >= 5:
+                break
+        return results
+
+    def _probe_login_portals(self, target, output_dir):
+        """Probe target for public-facing login portals via HTTP GET.
+
+        Detection is two-level:
+        1. Direct probe of each path in LOGIN_PROBE_PATHS. A 200 response is
+           reported when _is_login_page() returns True (password field present
+           OR page title names it as a login/auth screen).
+        2. Link-following fallback. When a probed path returns 200 but is not
+           itself a login page, extract hrefs whose URL contains login-related
+           keywords and check those pages with _is_login_page(). This catches
+           the common enterprise pattern where the main site links to an SSO
+           portal on a different subdomain or domain.
+
+        Results are deduplicated by final URL across both levels.
         """
         try:
             import requests
@@ -910,7 +969,6 @@ class FtapPlugin(KastPlugin):
             self.debug("requests not available; skipping login portal probing")
             return []
 
-        import re
         from urllib.parse import urlparse
 
         raw = target if target.startswith(("http://", "https://")) else f"https://{target}"
@@ -920,6 +978,22 @@ class FtapPlugin(KastPlugin):
         found = []
         seen_urls: set = set()
 
+        def _record(final_url, path, body, status):
+            if final_url in seen_urls:
+                self.debug(f"Skipping duplicate login portal URL: {final_url}")
+                return
+            seen_urls.add(final_url)
+            title_match = re.search(r'<title[^>]*>([^<]+)</title>', body, re.I)
+            title = title_match.group(1).strip() if title_match else "Login Portal"
+            found.append({
+                "url": final_url,
+                "path": path,
+                "issue_id": "login-portal-detected",
+                "status_code": status,
+                "title": title,
+            })
+            self.debug(f"Login portal found: {final_url} ({title})")
+
         for path in LOGIN_PROBE_PATHS:
             url = base + path
             try:
@@ -927,23 +1001,23 @@ class FtapPlugin(KastPlugin):
                 if resp.status_code != 200:
                     continue
                 body = resp.text
-                if not re.search(r'type\s*=\s*["\']password["\']', body, re.I):
+
+                if self._is_login_page(body):
+                    _record(resp.url, path, body, resp.status_code)
                     continue
-                final_url = resp.url
-                if final_url in seen_urls:
-                    self.debug(f"Skipping duplicate login portal URL: {final_url}")
-                    continue
-                seen_urls.add(final_url)
-                title_match = re.search(r'<title[^>]*>([^<]+)</title>', body, re.I)
-                title = title_match.group(1).strip() if title_match else "Login Portal"
-                found.append({
-                    "url": final_url,
-                    "path": path,
-                    "issue_id": "login-portal-detected",
-                    "status_code": resp.status_code,
-                    "title": title,
-                })
-                self.debug(f"Login portal found: {final_url} ({title})")
+
+                # Level-2: page returned 200 but isn't a login form itself.
+                # Follow any login-looking links it contains.
+                for link_url in self._extract_login_links(body, url):
+                    if link_url in seen_urls:
+                        continue
+                    try:
+                        lr = requests.get(link_url, timeout=8, verify=False, allow_redirects=True)
+                        if lr.status_code == 200 and self._is_login_page(lr.text):
+                            _record(lr.url, path, lr.text, lr.status_code)
+                    except Exception as le:
+                        self.debug(f"Login link-follow error ({link_url}): {le}")
+
             except Exception as e:
                 self.debug(f"Login probe error for {url}: {e}")
 
