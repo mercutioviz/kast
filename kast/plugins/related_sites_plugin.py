@@ -18,6 +18,36 @@ from kast.core.atomic import write_json_atomic
 from pprint import pformat
 import tldextract
 
+# The anthropic SDK (required by kast) pulls in the Python httpx HTTP client as a
+# dependency.  pip installs an entry point also named 'httpx' into the virtualenv's
+# bin/, which shadows the ProjectDiscovery httpx CLI at /usr/local/bin/httpx when
+# the venv is active.  Search well-known system install paths first so we always
+# invoke the correct binary.
+_PD_HTTPX_CANDIDATES = [
+    "/usr/local/bin/httpx",
+    "/usr/bin/httpx",
+    os.path.expanduser("~/go/bin/httpx"),
+    "/opt/homebrew/bin/httpx",  # macOS
+]
+
+
+def _find_pd_httpx() -> str | None:
+    """Return the path to the ProjectDiscovery httpx binary, or None."""
+    for path in _PD_HTTPX_CANDIDATES:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    # Last resort: walk PATH entries manually, skipping any that look like a
+    # Python virtualenv bin (they contain a 'python' or 'activate' sibling).
+    for directory in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = os.path.join(directory, "httpx")
+        if not (os.path.isfile(candidate) and os.access(candidate, os.X_OK)):
+            continue
+        activate = os.path.join(directory, "activate")
+        if os.path.exists(activate):
+            continue  # skip virtualenv bin
+        return candidate
+    return None
+
 class RelatedSitesPlugin(KastPlugin):
     priority = 45  # After initial recon, before deep analysis
     
@@ -78,14 +108,17 @@ class RelatedSitesPlugin(KastPlugin):
     output_type = "file"
     
     def __init__(self, cli_args, config_manager=None):
-        
+
         super().__init__(cli_args, config_manager)
-        
+
         self.command_executed = {
             "subfinder": None,
             "httpx": None
         }
-        
+
+        # Resolved once at startup; avoids the virtualenv PATH-shadowing issue.
+        self._httpx_bin = _find_pd_httpx()
+
         # Load configuration values (with backward compatibility for CLI args)
         self._load_plugin_config()
     
@@ -109,13 +142,13 @@ class RelatedSitesPlugin(KastPlugin):
         Check if required tools (subfinder and httpx) are installed.
         """
         has_subfinder = shutil.which("subfinder") is not None
-        has_httpx = shutil.which("httpx") is not None
-        
+        has_httpx = self._httpx_bin is not None
+
         if not has_subfinder:
             self.debug("subfinder not found in PATH")
         if not has_httpx:
-            self.debug("httpx not found in PATH")
-        
+            self.debug("ProjectDiscovery httpx not found (note: Python httpx CLI is not the correct tool)")
+
         # Both required for full functionality
         return has_subfinder and has_httpx
 
@@ -297,7 +330,7 @@ class RelatedSitesPlugin(KastPlugin):
         
         # Configure httpx command with config values
         cmd = [
-            "httpx",
+            self._httpx_bin,
             "-l", input_file,           # Input list
             "-json",                     # JSON output
             "-o", output_file,          # Output file
@@ -1344,7 +1377,7 @@ class RelatedSitesPlugin(KastPlugin):
         httpx_input = os.path.join(output_dir, "related_sites_targets.txt")
         httpx_output = os.path.join(output_dir, "related_sites_httpx.json")
         httpx_cmd = [
-            "httpx",
+            self._httpx_bin or "httpx",
             "-l", httpx_input,
             "-json",
             "-o", httpx_output,
