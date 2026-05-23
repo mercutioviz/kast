@@ -108,7 +108,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
 
         # Verify normal processing occurred
         self.assertEqual(processed['plugin-name'], 'testssl')
-        self.assertEqual(processed['summary'], 'No vulnerabilities or cipher issues detected.')
+        self.assertEqual(processed['summary'], 'No vulnerabilities, cipher issues, or certificate problems detected.')
         self.assertIn('No SSL/TLS vulnerabilities', processed['details'])
         self.assertIn('secure', processed['executive_summary'])
 
@@ -170,7 +170,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
 
         # Verify correct counts in summary
         self.assertEqual(processed['plugin-name'], 'testssl')
-        self.assertEqual(processed['summary'], 'Found 2 vulnerability issue(s) and 1 TLS 1.2+ cipher issue(s).')
+        self.assertEqual(processed['summary'], 'Found 2 vulnerability issue(s), 1 TLS 1.2+ cipher issue(s).')
         self.assertEqual(len(processed['issues']), 3)  # 2 vulnerabilities + 1 cipher issue
 
         print(f"\n✓ Summary correctly reports vulnerability and cipher counts")

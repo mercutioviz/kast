@@ -83,8 +83,8 @@ def test_collect_schemas_handles_real_plugins():
     registry = PluginRegistry(logging.getLogger("test.real"))
     cm.collect_schemas_from_classes(registry.discover())
 
-    # All 12 plugins should have schemas registered
-    assert len(cm.plugin_schemas) == 12
+    # At least 13 plugins should have schemas registered (grows as plugins are added)
+    assert len(cm.plugin_schemas) >= 13
     # Sanity: well-known plugin names are present
     assert "whatweb" in cm.plugin_schemas
     assert "zap" in cm.plugin_schemas

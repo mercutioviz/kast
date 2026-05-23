@@ -379,15 +379,16 @@ class TestTestsslConfig(unittest.TestCase):
     def test_schema_defaults_extraction(self):
         """Verify we can extract all defaults from schema"""
         defaults = get_schema_defaults(TestsslPlugin.config_schema)
-        
+
         expected_defaults = {
             "timeout": 300,
             "test_vulnerabilities": True,
             "test_ciphers": True,
+            "test_server_defaults": True,
             "connect_timeout": 10,
             "warnings_batch_mode": True
         }
-        
+
         self.assertEqual(defaults, expected_defaults)
     
     def test_no_legacy_cli_args(self):

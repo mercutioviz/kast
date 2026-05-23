@@ -41,14 +41,16 @@ def test_issue_registry_loads():
 
 
 def test_plugin_loading_passes():
-    """All 12 plugins should discover and instantiate cleanly."""
+    """All plugins should discover and instantiate cleanly."""
     results = check_plugin_loading()
     # Two checks: discover + instantiate
     assert len(results) == 2
     assert all(r.status == OK for r in results)
-    # And the count should be 12
+    # Count is flexible — just verify N/N format (all succeeded)
     instantiate_result = next(r for r in results if r.name == "instantiate")
-    assert "12/12" in instantiate_result.detail
+    detail = instantiate_result.detail  # e.g. "13/13 instantiated"
+    total = detail.split("/")[0]
+    assert detail.startswith(f"{total}/{total}"), f"Not all plugins instantiated: {detail}"
 
 
 def test_results_dir_writable():
