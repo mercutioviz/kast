@@ -282,6 +282,27 @@ def check_issue_registry() -> CheckResult:
         )
 
 
+def check_katana_browser() -> CheckResult:
+    """Verify katana's bundled Chromium is cached for headless crawling."""
+    cache_dir = Path.home() / ".cache" / "rod" / "browser"
+    if cache_dir.exists():
+        builds = [p for p in cache_dir.iterdir() if p.is_dir() and p.name.startswith("chromium")]
+        if builds:
+            return CheckResult(
+                section="Katana Headless",
+                name="Chromium browser cache",
+                status=OK,
+                detail=f"found at {builds[0]}",
+            )
+    return CheckResult(
+        section="Katana Headless",
+        name="Chromium browser cache",
+        status=WARN,
+        detail="not yet downloaded (required for headless crawling)",
+        hint="Run once to pre-download (~80 MB): katana -u https://example.com -hl -d 1 -silent > /dev/null",
+    )
+
+
 def check_plugin_loading() -> List[CheckResult]:
     """Every plugin class instantiates without exception."""
     from kast.registry import PluginRegistry
@@ -323,6 +344,7 @@ CHECKS: List[Callable[[], CheckResult | List[CheckResult]]] = [
     check_python_version,
     check_python_modules,
     check_external_tools,
+    check_katana_browser,
     check_log_dir_writable,
     check_results_dir,
     check_config_files,

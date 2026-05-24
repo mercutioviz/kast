@@ -85,7 +85,7 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertEqual(plugin.retry, 1)
         self.assertIsNone(plugin.proxy)
         self.assertEqual(plugin.field_scope, "rdn")
-        self.assertEqual(plugin.headless, False)
+        self.assertEqual(plugin.headless, True)
         self.assertEqual(plugin.xhr_extraction, False)
         self.assertEqual(plugin.extension_filter, [])
         self.assertEqual(plugin.omit_body, True)
@@ -183,7 +183,7 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertIn("-ob", command)  # omit_body=True
         self.assertNotIn("-d ", command)  # depth=3 (default, not added)
         self.assertNotIn("-jc", command)  # js_crawl=False
-        self.assertNotIn("-hl", command)  # headless=False
+        self.assertIn("-hl", command)  # headless=True (default)
         self.assertNotIn("-rl ", command)  # rate_limit=150 (default, not added)
     
     def test_command_building_with_custom_depth(self):

@@ -61,6 +61,22 @@ def _is_waf_addressable(alert_name: str) -> bool:
     return any(s in name_lower for s in _WAF_ADDRESSABLE_SUBSTRINGS)
 
 
+# Maps ZAP passive/active scan rule IDs (pluginid) to kast issue registry IDs.
+# When ZAP fires one of these rules the corresponding named kast issue is surfaced
+# in the report alongside the raw alert list, so it gets WAF framing and TCO data.
+_ZAP_PLUGINID_TO_KAST_ISSUE = {
+    # Passive rules
+    "10062": "zap-pii-disclosure",            # PII Disclosure
+    "90022": "zap-application-error-disclosure",  # Application Error Disclosure
+    "10023": "zap-application-error-disclosure",  # Information Disclosure - Debug Errors
+    "10040": "zap-mixed-content",             # Secure Pages Include Mixed Content
+    "10040-1": "zap-mixed-content",           # Mixed Content (variant alertRef)
+    "10028": "zap-open-redirect",             # Open Redirect (passive)
+    # Active rules
+    "20019": "zap-open-redirect",             # Open Redirect (active)
+}
+
+
 class ZapPlugin(KastPlugin):
     priority = 200  # Run later (higher number = lower priority)
     
@@ -908,9 +924,10 @@ class ZapPlugin(KastPlugin):
             '0': 'Informational'
         }
         
-        # Group by risk, tag WAF-addressable
+        # Group by risk, tag WAF-addressable; map known rule IDs to kast issues
         risk_counts = {'High': 0, 'Medium': 0, 'Low': 0, 'Informational': 0}
         issues = []
+        kast_issues: list[str] = []  # named issue registry IDs surfaced from ZAP rules
         waf_addressable_count = 0
         code_fix_count = 0
 
@@ -925,6 +942,12 @@ class ZapPlugin(KastPlugin):
             else:
                 code_fix_count += 1
             issues.append(f"{alert_name} [{risk}]")
+
+            # Map to a named kast issue if this rule has a registry entry
+            plugin_id = str(alert.get('pluginid', ''))
+            kast_issue_id = _ZAP_PLUGINID_TO_KAST_ISSUE.get(plugin_id)
+            if kast_issue_id and kast_issue_id not in kast_issues:
+                kast_issues.append(kast_issue_id)
 
         # Calculate findings_count - total number of security alerts/vulnerabilities
         findings_count = total = sum(risk_counts.values())
@@ -974,12 +997,13 @@ class ZapPlugin(KastPlugin):
             "findings_count": findings_count,
             "summary": summary,
             "details": details,
-            "issues": issues[:50],  # Limit to 50 issues
+            "issues": kast_issues + issues[:50],  # named kast issues first, then ZAP alert strings
             "executive_summary": executive_summary,
             "provider_mode": provider_mode,
             "instance_info": instance_info,
             "waf_addressable_count": waf_addressable_count,
             "code_fix_count": code_fix_count,
+            "zap_kast_issues": kast_issues,  # registry IDs for TCO + WAF framing
         }
         
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")

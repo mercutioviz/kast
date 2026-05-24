@@ -1110,5 +1110,49 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-2 weeks",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "zap-pii-disclosure": {
+    "display_name": "PII Exposed in HTTP Response",
+    "description": "The ZAP passive scanner detected patterns matching Personally Identifiable Information (PII) — such as credit card numbers, Social Security Numbers, or email addresses — in an HTTP response body. Leaking PII violates GDPR, HIPAA, and PCI DSS, and may expose the organization to regulatory penalties.",
+    "remediation": "Identify the endpoint returning this data and determine whether the response should include it. Mask or redact sensitive values at the application layer. A WAF with data-loss prevention (DLP) rules can detect and block PII patterns in outbound responses before they reach the client.",
+    "severity": "High",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "zap-application-error-disclosure": {
+    "display_name": "Application Error / Stack Trace Exposed",
+    "description": "The ZAP passive scanner found application error messages, stack traces, or SQL error strings in HTTP responses. Verbose errors reveal internal file paths, framework versions, database schemas, and code logic — all intelligence an attacker can use to craft targeted exploits.",
+    "remediation": "Configure the application to display generic error pages in production and log detailed errors server-side only. A WAF can intercept error responses that contain telltale strings (stack trace signatures, SQL error keywords) and replace them with a sanitized response.",
+    "severity": "Medium",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "zap-mixed-content": {
+    "display_name": "Mixed Content (HTTPS Page Loads HTTP Resources)",
+    "description": "The ZAP passive scanner detected an HTTPS page that loads one or more resources (scripts, images, stylesheets, or iframes) over plain HTTP. Mixed content undermines transport security: an attacker on the same network can intercept or tamper with the HTTP sub-resource, compromising the integrity of the entire HTTPS page.",
+    "remediation": "Update all resource URLs to use HTTPS. A WAF can enforce HTTPS-only delivery and rewrite HTTP sub-resource references in responses to prevent mixed content.",
+    "severity": "Medium",
+    "category": "Transport Security",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "zap-open-redirect": {
+    "display_name": "Open Redirect",
+    "description": "The ZAP scanner detected a URL parameter that can redirect users to an arbitrary external domain. Attackers exploit open redirects in phishing campaigns — the redirect URL appears to originate from a trusted domain, making malicious links more convincing.",
+    "remediation": "Validate and whitelist redirect destinations at the application level. A WAF can inspect redirect parameters and block requests that attempt to redirect to untrusted external domains.",
+    "severity": "High",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }

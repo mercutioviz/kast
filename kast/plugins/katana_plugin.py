@@ -139,8 +139,8 @@ class KatanaPlugin(KastPlugin):
             },
             "headless": {
                 "type": "boolean",
-                "default": False,
-                "description": "Enable headless browser crawling (experimental)"
+                "default": True,
+                "description": "Enable headless browser crawling for full JavaScript app coverage (disable with --set katana.headless=false)"
             },
             "xhr_extraction": {
                 "type": "boolean",
@@ -194,7 +194,7 @@ class KatanaPlugin(KastPlugin):
         self.retry = self.get_config('retry', 1)
         self.proxy = self.get_config('proxy', None)
         self.field_scope = self.get_config('field_scope', "rdn")
-        self.headless = self.get_config('headless', False)
+        self.headless = self.get_config('headless', True)
         self.xhr_extraction = self.get_config('xhr_extraction', False)
         self.extension_filter = self.get_config('extension_filter', [])
         self.omit_body = self.get_config('omit_body', True)
