@@ -83,7 +83,8 @@ class TestTestsslConfig(unittest.TestCase):
             "test_vulnerabilities",
             "test_ciphers",
             "connect_timeout",
-            "warnings_batch_mode"
+            "warnings_batch_mode",
+            "test_protocols"
         ]
         
         for prop in expected_props:
@@ -104,7 +105,8 @@ class TestTestsslConfig(unittest.TestCase):
             "test_vulnerabilities": True,
             "test_ciphers": True,
             "connect_timeout": 10,
-            "warnings_batch_mode": True
+            "warnings_batch_mode": True,
+            "test_protocols": True
         }
         
         assert_config_values(plugin, expected_defaults)
@@ -385,6 +387,7 @@ class TestTestsslConfig(unittest.TestCase):
             "test_vulnerabilities": True,
             "test_ciphers": True,
             "test_server_defaults": True,
+            "test_protocols": True,
             "connect_timeout": 10,
             "warnings_batch_mode": True
         }

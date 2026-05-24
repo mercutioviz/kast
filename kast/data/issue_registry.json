@@ -1,4 +1,26 @@
 {
+  "SSLv2": {
+    "display_name": "SSLv2 Supported",
+    "description": "The server still accepts SSLv2 connections. SSLv2 is completely broken — it has fundamental design flaws and is vulnerable to DROWN and other attacks. No modern browser or client uses it.",
+    "remediation": "Disable SSLv2 immediately on the origin server. A WAF terminating TLS connections will enforce a minimum protocol version, eliminating SSLv2 exposure for traffic passing through it.",
+    "severity": "Critical",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "hours",
+    "waf_deployment_timeframe": "hours"
+  },
+  "SSLv3": {
+    "display_name": "SSLv3 Supported",
+    "description": "The server still accepts SSLv3 connections. SSLv3 is vulnerable to the POODLE attack (CVE-2014-3566), which allows an active network attacker to decrypt encrypted data including session cookies.",
+    "remediation": "Disable SSLv3 on the origin server. A WAF terminating TLS connections will enforce a minimum protocol version, eliminating SSLv3 exposure for traffic passing through it.",
+    "severity": "High",
+    "category": "Encryption",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "hours",
+    "waf_deployment_timeframe": "hours"
+  },
   "TLSv1.0": {
     "display_name": "TLSv1.0",
     "description": "TLSv1.0 is a deprecated encryption protocol that lacks modern security features.",

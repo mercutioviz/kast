@@ -54,6 +54,11 @@ class TestsslPlugin(KastPlugin):
                 "type": "boolean",
                 "default": True,
                 "description": "Test server defaults including certificate expiry and chain (-S flag)"
+            },
+            "test_protocols": {
+                "type": "boolean",
+                "default": True,
+                "description": "Test supported protocol versions to detect deprecated TLS 1.0/1.1 and SSLv2/v3 (-p flag)"
             }
         }
     }
@@ -81,6 +86,7 @@ class TestsslPlugin(KastPlugin):
         self.test_vulnerabilities = self.get_config('test_vulnerabilities', True)
         self.test_ciphers = self.get_config('test_ciphers', True)
         self.test_server_defaults = self.get_config('test_server_defaults', True)
+        self.test_protocols = self.get_config('test_protocols', True)
         self.connect_timeout = self.get_config('connect_timeout', 10)
         self.warnings_batch_mode = self.get_config('warnings_batch_mode', True)
 
@@ -88,6 +94,7 @@ class TestsslPlugin(KastPlugin):
                   f"vulnerabilities={self.test_vulnerabilities}, "
                   f"ciphers={self.test_ciphers}, "
                   f"server_defaults={self.test_server_defaults}, "
+                  f"protocols={self.test_protocols}, "
                   f"connect_timeout={self.connect_timeout}, "
                   f"warnings_batch={self.warnings_batch_mode}")
 
@@ -115,6 +122,8 @@ class TestsslPlugin(KastPlugin):
         cmd = ["testssl"]
         
         # Add test flags based on configuration
+        if self.test_protocols:
+            cmd.append("-p")
         if self.test_server_defaults:
             cmd.append("-S")
         if self.test_vulnerabilities:
@@ -176,11 +185,16 @@ class TestsslPlugin(KastPlugin):
                         timeout=self.timeout
                     )
                     if proc.returncode != 0:
-                        return self.get_result_dict(
-                            disposition="fail",
-                            results=proc.stderr.strip(),
-                            timestamp=timestamp
-                        )
+                        # testssl exits 1 when it finds warnings/issues but still writes
+                        # the JSON output file. If the file exists, treat as success.
+                        if os.path.exists(output_file):
+                            self.debug(f"testssl exited {proc.returncode} but output file exists — treating as success with findings")
+                        else:
+                            return self.get_result_dict(
+                                disposition="fail",
+                                results=proc.stderr.strip(),
+                                timestamp=timestamp
+                            )
                 except subprocess.TimeoutExpired:
                     return self.get_result_dict(
                         disposition="fail",
@@ -269,10 +283,14 @@ class TestsslPlugin(KastPlugin):
             
             return processed_path
         
-        # Extract vulnerabilities, cipher tests, and server defaults
+        # Extract protocols, vulnerabilities, cipher tests, and server defaults
+        protocols = scan_data.get("protocols", [])
         vulnerabilities = scan_data.get("vulnerabilities", [])
         cipher_tests = scan_data.get("cipherTests", [])
         server_defaults = scan_data.get("serverDefaults", [])
+
+        # Process protocols
+        proto_issues, proto_matrix_lines = self._process_protocols(protocols)
 
         # Process vulnerabilities
         vuln_issues = []
@@ -299,13 +317,17 @@ class TestsslPlugin(KastPlugin):
         cert_issues, cert_detail_lines = self._process_server_defaults(server_defaults)
 
         # Combine all issues
-        issues = vuln_issues + cipher_issues + cert_issues
+        issues = proto_issues + vuln_issues + cipher_issues + cert_issues
 
         # Build details section
         details_parts = []
 
+        if proto_matrix_lines:
+            details_parts.append("Protocol Support Matrix:")
+            details_parts.extend(proto_matrix_lines)
+
         if cert_issues:
-            details_parts.append(f"Certificate Issues ({len(cert_issues)}):")
+            details_parts.append(f"\nCertificate Issues ({len(cert_issues)}):")
             for line in cert_detail_lines:
                 details_parts.append(f"  • {line}")
 
@@ -320,19 +342,22 @@ class TestsslPlugin(KastPlugin):
                 details_parts.append(f"  • {issue}")
 
         if not issues:
-            details_parts.append("No SSL/TLS vulnerabilities, cipher issues, or certificate problems detected.")
+            details_parts.append("No SSL/TLS vulnerabilities, cipher issues, certificate problems, or deprecated protocols detected.")
 
         details = "\n".join(details_parts)
 
         # Build executive summary
+        proto_count = len(proto_issues)
         vuln_count = len(vuln_issues)
         cipher_count = len(cipher_issues)
         cert_count = len(cert_issues)
 
         if not issues:
-            executive_summary = "SSL/TLS configuration appears secure. No vulnerabilities, weak ciphers, or certificate issues detected."
+            executive_summary = "SSL/TLS configuration appears secure. No vulnerabilities, weak ciphers, certificate issues, or deprecated protocols detected."
         else:
             summary_parts = []
+            if proto_count > 0:
+                summary_parts.append(f"{proto_count} deprecated protocol(s)")
             if cert_count > 0:
                 summary_parts.append(f"{cert_count} certificate issue(s)")
             if vuln_count > 0:
@@ -345,7 +370,7 @@ class TestsslPlugin(KastPlugin):
         # Calculate findings_count
         findings_count = len(issues)
 
-        summary = self._generate_summary(findings, vuln_count=vuln_count, cipher_count=cipher_count, cert_count=cert_count)
+        summary = self._generate_summary(findings, vuln_count=vuln_count, cipher_count=cipher_count, cert_count=cert_count, proto_count=proto_count)
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -380,6 +405,59 @@ class TestsslPlugin(KastPlugin):
         write_json_atomic(processed_path, processed)
 
         return processed_path
+
+    # Maps testssl protocol IDs to kast issue registry keys.
+    _PROTOCOL_DISPLAY = {
+        "SSLv2": "SSLv2",
+        "SSLv3": "SSLv3",
+        "TLS1": "TLS 1.0",
+        "TLS1_1": "TLS 1.1",
+        "TLS1_2": "TLS 1.2",
+        "TLS1_3": "TLS 1.3",
+    }
+    _PROTOCOL_TO_KAST_ISSUE = {
+        "SSLv2": "SSLv2",
+        "SSLv3": "SSLv3",
+        "TLS1": "TLSv1.0",
+        "TLS1_1": "TLSv1.1",
+    }
+
+    def _process_protocols(self, protocols):
+        """Extract legacy-protocol issues and build protocol matrix lines.
+
+        Returns (proto_issues, matrix_lines).
+        proto_issues: list of kast registry IDs for deprecated/broken protocols found offered.
+        matrix_lines: list of strings suitable for the details section.
+        """
+        proto_issues = []
+        matrix_lines = []
+
+        for proto in protocols:
+            proto_id = proto.get("id", "")
+            finding = proto.get("finding", "")
+            severity = proto.get("severity", "")
+
+            display = self._PROTOCOL_DISPLAY.get(proto_id)
+            if display is None:
+                continue  # skip NPN/ALPN
+
+            is_offered = finding.startswith("offered") and "not offered" not in finding
+
+            if is_offered and severity not in ("OK", "INFO"):
+                status_str = f"OFFERED [{severity}]"
+            elif is_offered:
+                status_str = "offered (OK)"
+            else:
+                status_str = "not offered (OK)"
+
+            matrix_lines.append(f"  {display:<10} {status_str}")
+
+            kast_id = self._PROTOCOL_TO_KAST_ISSUE.get(proto_id)
+            if kast_id and is_offered and severity not in ("OK", "INFO"):
+                proto_issues.append(kast_id)
+                self.debug(f"Protocol issue found: {proto_id} -> {kast_id} [{severity}]")
+
+        return proto_issues, matrix_lines
 
     def _process_server_defaults(self, server_defaults):
         """
@@ -428,10 +506,10 @@ class TestsslPlugin(KastPlugin):
         self.debug(f"Certificate issues found: {cert_issues}")
         return cert_issues, cert_detail_lines
 
-    def _generate_summary(self, findings, vuln_count=None, cipher_count=None, cert_count=None):
+    def _generate_summary(self, findings, vuln_count=None, cipher_count=None, cert_count=None, proto_count=None):
         """Generate a human-readable summary from findings."""
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
-        self.debug(f"_generate_summary vuln_count: {vuln_count}, cipher_count: {cipher_count}, cert_count: {cert_count}")
+        self.debug(f"_generate_summary vuln_count: {vuln_count}, cipher_count: {cipher_count}, cert_count: {cert_count}, proto_count: {proto_count}")
 
         if not findings:
             self.debug("No findings, returning default message")
@@ -439,10 +517,13 @@ class TestsslPlugin(KastPlugin):
 
         if vuln_count is not None and cipher_count is not None:
             cert_count = cert_count or 0
-            if vuln_count == 0 and cipher_count == 0 and cert_count == 0:
-                return "No vulnerabilities, cipher issues, or certificate problems detected."
+            proto_count = proto_count or 0
+            if vuln_count == 0 and cipher_count == 0 and cert_count == 0 and proto_count == 0:
+                return "No vulnerabilities, cipher issues, certificate problems, or deprecated protocols detected."
 
             summary_parts = []
+            if proto_count > 0:
+                summary_parts.append(f"{proto_count} deprecated protocol(s)")
             if cert_count > 0:
                 summary_parts.append(f"{cert_count} certificate issue(s)")
             if vuln_count > 0:
@@ -524,6 +605,8 @@ class TestsslPlugin(KastPlugin):
         cmd = ["testssl"]
         
         # Add test flags based on configuration
+        if self.test_protocols:
+            cmd.append("-p")
         if self.test_server_defaults:
             cmd.append("-S")
         if self.test_vulnerabilities:
