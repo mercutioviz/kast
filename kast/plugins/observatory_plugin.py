@@ -41,6 +41,18 @@ _OBSERVATORY_RESULT_TO_ISSUE = {
     "permissions-policy-header-not-set": "missing-permissions-policy",
 }
 
+
+def _split_tests_by_status(tests):
+    """Partition a flat tests dict into {"passed": {...}, "failed": {...}}."""
+    passed = {}
+    failed = {}
+    for name, data in tests.items():
+        if isinstance(data, dict) and data.get("pass") is True:
+            passed[name] = data
+        else:
+            failed[name] = data
+    return {"passed": passed, "failed": failed}
+
 class ObservatoryPlugin(KastPlugin):
     priority = 5  # High priority (lower number = higher priority)
     
@@ -277,6 +289,13 @@ class ObservatoryPlugin(KastPlugin):
                 details = findings.get("results")
             issues = []
         else:
+            # Reshape findings.results.tests from a flat dict into
+            # {"passed": {...}, "failed": {...}} so the tree-json renderer
+            # groups results by status. Must run before _find_issues.
+            results = findings.get("results")
+            if isinstance(results, dict) and isinstance(results.get("tests"), dict):
+                results["tests"] = _split_tests_by_status(results["tests"])
+
             summary = self._generate_summary(findings)
             self.debug(f"{self.name} summary: {summary}")
 
@@ -334,9 +353,9 @@ class ObservatoryPlugin(KastPlugin):
         are kept as raw strings for forward compatibility.
         """
         issues = []
-        tests = findings.get("results", {}).get("tests", {})
+        failed = findings.get("results", {}).get("tests", {}).get("failed", {})
 
-        for test_name, test_data in tests.items():
+        for test_name, test_data in failed.items():
             if test_data.get("pass") is False:
                 result = test_data.get("result", "")
                 issue_id = _OBSERVATORY_RESULT_TO_ISSUE.get(result, result)
