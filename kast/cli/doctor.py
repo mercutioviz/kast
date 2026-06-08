@@ -24,11 +24,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
+import subprocess
 import sys
-from dataclasses import dataclass
+import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import click
 from rich.console import Console
@@ -148,6 +153,318 @@ def check_external_tools() -> List[CheckResult]:
                     hint=hint,
                 )
             )
+    return results
+
+
+# ---------------------------------------------------------------------------
+# External tool update checks (opt-in via --check-updates)
+#
+# Local version: subprocess the tool with its version flag, strip ANSI escapes,
+# extract via regex. Upstream version: GitHub Releases / npm registry / PyPI
+# JSON API over urllib (no new dep). Results cached at
+# ``~/.cache/kast/tool-updates.json`` with a 24h TTL.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ToolUpdateSpec:
+    binary: str
+    display_name: str
+    local_version_cmd: List[str]
+    local_version_regex: str
+    upstream_kind: str   # "github_release" | "npm" | "pypi"
+    upstream_id: str
+    update_hint: str
+
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+_VERSION_PROBE_TIMEOUT = 5
+_UPSTREAM_TIMEOUT = 5
+_CACHE_TTL_SECONDS = 86400  # 24 hours
+
+# Order mirrors EXTERNAL_TOOLS so the report sections line up visually.
+UPDATE_SPECS: List[ToolUpdateSpec] = [
+    ToolUpdateSpec(
+        binary="whatweb",
+        display_name="whatweb",
+        local_version_cmd=["whatweb", "--version"],
+        local_version_regex=r"WhatWeb version (\d+(?:\.\d+)+)",
+        upstream_kind="github_release",
+        upstream_id="urbanadventurer/WhatWeb",
+        update_hint="sudo apt upgrade whatweb  (or `git pull` if installed from source)",
+    ),
+    ToolUpdateSpec(
+        binary="wafw00f",
+        display_name="wafw00f",
+        local_version_cmd=["wafw00f", "-V"],
+        local_version_regex=r"WAFW00F\s*:\s*v?(\d+(?:\.\d+)+)",
+        upstream_kind="pypi",
+        upstream_id="wafw00f",
+        update_hint="pip install --upgrade wafw00f  (or: sudo apt upgrade wafw00f)",
+    ),
+    ToolUpdateSpec(
+        binary="testssl",
+        display_name="testssl.sh",
+        local_version_cmd=["testssl", "--version"],
+        local_version_regex=r"testssl[^\d]*version\s+(\d+(?:\.\d+)+)",
+        upstream_kind="github_release",
+        upstream_id="drwetter/testssl.sh",
+        update_hint="sudo apt upgrade testssl.sh  (or pull the latest from https://github.com/drwetter/testssl.sh)",
+    ),
+    ToolUpdateSpec(
+        binary="subfinder",
+        display_name="subfinder",
+        local_version_cmd=["subfinder", "-version"],
+        local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
+        upstream_kind="github_release",
+        upstream_id="projectdiscovery/subfinder",
+        update_hint="go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
+    ),
+    ToolUpdateSpec(
+        binary="katana",
+        display_name="katana",
+        local_version_cmd=["katana", "-version"],
+        local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
+        upstream_kind="github_release",
+        upstream_id="projectdiscovery/katana",
+        update_hint="go install github.com/projectdiscovery/katana/cmd/katana@latest",
+    ),
+    ToolUpdateSpec(
+        binary="httpx",
+        display_name="httpx",
+        local_version_cmd=["httpx", "-version"],
+        local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
+        upstream_kind="github_release",
+        upstream_id="projectdiscovery/httpx",
+        update_hint="go install github.com/projectdiscovery/httpx/cmd/httpx@latest",
+    ),
+    ToolUpdateSpec(
+        binary="mdn-http-observatory-scan",
+        display_name="mdn-http-observatory",
+        local_version_cmd=["mdn-http-observatory-scan", "--version"],
+        local_version_regex=r"(\d+(?:\.\d+)+)",
+        upstream_kind="npm",
+        upstream_id="@mdn/mdn-http-observatory",
+        update_hint="npm install -g @mdn/mdn-http-observatory --unsafe-perm",
+    ),
+]
+
+
+def _strip_ansi(text: str) -> str:
+    return _ANSI_RE.sub("", text)
+
+
+def _local_version(spec: ToolUpdateSpec) -> Optional[str]:
+    """Run the tool's version command, return the first version string or None."""
+    if shutil.which(spec.binary) is None:
+        return None
+    try:
+        proc = subprocess.run(
+            spec.local_version_cmd,
+            capture_output=True,
+            text=True,
+            timeout=_VERSION_PROBE_TIMEOUT,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return None
+
+    combined = _strip_ansi((proc.stdout or "") + "\n" + (proc.stderr or ""))
+    m = re.search(spec.local_version_regex, combined)
+    return m.group(1) if m else None
+
+
+def _http_get_json(url: str, headers: Optional[dict] = None) -> Optional[dict]:
+    """Stdlib JSON GET with timeout. Returns None on any error."""
+    req = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=_UPSTREAM_TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, OSError):
+        return None
+
+
+def _github_latest(repo: str) -> Optional[str]:
+    """Latest release tag from GitHub. Honors GITHUB_TOKEN if set."""
+    headers = {"Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    data = _http_get_json(f"https://api.github.com/repos/{repo}/releases/latest", headers)
+    if not data:
+        return None
+    tag = data.get("tag_name") or data.get("name") or ""
+    return tag.lstrip("v").strip() or None
+
+
+def _npm_latest(package: str) -> Optional[str]:
+    data = _http_get_json(f"https://registry.npmjs.org/{package}/latest")
+    if not data:
+        return None
+    return data.get("version") or None
+
+
+def _pypi_latest(package: str) -> Optional[str]:
+    data = _http_get_json(f"https://pypi.org/pypi/{package}/json")
+    if not data:
+        return None
+    return (data.get("info") or {}).get("version") or None
+
+
+def _upstream_version(spec: ToolUpdateSpec) -> Optional[str]:
+    if spec.upstream_kind == "github_release":
+        return _github_latest(spec.upstream_id)
+    if spec.upstream_kind == "npm":
+        return _npm_latest(spec.upstream_id)
+    if spec.upstream_kind == "pypi":
+        return _pypi_latest(spec.upstream_id)
+    return None
+
+
+def _version_tuple(v: str) -> tuple:
+    """Best-effort tuple-of-ints parse; drops non-numeric trailing pieces (-rc1, -dev, etc.)."""
+    parts = []
+    for piece in v.split("."):
+        m = re.match(r"(\d+)", piece)
+        if not m:
+            break
+        parts.append(int(m.group(1)))
+    return tuple(parts)
+
+
+def _compare_versions(local: str, latest: str) -> str:
+    """Return 'current' | 'outdated' | 'ahead' | 'unknown'."""
+    lt = _version_tuple(local)
+    rt = _version_tuple(latest)
+    if not lt or not rt:
+        return "unknown"
+    if lt == rt:
+        return "current"
+    if lt < rt:
+        return "outdated"
+    return "ahead"
+
+
+def _cache_path() -> Path:
+    base = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
+    return base / "kast" / "tool-updates.json"
+
+
+def _load_cache() -> dict:
+    path = _cache_path()
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_cache(cache: dict) -> None:
+    path = _cache_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cache, indent=2))
+    except OSError:
+        pass
+
+
+def _cached_upstream_version(spec: ToolUpdateSpec, *, use_cache: bool) -> Optional[str]:
+    key = f"{spec.upstream_kind}:{spec.upstream_id}"
+    now = time.time()
+    cache = _load_cache() if use_cache else {}
+
+    entry = cache.get(key) if use_cache else None
+    if entry and (now - entry.get("fetched_at", 0)) < _CACHE_TTL_SECONDS:
+        return entry.get("latest")
+
+    latest = _upstream_version(spec)
+    if latest is not None:
+        cache[key] = {"fetched_at": now, "latest": latest}
+        _save_cache(cache)
+    return latest
+
+
+def check_external_tool_updates(*, use_cache: bool = True) -> List[CheckResult]:
+    """For each spec with the binary in PATH: report current/outdated/ahead/unknown."""
+    results: List[CheckResult] = []
+    section = "External Tool Updates"
+
+    for spec in UPDATE_SPECS:
+        if shutil.which(spec.binary) is None:
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=INFO,
+                    detail="not installed (skipped)",
+                )
+            )
+            continue
+
+        local = _local_version(spec)
+        if local is None:
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=INFO,
+                    detail="could not determine installed version",
+                    hint=f"Run `{' '.join(spec.local_version_cmd)}` manually to inspect output.",
+                )
+            )
+            continue
+
+        latest = _cached_upstream_version(spec, use_cache=use_cache)
+        if latest is None:
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=INFO,
+                    detail=f"installed {local} — upstream check failed (network / rate limit)",
+                )
+            )
+            continue
+
+        status_str = _compare_versions(local, latest)
+        if status_str == "current":
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=OK,
+                    detail=f"{local} (current)",
+                )
+            )
+        elif status_str == "outdated":
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=WARN,
+                    detail=f"{local} → {latest} available",
+                    hint=spec.update_hint,
+                )
+            )
+        elif status_str == "ahead":
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=INFO,
+                    detail=f"installed {local} is ahead of upstream release {latest}",
+                )
+            )
+        else:
+            results.append(
+                CheckResult(
+                    section=section,
+                    name=spec.display_name,
+                    status=INFO,
+                    detail=f"installed {local}, upstream {latest} (could not compare)",
+                )
+            )
+
     return results
 
 
@@ -500,7 +817,11 @@ def _print_manual_remediation_checklist(results: List[CheckResult]) -> None:
               help="Emit machine-readable JSON instead of formatted tables.")
 @click.option("--fix", "fix", is_flag=True,
               help="Apply safe auto-fixes (mkdir, config init); print the rest.")
-def doctor(json_output: bool, fix: bool) -> None:
+@click.option("--check-updates", "check_updates", is_flag=True,
+              help="Compare installed external tool versions to upstream (network; cached 24h).")
+@click.option("--no-cache", "no_cache", is_flag=True,
+              help="Force a fresh upstream fetch for --check-updates (ignores 24h cache).")
+def doctor(json_output: bool, fix: bool, check_updates: bool, no_cache: bool) -> None:
     """Run environment health checks (Python, tools, perms, plugins)."""
     results = run_all_checks()
 
@@ -509,6 +830,9 @@ def doctor(json_output: bool, fix: bool) -> None:
         fix_results = _apply_safe_fixes()
         # Re-run the checks after fixes so the report reflects new state.
         results = run_all_checks()
+
+    if check_updates:
+        results.extend(check_external_tool_updates(use_cache=not no_cache))
 
     if json_output:
         payload = {
