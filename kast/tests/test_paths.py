@@ -102,6 +102,18 @@ class TestFromConfigFiles(unittest.TestCase):
         with patch.object(paths, "_CONFIG_SEARCH_PATHS", [config_path]):
             self.assertIsNone(paths._from_config_files())
 
+    def test_returns_none_on_permission_error_for_exists_check(self):
+        """A PermissionError from path.exists() must not propagate (service-user scenario)."""
+        blocked_dir = self.tmpdir / "blocked_config_dir"
+        blocked_dir.mkdir()
+        blocked_dir.chmod(0o000)
+        try:
+            inaccessible_path = blocked_dir / "config.yaml"
+            with patch.object(paths, "_CONFIG_SEARCH_PATHS", [inaccessible_path]):
+                self.assertIsNone(paths._from_config_files())
+        finally:
+            blocked_dir.chmod(0o700)
+
     def test_first_file_wins(self):
         first = self.tmpdir / "first.yaml"
         first.write_text("global:\n  results_dir: /first\n")

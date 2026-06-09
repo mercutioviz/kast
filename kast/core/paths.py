@@ -32,10 +32,10 @@ _CONFIG_SEARCH_PATHS = [
 
 def _from_config_files() -> Optional[str]:
     for path in _CONFIG_SEARCH_PATHS:
-        path = path.expanduser()
-        if not path.exists():
-            continue
         try:
+            path = path.expanduser()
+            if not path.exists():
+                continue
             with open(path) as f:
                 data = yaml.safe_load(f) or {}
         except (OSError, yaml.YAMLError):
