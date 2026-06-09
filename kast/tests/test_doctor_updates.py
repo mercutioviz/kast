@@ -26,12 +26,14 @@ from kast.cli.doctor import (
     _local_version,
     _npm_latest,
     _pypi_latest,
+    _resolve_binary,
     _save_cache,
     _strip_ansi,
     _upstream_version,
     _version_tuple,
     check_external_tool_updates,
 )
+from kast.core.external_binaries import find_pd_httpx
 
 
 # ----- regex fixtures: real --version output captured 2026-06 -----
@@ -153,10 +155,24 @@ class TestLocalVersion(unittest.TestCase):
              patch("kast.cli.doctor.subprocess.run", return_value=_make_proc(stderr=OUTPUT_SUBFINDER)):
             self.assertEqual(_local_version(_spec_by_binary("subfinder")), "2.14.0")
 
-    def test_httpx(self):
-        with patch("kast.cli.doctor.shutil.which", return_value="/usr/bin/httpx"), \
-             patch("kast.cli.doctor.subprocess.run", return_value=_make_proc(stderr=OUTPUT_HTTPX)):
-            self.assertEqual(_local_version(_spec_by_binary("httpx")), "1.9.0")
+    def test_httpx_uses_path_resolver_not_shutil_which(self):
+        """httpx has a custom resolver to dodge the Python venv shadow."""
+        spec = _spec_by_binary("httpx")
+        captured_cmd = []
+
+        def fake_run(cmd, **kwargs):
+            captured_cmd.extend(cmd)
+            return _make_proc(stderr=OUTPUT_HTTPX)
+
+        # shutil.which would return the venv-shadowed Python httpx; resolver wins.
+        with patch("kast.cli.doctor.shutil.which", return_value="/.venv/bin/httpx"), \
+             patch.object(spec, "path_resolver", return_value="/usr/local/bin/httpx"), \
+             patch("kast.cli.doctor.subprocess.run", side_effect=fake_run):
+            self.assertEqual(_local_version(spec), "1.9.0")
+
+        # The subprocess must execute the resolved path, not the bare binary name.
+        self.assertEqual(captured_cmd[0], "/usr/local/bin/httpx")
+        self.assertEqual(captured_cmd[1], "-version")
 
     def test_observatory(self):
         with patch("kast.cli.doctor.shutil.which", return_value="/usr/bin/mdn-http-observatory-scan"), \
@@ -178,6 +194,36 @@ class TestLocalVersion(unittest.TestCase):
         with patch("kast.cli.doctor.shutil.which", return_value="/usr/bin/katana"), \
              patch("kast.cli.doctor.subprocess.run", return_value=_make_proc(stdout="garbage")):
             self.assertIsNone(_local_version(_spec_by_binary("katana")))
+
+
+# ----- binary resolution (venv shadow workaround) -----
+
+
+class TestResolveBinary(unittest.TestCase):
+    def test_falls_back_to_shutil_which_when_no_resolver(self):
+        spec = _spec_by_binary("katana")
+        self.assertIsNone(spec.path_resolver)
+        with patch("kast.cli.doctor.shutil.which", return_value="/usr/bin/katana"):
+            self.assertEqual(_resolve_binary(spec), "/usr/bin/katana")
+
+    def test_uses_resolver_when_set(self):
+        spec = _spec_by_binary("httpx")
+        with patch.object(spec, "path_resolver", return_value="/opt/httpx"):
+            self.assertEqual(_resolve_binary(spec), "/opt/httpx")
+
+    def test_resolver_returning_none_bubbles_up(self):
+        spec = _spec_by_binary("httpx")
+        with patch.object(spec, "path_resolver", return_value=None):
+            self.assertIsNone(_resolve_binary(spec))
+
+    def test_httpx_spec_wired_to_find_pd_httpx(self):
+        spec = _spec_by_binary("httpx")
+        self.assertIs(spec.path_resolver, find_pd_httpx)
+
+    def test_no_other_spec_has_a_resolver(self):
+        # Only httpx needs the workaround today; flag if we add more silently.
+        with_resolver = [s.binary for s in UPDATE_SPECS if s.path_resolver is not None]
+        self.assertEqual(with_resolver, ["httpx"])
 
 
 # ----- upstream fetchers -----

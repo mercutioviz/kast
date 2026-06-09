@@ -39,6 +39,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from kast.core.external_binaries import find_pd_httpx
+
 console = Console()
 
 
@@ -175,6 +177,10 @@ class ToolUpdateSpec:
     upstream_kind: str   # "github_release" | "npm" | "pypi"
     upstream_id: str
     update_hint: str
+    # Optional override for binary resolution. Default is shutil.which(binary).
+    # Used for tools whose name collides with a Python package shipped in the
+    # kast venv (httpx). Returns the resolved path or None.
+    path_resolver: Optional[Callable[[], Optional[str]]] = None
 
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
@@ -237,6 +243,7 @@ UPDATE_SPECS: List[ToolUpdateSpec] = [
         upstream_kind="github_release",
         upstream_id="projectdiscovery/httpx",
         update_hint="go install github.com/projectdiscovery/httpx/cmd/httpx@latest",
+        path_resolver=find_pd_httpx,
     ),
     ToolUpdateSpec(
         binary="mdn-http-observatory-scan",
@@ -254,13 +261,26 @@ def _strip_ansi(text: str) -> str:
     return _ANSI_RE.sub("", text)
 
 
+def _resolve_binary(spec: ToolUpdateSpec) -> Optional[str]:
+    """Return the absolute path to the binary this spec should invoke, or None.
+
+    Custom ``path_resolver`` wins (used for tools whose PATH name collides with
+    a Python venv entry point — currently only httpx).
+    """
+    if spec.path_resolver is not None:
+        return spec.path_resolver()
+    return shutil.which(spec.binary)
+
+
 def _local_version(spec: ToolUpdateSpec) -> Optional[str]:
     """Run the tool's version command, return the first version string or None."""
-    if shutil.which(spec.binary) is None:
+    resolved = _resolve_binary(spec)
+    if resolved is None:
         return None
+    cmd = [resolved] + list(spec.local_version_cmd[1:])
     try:
         proc = subprocess.run(
-            spec.local_version_cmd,
+            cmd,
             capture_output=True,
             text=True,
             timeout=_VERSION_PROBE_TIMEOUT,
@@ -390,7 +410,7 @@ def check_external_tool_updates(*, use_cache: bool = True) -> List[CheckResult]:
     section = "External Tool Updates"
 
     for spec in UPDATE_SPECS:
-        if shutil.which(spec.binary) is None:
+        if _resolve_binary(spec) is None:
             results.append(
                 CheckResult(
                     section=section,

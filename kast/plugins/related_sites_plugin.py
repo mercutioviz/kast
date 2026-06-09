@@ -18,35 +18,7 @@ from kast.core.atomic import write_json_atomic
 from pprint import pformat
 import tldextract
 
-# The anthropic SDK (required by kast) pulls in the Python httpx HTTP client as a
-# dependency.  pip installs an entry point also named 'httpx' into the virtualenv's
-# bin/, which shadows the ProjectDiscovery httpx CLI at /usr/local/bin/httpx when
-# the venv is active.  Search well-known system install paths first so we always
-# invoke the correct binary.
-_PD_HTTPX_CANDIDATES = [
-    "/usr/local/bin/httpx",
-    "/usr/bin/httpx",
-    os.path.expanduser("~/go/bin/httpx"),
-    "/opt/homebrew/bin/httpx",  # macOS
-]
-
-
-def _find_pd_httpx() -> str | None:
-    """Return the path to the ProjectDiscovery httpx binary, or None."""
-    for path in _PD_HTTPX_CANDIDATES:
-        if os.path.isfile(path) and os.access(path, os.X_OK):
-            return path
-    # Last resort: walk PATH entries manually, skipping any that look like a
-    # Python virtualenv bin (they contain a 'python' or 'activate' sibling).
-    for directory in os.environ.get("PATH", "").split(os.pathsep):
-        candidate = os.path.join(directory, "httpx")
-        if not (os.path.isfile(candidate) and os.access(candidate, os.X_OK)):
-            continue
-        activate = os.path.join(directory, "activate")
-        if os.path.exists(activate):
-            continue  # skip virtualenv bin
-        return candidate
-    return None
+from kast.core.external_binaries import find_pd_httpx as _find_pd_httpx
 
 class RelatedSitesPlugin(KastPlugin):
     priority = 45  # After initial recon, before deep analysis
