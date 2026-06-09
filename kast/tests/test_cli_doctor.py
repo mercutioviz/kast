@@ -7,6 +7,9 @@ otherwise) and the JSON output shape (consumed by external tooling).
 """
 
 import json
+import os
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -57,6 +60,95 @@ def test_results_dir_writable():
     """~/kast_results should be creatable in any normal environment."""
     result = check_results_dir()
     assert result.status == OK
+
+
+def test_results_dir_accepts_explicit_path(tmp_path):
+    """An explicit path should be checked and reported in the result name."""
+    custom = tmp_path / "custom_results"
+    result = check_results_dir(custom)
+    assert result.status == OK
+    assert str(custom) in result.name
+    assert custom.exists()
+
+
+def test_results_dir_fail_when_path_uncreatable(tmp_path):
+    """A path under a non-writable parent should produce a FAIL with the new hint."""
+    blocked_parent = tmp_path / "blocked"
+    blocked_parent.mkdir()
+    blocked_parent.chmod(0o500)  # read+exec, no write
+    try:
+        target = blocked_parent / "subdir" / "results"
+        result = check_results_dir(target)
+        assert result.status == FAIL
+        assert "KAST_RESULTS_DIR" in result.hint
+        assert "global.results_dir" in result.hint
+    finally:
+        blocked_parent.chmod(0o700)
+
+
+def test_doctor_results_dir_flag_threads_through_to_check(tmp_path):
+    """`kast doctor --results-dir X` must forward X to run_all_checks."""
+    custom = tmp_path / "from-flag"
+    captured = {}
+
+    def fake_run(results_dir=None):
+        captured["arg"] = results_dir
+        return [CheckResult(section="Test", name="x", status=OK)]
+
+    with patch("kast.cli.doctor.run_all_checks", side_effect=fake_run):
+        runner = CliRunner()
+        runner.invoke(doctor, ["--results-dir", str(custom)])
+    assert captured["arg"] == custom
+
+
+def test_doctor_results_dir_env_var_honored(tmp_path):
+    """`KAST_RESULTS_DIR` should be picked up when no flag is given."""
+    custom = tmp_path / "from-env"
+    captured = {}
+
+    def fake_run(results_dir=None):
+        captured["arg"] = results_dir
+        return [CheckResult(section="Test", name="x", status=OK)]
+
+    env = {**os.environ, "KAST_RESULTS_DIR": str(custom)}
+    with patch("kast.cli.doctor.run_all_checks", side_effect=fake_run):
+        runner = CliRunner()
+        runner.invoke(doctor, [], env=env)
+    assert captured["arg"] == custom
+
+
+def test_doctor_results_dir_flag_overrides_env(tmp_path):
+    """The CLI flag must take precedence over `KAST_RESULTS_DIR`."""
+    from_flag = tmp_path / "from-flag"
+    from_env = tmp_path / "from-env"
+    captured = {}
+
+    def fake_run(results_dir=None):
+        captured["arg"] = results_dir
+        return [CheckResult(section="Test", name="x", status=OK)]
+
+    env = {**os.environ, "KAST_RESULTS_DIR": str(from_env)}
+    with patch("kast.cli.doctor.run_all_checks", side_effect=fake_run):
+        runner = CliRunner()
+        runner.invoke(doctor, ["--results-dir", str(from_flag)], env=env)
+    assert captured["arg"] == from_flag
+
+
+def test_doctor_fix_forwards_results_dir_to_apply_safe_fixes(tmp_path):
+    """`--fix` must pass the resolved results_dir to _apply_safe_fixes too."""
+    custom = tmp_path / "from-flag"
+    captured = {}
+
+    def fake_fix(results_dir=None):
+        captured["arg"] = results_dir
+        return []
+
+    with patch("kast.cli.doctor.run_all_checks",
+               return_value=[CheckResult(section="Test", name="x", status=OK)]), \
+         patch("kast.cli.doctor._apply_safe_fixes", side_effect=fake_fix):
+        runner = CliRunner()
+        runner.invoke(doctor, ["--results-dir", str(custom), "--fix"])
+    assert captured["arg"] == custom
 
 
 # -- driver / Click command --------------------------------------------------

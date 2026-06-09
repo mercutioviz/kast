@@ -29,6 +29,7 @@ from rich.table import Table
 from kast.cli._shared import make_args_namespace
 from kast.config_manager import ConfigManager
 from kast.core.atomic import write_json_atomic
+from kast.core.paths import resolve_results_dir
 from kast.orchestrator import ScannerOrchestrator
 from kast.registry import PluginRegistry
 
@@ -183,8 +184,12 @@ def _read_scan_metadata(scan_dir: Path) -> dict:
 
 
 def _resolve_results_dir() -> Path:
-    """Default scan-storage location (matches what `kast scan` uses)."""
-    return Path.home() / "kast_results"
+    """Base scan-storage directory.
+
+    Honors ``--results-dir`` / ``KAST_RESULTS_DIR`` / ``global.results_dir``
+    in config / default ``~/kast_results``. See ``kast.core.paths``.
+    """
+    return resolve_results_dir()
 
 
 @scan.command(name="list")
@@ -543,7 +548,7 @@ def _run_scan(
         out_dir = Path(output_dir).expanduser()
     else:
         now = datetime.now().strftime("%Y%m%d-%H%M%S")
-        out_dir = Path.home() / "kast_results" / f"{target}-{now}"
+        out_dir = _resolve_results_dir() / f"{target}-{now}"
 
     is_report_only = bool(report_only_path)
     if is_report_only:

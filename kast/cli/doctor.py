@@ -40,6 +40,7 @@ from rich.console import Console
 from rich.table import Table
 
 from kast.core.external_binaries import find_pd_httpx
+from kast.core.paths import resolve_results_dir
 
 console = Console()
 
@@ -517,9 +518,13 @@ def check_log_dir_writable(log_dir: str = "/var/log/kast/") -> CheckResult:
         )
 
 
-def check_results_dir() -> CheckResult:
-    """Default results dir is ~/kast_results — must be creatable."""
-    p = Path.home() / "kast_results"
+def check_results_dir(path: Optional[Path] = None) -> CheckResult:
+    """Verify the resolved results dir is creatable.
+
+    Resolution honors ``--results-dir`` / ``KAST_RESULTS_DIR`` /
+    ``global.results_dir`` in config / default ``~/kast_results``.
+    """
+    p = path if path is not None else resolve_results_dir()
     try:
         p.mkdir(parents=True, exist_ok=True)
         return CheckResult(
@@ -534,7 +539,7 @@ def check_results_dir() -> CheckResult:
             name=f"results dir ({p})",
             status=FAIL,
             detail=str(e),
-            hint="Pass an alternate path via --output-dir <path> on each scan.",
+            hint="Pass an alternate path via --results-dir, KAST_RESULTS_DIR, or global.results_dir in config.",
         )
 
 
@@ -690,11 +695,19 @@ CHECKS: List[Callable[[], CheckResult | List[CheckResult]]] = [
 ]
 
 
-def run_all_checks() -> List[CheckResult]:
-    """Run every check and return a flat list of CheckResult."""
+def run_all_checks(results_dir: Optional[Path] = None) -> List[CheckResult]:
+    """Run every check and return a flat list of CheckResult.
+
+    ``results_dir`` is forwarded to ``check_results_dir`` so callers (e.g.
+    the ``doctor`` Click command) can honor ``--results-dir`` overrides.
+    """
+    resolved = results_dir if results_dir is not None else resolve_results_dir()
     out: List[CheckResult] = []
     for check in CHECKS:
-        result = check()
+        if check is check_results_dir:
+            result = check_results_dir(resolved)
+        else:
+            result = check()
         if isinstance(result, list):
             out.extend(result)
         else:
@@ -750,7 +763,7 @@ def render_summary(results: List[CheckResult]) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _apply_safe_fixes() -> List[CheckResult]:
+def _apply_safe_fixes(results_dir: Optional[Path] = None) -> List[CheckResult]:
     """Run safe auto-fixes; return per-fix CheckResults summarizing actions taken.
 
     Safe fixes only — anything system-mutating (apt / go install) is left for
@@ -759,7 +772,8 @@ def _apply_safe_fixes() -> List[CheckResult]:
     section = "Auto-fix"
     fixes: List[CheckResult] = []
 
-    results_dir = Path.home() / "kast_results"
+    if results_dir is None:
+        results_dir = resolve_results_dir()
     if not results_dir.exists():
         try:
             results_dir.mkdir(parents=True, exist_ok=True)
@@ -841,15 +855,20 @@ def _print_manual_remediation_checklist(results: List[CheckResult]) -> None:
               help="Compare installed external tool versions to upstream (network; cached 24h).")
 @click.option("--no-cache", "no_cache", is_flag=True,
               help="Force a fresh upstream fetch for --check-updates (ignores 24h cache).")
-def doctor(json_output: bool, fix: bool, check_updates: bool, no_cache: bool) -> None:
+@click.option("--results-dir", "results_dir", type=click.Path(),
+              help="Override the results dir checked by --fix and the perms check. "
+                   "Precedence: this flag > $KAST_RESULTS_DIR > global.results_dir in config > ~/kast_results.")
+def doctor(json_output: bool, fix: bool, check_updates: bool, no_cache: bool,
+           results_dir: Optional[str]) -> None:
     """Run environment health checks (Python, tools, perms, plugins)."""
-    results = run_all_checks()
+    resolved_results_dir = resolve_results_dir(results_dir)
+    results = run_all_checks(resolved_results_dir)
 
     fix_results: List[CheckResult] = []
     if fix:
-        fix_results = _apply_safe_fixes()
+        fix_results = _apply_safe_fixes(resolved_results_dir)
         # Re-run the checks after fixes so the report reflects new state.
-        results = run_all_checks()
+        results = run_all_checks(resolved_results_dir)
 
     if check_updates:
         results.extend(check_external_tool_updates(use_cache=not no_cache))
