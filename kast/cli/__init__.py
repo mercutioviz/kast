@@ -15,7 +15,6 @@ in v3 form (subcommand first) passes through unchanged.
 from __future__ import annotations
 
 import sys
-from typing import List
 
 # v3 subcommands recognized as already-translated argv.
 V3_SUBCOMMANDS = frozenset({

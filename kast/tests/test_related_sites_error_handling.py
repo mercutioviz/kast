@@ -8,13 +8,9 @@ the results field is a string error message instead of a dict.
 
 import json
 import os
-import sys
 import tempfile
 import unittest
 from unittest.mock import Mock
-
-# Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from kast.plugins.related_sites_plugin import RelatedSitesPlugin
 
@@ -167,14 +163,3 @@ class TestRelatedSitesErrorHandling(unittest.TestCase):
                 self.assertEqual(processed["findings_count"], 0)
 
 
-def run_tests():
-    """Run the test suite."""
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(TestRelatedSitesErrorHandling)
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    return 0 if result.wasSuccessful() else 1
-
-
-if __name__ == '__main__':
-    sys.exit(run_tests())

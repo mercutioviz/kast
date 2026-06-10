@@ -102,7 +102,7 @@ def plugins_show(name: str, json_output: bool) -> None:
         raise click.UsageError(
             f"No plugin named {name!r}. Available plugin names: "
             f"{', '.join(available_names)}"
-        )
+        ) from None
 
     info = _plugin_to_dict(plugin)
     info["dependencies"] = [

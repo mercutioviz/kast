@@ -7,12 +7,8 @@ nullable fields, and backward compatibility with legacy CLI arguments.
 """
 import os
 import shutil
-import sys
 import unittest
 from unittest.mock import MagicMock
-
-# Add kast to path
-sys.path.insert(0, '/opt/kast')
 
 from kast.config_manager import ConfigManager
 from kast.plugins.related_sites_plugin import RelatedSitesPlugin

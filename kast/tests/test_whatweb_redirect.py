@@ -1,12 +1,7 @@
-#!/usr/bin/env python3
 """
-Test script to verify whatweb plugin domain redirect detection.
+Verify whatweb plugin's domain-redirect detection emits the expected
+recommendation when a target redirects to a different apex domain.
 """
-
-import sys
-
-# Add kast to path
-sys.path.insert(0, '/opt/kast')
 
 from argparse import Namespace
 
@@ -44,49 +39,15 @@ test_data = [
 ]
 
 def test_domain_redirect_detection():
-    """Test that domain redirects are properly detected."""
-    print("Testing WhatWeb domain redirect detection...")
-    print("=" * 60)
-
-    # Create a mock CLI args object
-    cli_args = Namespace(verbose=True)
-
-    # Create plugin instance
-    plugin = WhatWebPlugin(cli_args)
-
-    # Test the redirect detection
+    """Domain redirects should produce a recommendation naming both the
+    redirect target and the source."""
+    plugin = WhatWebPlugin(Namespace(verbose=True))
     recommendations = plugin._detect_domain_redirects(test_data)
 
-    print(f"\nNumber of recommendations found: {len(recommendations)}")
-    print("\nRecommendations:")
-    print("-" * 60)
-
-    for rec in recommendations:
-        print(f"  {rec}")
-
-    print("\n" + "=" * 60)
-
-    # Verify the expected recommendation is present
     expected_domain = "www.sanger.k12.ca.us"
     expected_from = "sanger.k12.ca.us"
 
-    found = False
-    for rec in recommendations:
-        if expected_domain in rec and expected_from in rec:
-            found = True
-            print(f"\n✓ SUCCESS: Found expected recommendation for {expected_domain}")
-            break
-
-    if not found:
-        print(f"\n✗ FAILURE: Did not find recommendation for {expected_domain}")
-        return False
-
-    # Verify we don't have duplicate recommendations
-    if len(recommendations) > 1:
-        print(f"\n⚠ WARNING: Expected 1 recommendation but got {len(recommendations)}")
-
-    return True
-
-if __name__ == "__main__":
-    success = test_domain_redirect_detection()
-    sys.exit(0 if success else 1)
+    assert any(
+        expected_domain in rec and expected_from in rec
+        for rec in recommendations
+    ), f"No recommendation found for {expected_domain}. Got: {recommendations}"

@@ -45,7 +45,7 @@ def _load_registry(path: Path) -> dict:
         raise click.UsageError(
             f"Registry at {path} is not valid JSON: {e}. "
             f"Run `kast doctor` to diagnose."
-        )
+        ) from e
 
 
 def _save_registry(path: Path, data: dict) -> None:
@@ -243,7 +243,7 @@ def registry_promote(scan_dir: str, accept_all: bool, dry_run: bool) -> None:
     try:
         missing_payload = json.loads(missing_path.read_text())
     except json.JSONDecodeError as e:
-        raise click.UsageError(f"Failed to parse {missing_path}: {e}")
+        raise click.UsageError(f"Failed to parse {missing_path}: {e}") from e
 
     candidates = missing_payload.get("missing_issues", [])
     if not candidates:

@@ -6,13 +6,9 @@ Description: Test the ftap plugin post-processing functionality
 import json
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 from unittest.mock import Mock
-
-# Add kast to path
-sys.path.insert(0, '/opt/kast')
 
 from kast.plugins.ftap_plugin import FtapPlugin
 

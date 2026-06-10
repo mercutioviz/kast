@@ -7,13 +7,9 @@ that config values are actually used in execution.
 """
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
-
-# Add kast to path
-sys.path.insert(0, '/opt/kast')
 
 from kast.config_manager import ConfigManager
 from kast.plugins.testssl_plugin import TestsslPlugin

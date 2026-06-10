@@ -15,6 +15,8 @@ from kast.plugins.base import KastPlugin
 
 
 class TestsslPlugin(KastPlugin):
+    __test__ = False  # pytest: this is a plugin class, not a test class
+
     priority = 50  # Set plugin run order (lower runs earlier)
 
     # Configuration schema for kast-web integration

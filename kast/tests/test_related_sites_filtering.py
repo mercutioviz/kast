@@ -6,13 +6,8 @@ This test verifies that the plugin correctly filters out the original target
 from the discovered subdomains to avoid duplication in results.
 """
 
-import os
-import sys
 import unittest
 from unittest.mock import Mock
-
-# Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from kast.plugins.related_sites_plugin import RelatedSitesPlugin
 
@@ -196,14 +191,3 @@ class TestRelatedSitesFiltering(unittest.TestCase):
         self.assertIn("mail.example.com", filtered)
 
 
-def run_tests():
-    """Run the test suite."""
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(TestRelatedSitesFiltering)
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    return 0 if result.wasSuccessful() else 1
-
-
-if __name__ == '__main__':
-    sys.exit(run_tests())

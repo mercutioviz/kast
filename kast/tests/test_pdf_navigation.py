@@ -1,14 +1,6 @@
-#!/usr/bin/env python3
 """
-Test script to generate a sample PDF report with navigation features.
-This script creates a PDF with multiple tools and issues to test all navigation links.
+Smoke test: generate a sample PDF report with navigation features.
 """
-
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from kast.report import generate_pdf_report
 
@@ -118,29 +110,4 @@ def test_pdf_navigation():
     output_path = "test_navigation_report.pdf"
     target = "example.com"
 
-    print("Generating PDF report with navigation features...")
-    print(f"Target: {target}")
-    print(f"Output: {output_path}")
-    print(f"Tools: {len(plugin_results)}")
-
-    try:
-        generate_pdf_report(plugin_results, output_path, target=target)
-        print("\n✓ PDF report generated successfully!")
-        print("\nThe report includes:")
-        print("  • Table of Contents with links to all major sections")
-        print("  • Clickable severity boxes on the cover page")
-        print("  • Executive Summary with 'View Details' links to tools")
-        print("  • Issues section with 'View tool details' links")
-        print("  • Tool sections with navigation headers (Back to TOC, Tool Index, Previous/Next)")
-        print(f"\nOpen '{output_path}' to test the navigation links.")
-        return True
-    except Exception as e:
-        print(f"\n✗ Error generating PDF: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-
-if __name__ == "__main__":
-    success = test_pdf_navigation()
-    sys.exit(0 if success else 1)
+    generate_pdf_report(plugin_results, output_path, target=target)
