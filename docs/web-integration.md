@@ -208,32 +208,28 @@ absence does NOT mean the scan failed mid-flight.
 
 ## Surface 4 — Implementation history (gaps closed against the contract)
 
-This section tracks contract-violating implementation details that
+This section records contract-violating implementation details that
 existed in v2 and have since been brought into compliance. Keep the
 entries here so future work doesn't re-introduce the violations.
 
-### Atomic-write requirement (RESOLVED in v3 Phase A11)
+### Atomic-write requirement (resolved in v3)
 
 The contract requires atomic writes for `_processed.json` (state
 machine § Invariants 3) and for `zap_scan_progress.json` (ZAP § Invariant
 2). v2.14 wrote both directly via `with open(path, 'w') ... json.dump(...)`,
 which left a window where a kast-web reader could observe a partial write.
 
-**v3 fix:** `kast/core/atomic.py:write_json_atomic(path, data, **kwargs)`
-writes to `<path>.tmp` then `os.replace`s into place. Migration of all
-27 v2 call sites in `kast/plugins/*`, `kast/main.py`,
-`kast/report_builder.py`, and `kast/scripts/zap_api_client.py` was the
-A11 commit. Plugin authoring docs (`kast/plugins/README.md`) updated
-to teach the new pattern.
-
-**Excluded from migration (deliberately):** `kast/scripts/zap_providers.py`
-and `kast/scripts/cleanup_orphaned_resources.py` are part of the cloud
-subsystem migrating to kast-web in Phase D; their writes go with the
-subsystem.
+**Fix:** `kast/core/atomic.py:write_json_atomic(path, data, **kwargs)`
+writes to `<path>.tmp` then `os.replace`s into place — POSIX `rename(2)`
+is atomic. Every state-bearing JSON write in `kast/plugins/*`,
+`kast/cli/*`, `kast/report/*`, and `kast/scripts/zap_api_client.py`
+goes through this helper. The cloud subsystem that previously held
+the remaining non-atomic writes was removed from this repo entirely
+and now lives in kast-web at `kast-web/app/cloud/`.
 
 ---
 
-## Change-Control Rules for v3.0
+## Change-Control Rules for v3.0+
 
 - INTERNAL refactoring of how kast produces these artifacts: **free**.
 - WHAT artifacts are produced, their names, locations, and formats:

@@ -272,7 +272,7 @@ When `--ai-summary` isn't passed, the block reports `enabled: false, status: "di
 ```bash
 cd /path/to/kast-repo
 git fetch origin
-git checkout main          # or v3.0 once tagged
+git checkout main          # or a specific v3.x tag
 git pull
 sudo ./update.sh
 ```

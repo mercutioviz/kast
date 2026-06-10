@@ -1,6 +1,8 @@
 # ZAP Usage in kast
 
-OWASP ZAP (Zed Attack Proxy) is the engine behind kast's active and passive web-application scanning. This document covers the three execution modes, the internal call flow, the five built-in automation profiles, configuration options, and troubleshooting.
+OWASP ZAP (Zed Attack Proxy) is the engine behind kast's active and passive web-application scanning. This document covers the three execution modes (`local`, `remote`, `auto`), the internal call flow, the five built-in automation profiles, configuration options, and troubleshooting.
+
+For cloud-hosted (Terraform-provisioned) ZAP scans, see kast-web. kast itself manages only `local` (Docker on the same machine) and `remote` (connect to an existing ZAP via API) modes; cloud provisioning lives in kast-web, which then spawns kast in `remote` mode against the provisioned instance.
 
 ---
 

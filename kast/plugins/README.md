@@ -1,145 +1,137 @@
-# KAST Plugin Development Guide
+# kast plugin authoring guide
 
-## Overview
+This is the practical "write a new plugin" walkthrough. The durable rules and architecture summary live in [`CLAUDE.md`](../../CLAUDE.md) — read its "Plugin authoring rules" and "Architecture and patterns" sections first. This file shows the canonical shape and walks through the two base classes.
 
-KAST (Kali Automated Scan Tool) is a modular Python-based framework for automating web application security scanning tools. This guide explains how to create new plugins to extend KAST's functionality.
+## Choosing a base class
 
-## Getting Started: Creating a New Plugin
+| Use this base                 | When                                                              |
+|------------------------------ |-------------------------------------------------------------------|
+| `ExternalToolPlugin`          | The plugin wraps a CLI tool: invoke via subprocess, read its output. |
+| `KastPlugin`                  | Pure-Python: HTTP calls, file analysis, no subprocess.            |
 
-The easiest way to create a new plugin is to use the `template_plugin.py` as a starting point. 
+`ExternalToolPlugin` is a subclass of `KastPlugin` that supplies subprocess invocation, return-code handling, atomic processed-dict writes, and standard format hooks. Prefer it for new tool wrappers.
 
-1.  **Copy the template**: Make a copy of `template_plugin.py` and rename it to reflect the tool you are integrating (e.g., `nikto_plugin.py`).
-2.  **Rename the class**: Open the new file and rename the `TemplatePlugin` class to a name that matches your tool (e.g., `NiktoPlugin`).
+## Getting started
 
-## The Plugin Lifecycle
+Copy [`template_plugin.py`](template_plugin.py) and adapt it. It already uses the v3 shape: class-attribute identity, the canonical `__init__` signature, timezone-aware timestamps, atomic writes via `kast.core.atomic`. Discovery skips `template_plugin.py` by name, so the copy you make is the one that'll be picked up.
 
-A KAST plugin is a Python class that inherits from `kast.plugins.base.KastPlugin`. The orchestrator interacts with the plugin through the following methods:
+For tool wrappers, also study the reference migrations: [`whatweb_plugin.py`](whatweb_plugin.py) (standard shape) and [`wafw00f_plugin.py`](wafw00f_plugin.py) (overrides `run()` for an HTTPS→HTTP TLS-error retry quirk).
 
-*   `__init__(self, cli_args)`: Initializes the plugin and sets its properties.
-*   `is_available(self)`: Checks if the underlying tool is installed and available.
-*   `run(self, target, output_dir, report_only)`: Executes the security tool.
-*   `post_process(self, raw_output, output_dir)`: Parses the tool's output and generates a structured JSON report.
-
-## Implementing the `__init__` Method
-
-The `__init__` method sets the essential properties of your plugin:
+## Canonical shape
 
 ```python
-class MyToolPlugin(KastPlugin):
-    def __init__(self, cli_args):
-        super().__init__(cli_args)
-        self.name = "my_tool"  # A unique, lowercase name for your tool
-        self.description = "A brief description of what your tool does."
-        self.scan_type = "passive"  # or "active"
-        self.output_format = "json"  # Supported formats: "json", "xml", "csv", "text"
-```
+from kast.plugins.external_tool import ExternalToolPlugin
 
-*   `name`: A unique identifier for your plugin.
-*   `description`: A short description of the plugin's purpose.
-*   `scan_type`:  Determines whether the plugin runs in `passive` or `active` scanning mode.
-*   `output_format`: Specifies the output format of the tool. This is used in the `post_process` method to parse the output correctly.
+class MyToolPlugin(ExternalToolPlugin):
+    priority = 50                    # lower runs earlier
 
-## Implementing the `is_available` Method
+    # Identity — class attributes only, never set in __init__
+    name = "my_tool"
+    display_name = "My Tool"
+    description = "What this plugin does."
+    website_url = "https://example.com/my_tool"
+    scan_type = "passive"            # or "active"
+    output_type = "file"             # or "stdout"
 
-This method checks if the command-line tool is installed and available in the system's `PATH`.
+    # ExternalToolPlugin plumbing
+    tool_binary = "my_tool"          # drives auto is_available() via shutil.which
+    output_filename = "my_tool.json"
+    output_format = "json"           # or "text"
 
-```python
-import shutil
-
-def is_available(self):
-    return shutil.which("my_tool_binary") is not None
-```
-
-## Implementing the `run` Method
-
-This method is responsible for executing the tool. It should:
-
-1.  Construct the command to run the tool.
-2.  Execute the command using `subprocess.run()`.
-3.  Handle errors gracefully, including non-zero exit codes.
-4.  Return the raw output of the tool.
-
-We recommend using the `ToolExecutionError` custom exception for better error handling.
-
-```python
-import subprocess
-from kast.plugins.template_plugin import ToolExecutionError
-
-def run(self, target, output_dir, report_only):
-    cmd = ["my_tool_binary", "--target", target, "--output", "json"]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        if proc.returncode != 0:
-            raise ToolExecutionError(
-                message=f"{self.name} failed with exit code {proc.returncode}",
-                stdout=proc.stdout,
-                stderr=proc.stderr
-            )
-        return self.get_result_dict(disposition="success", results=proc.stdout)
-    except ToolExecutionError as e:
-        self.log.error(f"{e.message}\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}")
-        return self.get_result_dict(disposition="fail", results=str(e))
-    except Exception as e:
-        self.log.exception(f"An unexpected error occurred in {self.name}: {e}")
-        return self.get_result_dict(disposition="fail", results=str(e))
-```
-
-## Implementing the `post_process` Method
-
-This method parses the raw output from the `run` method and generates a structured JSON file. It should:
-
-1.  Parse the raw data based on the `output_format`.
-2.  Extract relevant findings and issues.
-3.  Generate a summary of the findings.
-4.  Create a dictionary with the processed data and save it as a JSON file.
-
-```python
-import os
-import json
-from datetime import datetime
-
-def post_process(self, raw_output, output_dir):
-    findings = self._parse_output(raw_output['results'])
-    issues = []
-    # ... logic to extract issues from findings ...
-    executive_summary = { ... }
-    # ... logic to generate executive summary ...
-
-    processed = {
-        "plugin-name": self.name,
-        "plugin-description": self.description,
-        "timestamp": datetime.utcnow().isoformat(),
-        "findings": findings,
-        "issues": issues,
-        "executive_summary": executive_summary
+    config_schema = {
+        "type": "object",
+        "title": "My Tool Configuration",
+        "properties": {
+            "timeout": {
+                "type": "integer", "default": 300, "minimum": 30,
+                "description": "Subprocess timeout in seconds",
+            },
+        },
     }
 
-    processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
-    write_json_atomic(processed_path, processed)
+    def __init__(self, cli_args, config_manager=None):
+        super().__init__(cli_args, config_manager)
+        self.timeout = self.get_config("timeout", 300)
 
-    return processed_path
+    def build_command(self, target, output_path):
+        return ["my_tool", "-o", output_path, "-t", str(self.timeout), target]
+
+    def count_findings(self, findings):
+        return len(findings) if isinstance(findings, list) else 0
 ```
 
-## Working with the Issue Registry
+That is a complete, working plugin if the tool emits JSON to the output path. Everything else has sensible defaults.
 
-The `data/issue_registry.json` file contains a list of known issues. You can add new issues to this file and reference them in your plugin's `post_process` method. This allows you to provide consistent and detailed information about the issues found by your tool.
+## ExternalToolPlugin hooks
 
-To add a new issue, add a new entry to the `issue_registry.json` file with a unique ID, a display name, a description, a talking point (remediation advice), a category, and a severity.
+**Required:**
 
-## Testing Your Plugin
+- `build_command(target, output_path) -> list[str]` — argv list to run.
+- `count_findings(findings) -> int` — primary-finding count (drives `findings_count` in the processed dict — kast-web renders it on the scan-details page).
 
-Thoroughly test your plugin to ensure it works as expected. You should write both unit tests and integration tests.
+**Optional, with sensible defaults:**
 
-*   **Unit Tests**: Create a separate test file in the `tests/` directory (e.g., `tests/test_my_tool_plugin.py`) to test the logic of your plugin's methods, especially the `post_process` method.
-*   **Integration Tests**: Use the `scripts/run_report_builder_test.py` script to run your plugin against a test target and verify that it integrates correctly with the orchestrator and report builder.
+- `parse_findings(raw)` — normalize raw output (default: pass-through).
+- `extract_issues(findings) -> list[str]` — issue-registry IDs (default: `[]`).
+- `format_summary(findings) -> str` — report summary (default: generic message).
+- `format_details(findings) -> str` — report details (default: empty).
+- `format_executive_summary(findings, issues) -> str` — exec-summary line (default: empty).
+- `extra_processed_fields(findings, issues) -> dict` — extra processed-dict keys (e.g., `{"custom_html": "..."}` for inline HTML widgets).
+- `get_dry_run_info(target, output_dir) -> dict` — dry-run preview (default: just the command).
 
-## Best Practices
+Override `run()` only when there's a tool-specific quirk the base can't cover — see `wafw00f_plugin.py` for the canonical example.
 
-*   **Follow the Style**: Maintain a consistent coding style with the existing plugins.
-*   **Document Your Code**: Add docstrings to your classes and methods.
-*   **Handle Errors**: Implement robust error handling to prevent your plugin from crashing.
-*   **Manage Dependencies**: If your plugin has external dependencies, document them clearly.
+## Pure-Python plugins (KastPlugin)
 
-## Contributing
+When the plugin doesn't shell out to a CLI tool — HTTP API calls, file analysis, registry lookups — inherit from `KastPlugin` directly and implement `is_available`, `run`, and `post_process` yourself. See [`mozilla_observatory_plugin.py`](mozilla_observatory_plugin.py) and [`ai_surface_detection_plugin.py`](ai_surface_detection_plugin.py) for the shape.
 
-Once your plugin is complete and well-tested, you can contribute it to the KAST project by submitting a pull request.
+The same identity, `__init__`, config, and atomic-write rules apply.
+
+## Issue-registry integration
+
+Push registry IDs into `issues` (a list). The report layer resolves IDs to full entries (severity, description, category, talking points) when rendering. Unresolved IDs accumulate in `missing_issue_ids.json` for follow-up via `kast registry promote`.
+
+```python
+def extract_issues(self, findings):
+    issues = []
+    if not findings.get("hsts_present"):
+        issues.append("MISSING_HSTS")
+    return issues
+```
+
+To add a registry entry: `kast registry add ID --severity High --category Headers --description "..." --talking-points "..."` (writes atomically). To bulk-accept what a scan flagged as missing: `kast registry promote SCAN_DIR` (interactive) or `--accept-all` (CI).
+
+## Dependencies
+
+```python
+self.dependencies = [
+    {"plugin": "mozilla_observatory",
+     "condition": lambda r: r.get("disposition") == "success"},
+]
+```
+
+The orchestrator launches a plugin only when each declared dependency has run *and* its `condition` returns truthy.
+
+## Testing
+
+Add a `kast/tests/test_{plugin_name}.py` covering both success and failure paths. Mock `subprocess.run` and verify:
+
+- `build_command` produces the expected argv.
+- `parse_findings` / `count_findings` handle empty, populated, and malformed input.
+- `post_process` produces a valid processed dict (`findings_count` integer, expected `issues`, no exceptions on unusual data).
+- `is_available()` returns False gracefully when the tool is absent.
+
+Reference: `kast/tests/test_external_tool_base.py` for base-class behavior; `kast/tests/test_whatweb_*.py` for migration coverage.
+
+## Reminders
+
+- Never mutate identity in `__init__` — class attributes only.
+- Always use `self.get_result_dict("success" | "fail", results, timestamp)` for return values.
+- Always include `findings_count` (integer) in the processed dict.
+- Use `kast.core.atomic.write_json_atomic` for state-bearing JSON writes. Never raw `json.dump`.
+- Use `kast.core.severity.Severity` for severity values. Never bare strings.
+- Use `datetime.now(timezone.utc).isoformat(timespec="milliseconds")` for timestamps. Never `datetime.utcnow()`.
+- Use `self.debug(...)` for verbose logging. Never `print()`.
+- Never raise out of `is_available()` or `run()` — return a fail-disposition result dict instead. kast-web's state machine depends on the completion marker.
+
+The full rule list with rationale lives in [`CLAUDE.md`](../../CLAUDE.md).

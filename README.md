@@ -97,7 +97,7 @@ sudo ./install.sh --install-dir /custom/path
 
 Build the image:
 ```bash
-docker build -t kast:3.0.0 -t kast:latest .
+docker build -t kast:latest .
 ```
 
 Run a passive scan:
