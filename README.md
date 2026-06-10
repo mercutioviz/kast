@@ -225,6 +225,7 @@ If the AI call fails (no key, network error, schema mismatch), the report still 
 | `subfinder`             | Subfinder                 | Passive | 10       | Subdomain enumeration                    |
 | `wafw00f`               | Wafw00f                   | Passive | 10       | WAF detection                            |
 | `whatweb`               | WhatWeb                   | Passive | 15       | Technology fingerprinting                |
+| `cors_analyzer`         | Cross-Origin Policy Analyzer | Passive | 30    | CORS policy + bypass-pattern + JSONP exposure probing |
 | `related_sites`         | Related Sites Discovery   | Passive | 45       | Affiliated-domain risk surface           |
 | `ftap`                  | Find The Admin Panel      | Passive | 50       | Admin-panel discovery                    |
 | `testssl`               | Test SSL                  | Passive | 50       | TLS configuration audit                  |

@@ -8,6 +8,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.24] — 2026-06-10
+
+CORS analyzer plugin coverage and documentation. End-to-end verification
+in v3.0.23 confirmed the plugin was functional and v3-compliant but had
+no test file and was missing from the README plugin table.
+
+### Added
+
+- **`kast/tests/test_cors_analyzer.py`** (24 tests, 9 TestCase groups):
+  identity / config schema / `is_available`; `_normalize_target` URL
+  handling; `post_process` with empty findings, mixed findings, repeated
+  finding types (uniqueness), severity ordering, JSONP-only input,
+  worst-finding naming in the summary; fail-disposition shape;
+  executive-summary variants for the canonical issue types;
+  `get_dry_run_info` shape; `report_only` mode (existing results +
+  missing results); registry coverage (every issue ID the plugin can
+  emit must be in `kast/data/issue_registry.json`, and every ID in
+  `_ISSUE_SEVERITY` must have a slot in `_ISSUE_SEVERITY_ORDER`).
+- **`README.md` plugin table**: added the `cors_analyzer` row between
+  `whatweb` (priority 15) and `related_sites` (priority 45). CORS
+  analyzer's priority is 30.
+
+### Tests
+
+- 576 passed (was 552; +24 from `test_cors_analyzer.py`), 0 skipped,
+  3 xfailed, 0 warnings, 0 ruff findings.
+
+---
+
 ## [3.0.23] — 2026-06-10
 
 Test hygiene and doc-drift sweep. 552 passed, 0 skipped, 3 xfailed,
