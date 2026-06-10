@@ -8,6 +8,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.25] — 2026-06-10
+
+### Fixed
+
+- **`kast/__init__.py` version resolution** — `kast -V` reported a stale
+  version on editable installs (e.g. `/opt/kast`) whenever `VERSION` was
+  bumped without re-running `pip install -e .`. The previous logic read
+  `importlib.metadata` first (which holds the version frozen at the last
+  `pip install`) and only fell back to the `VERSION` file if the metadata
+  import failed. Inverted the precedence: `VERSION` is tried first via
+  `Path(__file__).resolve().parent.parent / "VERSION"`; `importlib.metadata`
+  is the fallback for pipx / wheel installs where no parallel `VERSION`
+  file exists alongside the package. Bumping `VERSION` is now sufficient
+  — no `pip install` required to see the change in `kast -V`.
+
+---
+
 ## [3.0.24] — 2026-06-10
 
 CORS analyzer plugin coverage and documentation. End-to-end verification
