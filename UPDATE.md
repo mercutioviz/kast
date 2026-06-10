@@ -220,7 +220,6 @@ grep SCRIPT_VERSION /opt/kast/install.sh
 ## Getting Help
 
 For detailed documentation, see:
-- [Full Update Guide](kast/docs/UPDATE_SCRIPT_GUIDE.md)
 - [Installation Guide](README.md)
 - Update logs: `/var/log/kast/update.log`
 - Report issues: Use `/reportbug` command
@@ -236,4 +235,4 @@ For detailed documentation, see:
 
 ---
 
-**Need more details?** See the [comprehensive update guide](kast/docs/UPDATE_SCRIPT_GUIDE.md)
+**Need more details?** Run `update.sh --help` for the full flag list.
