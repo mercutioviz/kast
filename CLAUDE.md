@@ -1,6 +1,6 @@
 # kast / kast-web — Active Context for AI Assistants
 
-This file is auto-loaded by Claude Code on every session in this repo. It is the lightweight "what's true *right now*" override. Comprehensive reference lives in `genai-instructions.md` (rewritten for v3 in Phase B10); this file wins where the two conflict.
+This file is auto-loaded by Claude Code on every session in this repo. It is the source of truth for project context, active patterns, and authoring rules.
 
 ## Project at a glance
 
@@ -33,10 +33,6 @@ Do not change these surfaces without explicit, coordinated planning:
 - **The issue registry data format** in `kast/data/issue_registry.json`.
 
 Internal refactoring is free as long as these surfaces stay stable.
-
-## genai-instructions.md and .clinerules — rewritten for v3 (Phase B10)
-
-Both files were rewritten in Phase B10 to describe v3 patterns natively. The v2 footguns they used to enshrine (set-attrs-before-super-init, `datetime.utcnow`, dual `custom_html`/`custom_html_pdf`, bare severity strings, schema-registration during `__init__`, the 10-plugin list) are gone from the docs. Treat both files as v3-aligned reference material — but **this file (`CLAUDE.md`) still wins where they conflict**, since it tracks active-phase changes that may not yet be reflected in the comprehensive doc.
 
 ## v2 bug patches landing in v2.14.x — do not revert
 
@@ -92,6 +88,9 @@ Tier 2/3/4 items from the ideation pass (pre-meeting briefing, per-audience reme
 
 ## House style
 
+- Python 3.11+ baseline (dev box runs 3.13)
+- Timestamps: `datetime.now(timezone.utc).isoformat(timespec="milliseconds")` — never the deprecated `datetime.utcnow()`
+- Logging: `self.debug(...)` inside plugins; never `print()`
 - No emojis in code or docs unless explicitly requested
 - Default to no comments unless the WHY is non-obvious; never write block comments or multi-paragraph docstrings unprompted
 - Don't add backwards-compat hacks for code that doesn't need them
@@ -99,6 +98,17 @@ Tier 2/3/4 items from the ideation pass (pre-meeting briefing, per-audience reme
 - For UI/frontend changes, verify in a browser before reporting "done"
 - Match the scope of changes to what was requested — bug fixes don't need surrounding cleanup
 
-## Lifecycle of this file
+## Plugin authoring rules
 
-`CLAUDE.md` is the active-phase override. It will shrink to a thin pointer once v3.0 ships and `genai-instructions.md` is rewritten to describe v3 patterns natively. Until then, treat this file as the source of truth for "what's actually being built right now."
+Durable invariants for any new plugin or change to an existing one. The active-patterns section above describes the underlying machinery; these are the rules you follow when writing a plugin.
+
+- **Choose the base:** tool wrappers inherit from `ExternalToolPlugin` (subprocess + atomic write + processed-dict scaffolding); pure-Python plugins (HTTP API calls, file analysis) inherit from `KastPlugin` directly. Both use the canonical `__init__(self, cli_args, config_manager=None)` signature.
+- **Identity is class attributes** (`name`, `display_name`, `description`, `website_url`, `scan_type`, `output_type`) — never set in `__init__`. `config_schema` is also a class attribute.
+- **Result dicts:** always `self.get_result_dict(disposition, results, timestamp)`; never construct manually.
+- **`findings_count` integer is required** in every processed dict — kast-web's scan-details page renders it.
+- **Read config via `self.get_config(key, default)`** — reads the merged stack (CLI > project > user > system > schema defaults).
+- **`is_available()` returns False gracefully** when the underlying tool is missing — never raise.
+- **Never crash the orchestrator.** Wrap external calls in try/except; on failure return `self.get_result_dict("fail", message, timestamp)` so `post_process` still emits a `_processed.json` with `disposition: fail`. **kast-web's file-presence state machine depends on the completion marker.**
+- **Dependencies** are declared on the instance as a list of `{"plugin": name, "condition": lambda r: ...}` dicts; the orchestrator gates execution until each dependency has run and its condition returns truthy.
+- **Report widgets emit a single rich payload** (e.g., `extra_processed_fields = {"custom_html": "..."}`). The v2 dual `custom_html` / `custom_html_pdf` requirement is gone — the renderers handle format-specific differences.
+- **Starter file:** `kast/plugins/template_plugin.py` is the canonical v3 starter (deliberately skipped by discovery). The `kast/scripts/create_plugin.py` wizard predates `ExternalToolPlugin` and emits v2-shaped output — adapt as you go. `whatweb_plugin.py` and `wafw00f_plugin.py` are the reference migrations.

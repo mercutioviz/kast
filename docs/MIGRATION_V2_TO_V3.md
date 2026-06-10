@@ -311,4 +311,4 @@ Don't mix kast 3.0 with kast-web 1.5.x for cloud scans — kast-web 1.5 expects 
 - v3 design history: [`docs/v3-planning/`](v3-planning/)
 - kast↔kast-web boundary contract: [`docs/web-integration.md`](web-integration.md)
 - Plugin authoring guide: [`kast/plugins/README.md`](../kast/plugins/README.md)
-- Comprehensive AI-assistant reference: [`genai-instructions.md`](../genai-instructions.md)
+- AI-assistant context: [`CLAUDE.md`](../CLAUDE.md)

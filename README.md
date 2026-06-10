@@ -273,7 +273,7 @@ sudo ./update.sh
 
 ## Plugin development
 
-See [`kast/plugins/README.md`](kast/plugins/README.md) for the full plugin authoring guide, and [`genai-instructions.md`](genai-instructions.md) for v3 patterns. The short version:
+See [`kast/plugins/README.md`](kast/plugins/README.md) for the full plugin authoring guide. The short version:
 
 - Inherit from `ExternalToolPlugin` for tool wrappers; from `KastPlugin` for pure-Python plugins.
 - Declare identity (`name`, `display_name`, `description`, `website_url`, `scan_type`, `output_type`) as **class attributes** — never set in `__init__`.
@@ -303,7 +303,7 @@ The kast↔kast-web boundary is documented in [`docs/web-integration.md`](docs/w
 
 For issues, questions, or feature requests:
 - GitHub Issues: [Create an issue](https://github.com/mercutioviz/kast/issues)
-- Documentation: see `docs/` and `genai-instructions.md`
+- Documentation: see `docs/`
 - Plugin authoring: see `kast/plugins/README.md`
 
 ---
