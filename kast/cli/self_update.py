@@ -168,9 +168,9 @@ def _do_check_only() -> None:
         sys.exit(0)
     else:
         console.print(
-            f"[yellow]Update available.[/yellow] "
-            f"Run [bold]kast self-update[/bold] (or [bold]kast self-update --auto[/bold] "
-            f"for non-interactive) to apply."
+            "[yellow]Update available.[/yellow] "
+            "Run [bold]kast self-update[/bold] (or [bold]kast self-update --auto[/bold] "
+            "for non-interactive) to apply."
         )
         # Convention: exit 0 since the check itself succeeded; the difference
         # is informational. (CI hooks should grep the output if they need to

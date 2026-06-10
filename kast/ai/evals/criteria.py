@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # Phrases the prompt explicitly forbids — they signal lazy, non-specific output.
 _FORBIDDEN_PHRASES = [
     "various security issues",

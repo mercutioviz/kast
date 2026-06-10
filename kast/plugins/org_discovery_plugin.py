@@ -6,14 +6,22 @@ optional WHOIS correlation, OWASP Amass passive enumeration, and Shodan
 internet exposure search.
 """
 
-import json, os, re, shutil, subprocess, time, socket
-from datetime import datetime, timezone
+import json
+import os
+import re
+import shutil
+import subprocess
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import quote_plus
-import requests, tldextract
+
+import requests
+import tldextract
 from requests.exceptions import Timeout as RequestsTimeout
-from kast.plugins.base import KastPlugin
+
 from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
 
 try:
     import dns.resolver
@@ -315,7 +323,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             return domains
 
         try:
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 for line in f:
                     line = line.strip()
                     if not line:
@@ -493,8 +501,9 @@ class OrgDiscoveryPlugin(KastPlugin):
             score = min(1.0, sum(self.CONFIDENCE_WEIGHTS.get(s, 0.1) for s in info["sources"]))
             if score < self.confidence_threshold:
                 continue
-            svcs = [e for e in shodan_exposure if self._apex(h) == d
-                    for h in e.get("hostnames", [])]
+            svcs = [e for e in shodan_exposure
+                    for h in e.get("hostnames", [])
+                    if self._apex(h) == d]
             result.append({
                 "domain": d,
                 "confidence": round(score, 2),
@@ -514,7 +523,7 @@ class OrgDiscoveryPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def run(self, target, output_dir, report_only=False):
-        start_time = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        start_time = datetime.now(UTC).isoformat(timespec="milliseconds")
 
         if report_only:
             json_file = Path(output_dir) / "org_discovery_raw.json"
@@ -522,13 +531,13 @@ class OrgDiscoveryPlugin(KastPlugin):
                 return self.get_result_dict("success", {
                     "raw_output": str(json_file),
                     "start_time": start_time,
-                    "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                    "end_time": datetime.now(UTC).isoformat(timespec="milliseconds"),
                 })
             else:
                 return self.get_result_dict("fail", {
                     "error": "No previous data",
                     "start_time": start_time,
-                    "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                    "end_time": datetime.now(UTC).isoformat(timespec="milliseconds"),
                 })
 
         apex = self._apex(target.replace("https://", "").replace("http://", "").split("/")[0])
@@ -536,7 +545,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             return self.get_result_dict("fail", {
                 "error": f"Cannot extract apex domain from '{target}'",
                 "start_time": start_time,
-                "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "end_time": datetime.now(UTC).isoformat(timespec="milliseconds"),
             })
         self.debug(f"Target apex: {apex}")
 
@@ -575,7 +584,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             "discovered_domains": correlated,
             "sources_used": sorted(set(s for d in correlated for s in d["sources"])),
             "command_executed": {k: v for k, v in self.command_executed.items() if v},
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
         }
 
         json_file = Path(output_dir) / "org_discovery_raw.json"
@@ -584,7 +593,7 @@ class OrgDiscoveryPlugin(KastPlugin):
         return self.get_result_dict("success", {
             "raw_output": str(json_file),
             "start_time": start_time,
-            "end_time": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "end_time": datetime.now(UTC).isoformat(timespec="milliseconds"),
         })
 
     def post_process(self, raw_output, output_dir):
@@ -592,7 +601,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
         }
 
         raw_results = raw_output.get("results", {})
@@ -627,7 +636,7 @@ class OrgDiscoveryPlugin(KastPlugin):
         n = len(domains)
 
         high = [d for d in domains if d["confidence"] >= 0.7]
-        med = [d for d in domains if 0.4 <= d["confidence"] < 0.7]
+        [d for d in domains if 0.4 <= d["confidence"] < 0.7]
 
         src_parts = []
         if "amass" in sources:

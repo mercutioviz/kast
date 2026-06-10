@@ -106,7 +106,7 @@ def _format_for_pdf(report_data):
 def render_pdf(report_data, output_path, logo_path=None):
     """Render the PDF report from already-collected report data."""
     try:
-        from weasyprint import HTML, CSS
+        from weasyprint import CSS, HTML
         from weasyprint.text.fonts import FontConfiguration
     except ImportError:
         logger.error(
@@ -162,10 +162,7 @@ def generate_pdf_report(
     plugin_results, output_path="kast_report.pdf", target=None, logo_path=None,
     ai_summary=None, ai_error=None,
 ):
-    """One-shot entrypoint: collect data then render PDF.
-
-    Preserved as the public surface of ``kast.report_builder``.
-    """
+    """One-shot entrypoint: collect data then render PDF."""
     data = collect_report_data(
         plugin_results, target, ai_summary=ai_summary, ai_error=ai_error,
     )

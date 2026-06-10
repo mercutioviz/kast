@@ -5,7 +5,6 @@ These pin down the contract enshrined in docs/web-integration.md
 """
 
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 

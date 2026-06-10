@@ -3,15 +3,16 @@ File: plugins/ftap_plugin.py
 Description: KAST plugin for Find The Admin Panel + sensitive path probing
 """
 
-import re
-import subprocess
-import shutil
 import json
 import os
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
-from kast.core.atomic import write_json_atomic
+import re
+import shutil
+import subprocess
+from datetime import UTC, datetime
 from pprint import pformat
+
+from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
 
 # Curated list of high-value paths to probe with HTTP GET.
 # Each entry maps a path to the issue ID it should emit on HTTP 200.
@@ -78,7 +79,7 @@ LOGIN_PROBE_PATHS = [
 
 class FtapPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
-    
+
     # Configuration schema for FTAP
     config_schema = {
         "type": "object",
@@ -163,7 +164,7 @@ class FtapPlugin(KastPlugin):
         super().__init__(cli_args, config_manager)
         self.command_executed = None
         self._load_plugin_config()
-    
+
     def _load_plugin_config(self):
         """
         Load configuration values from ConfigManager.
@@ -174,21 +175,21 @@ class FtapPlugin(KastPlugin):
         self.machine_learning = self.get_config("machine_learning", False)
         self.fuzzing = self.get_config("fuzzing", False)
         self.http3 = self.get_config("http3", False)
-        
+
         # Wordlist settings
         self.wordlist_path = self.get_config("wordlist_path", None)
         self.update_wordlist = self.get_config("update_wordlist", False)
         self.wordlist_source = self.get_config("wordlist_source", None)
-        
+
         # Performance settings
         self.concurrency = self.get_config("concurrency", None)
-        
+
         # Output settings
         self.export_format = self.get_config("export_format", "json")
         self.interactive = self.get_config("interactive", False)
-        
+
         # Debug log configuration
-        self.debug(f"FTAP configuration loaded:")
+        self.debug("FTAP configuration loaded:")
         self.debug(f"  detection_mode: {self.detection_mode}")
         self.debug(f"  machine_learning: {self.machine_learning}")
         self.debug(f"  fuzzing: {self.fuzzing}")
@@ -218,8 +219,8 @@ class FtapPlugin(KastPlugin):
         Builds command dynamically based on configuration.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-        
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
+
         # Determine output filename based on export format
         if self.export_format == "json":
             output_filename = "ftap.json"
@@ -229,51 +230,51 @@ class FtapPlugin(KastPlugin):
             output_filename = "ftap.csv"
         else:  # txt
             output_filename = "ftap.txt"
-        
+
         output_file = os.path.join(output_dir, output_filename)
-        
+
         # Build command dynamically based on configuration
         cmd = ["ftap", "--url", target]
-        
+
         # Add detection mode
         cmd.extend(["--detection-mode", self.detection_mode])
-        
+
         # Add output directory and format
         cmd.extend(["-d", str(output_dir)])
         cmd.extend(["-e", self.export_format])
         cmd.extend(["-f", output_filename])
-        
+
         # Add wordlist if specified
         if self.wordlist_path:
             cmd.extend(["-w", self.wordlist_path])
-        
+
         # Add wordlist update if enabled
         if self.update_wordlist:
             cmd.append("--update-wordlist")
             if self.wordlist_source:
                 cmd.extend(["--source", self.wordlist_source])
-        
+
         # Add advanced features
         if self.machine_learning:
             cmd.append("--machine-learning")
-        
+
         if self.fuzzing:
             cmd.append("--fuzzing")
-        
+
         if self.http3:
             cmd.append("--http3")
-        
+
         # Add concurrency if specified
         if self.concurrency is not None:
             cmd.extend(["--concurrency", str(self.concurrency)])
-        
+
         # Add interactive mode if enabled
         if self.interactive:
             cmd.append("-i")
 
         # Store command for reporting
         self.command_executed = ' '.join(cmd)
-        
+
         self.debug(f"Built FTAP command: {self.command_executed}")
 
         # Check if tool is available
@@ -289,7 +290,7 @@ class FtapPlugin(KastPlugin):
                 self.debug(f"[REPORT ONLY] Would run command: {self.command_executed}")
                 # In report-only mode, try to load existing results
                 if os.path.exists(output_file):
-                    with open(output_file, "r") as f:
+                    with open(output_file) as f:
                         if self.export_format == "json":
                             results = json.load(f)
                         else:
@@ -320,7 +321,7 @@ class FtapPlugin(KastPlugin):
                     )
 
             # Load results from output file
-            with open(output_file, "r") as f:
+            with open(output_file) as f:
                 if self.export_format == "json":
                     results = json.load(f)
                 else:
@@ -353,7 +354,7 @@ class FtapPlugin(KastPlugin):
             findings = {}
         elif isinstance(raw_output, str) and os.path.isfile(raw_output):
             # Load from file path
-            with open(raw_output, "r") as f:
+            with open(raw_output) as f:
                 findings = json.load(f)
         elif isinstance(raw_output, dict):
             # Check if this is a result dict from run() or actual ftap data
@@ -467,7 +468,7 @@ class FtapPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
@@ -596,7 +597,7 @@ class FtapPlugin(KastPlugin):
         """
         if not self.command_executed:
             return "Command not available"
-        
+
         return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
     def _generate_panel_display_html(self, findings):
@@ -609,49 +610,49 @@ class FtapPlugin(KastPlugin):
         Simplified single-level display matching katana's style.
         """
         results = findings.get("results", []) if isinstance(findings, dict) else []
-        
+
         if not results:
             return "<p>No admin panels found.</p>"
-        
+
         # Split into three groups
         exposed_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
         other_findings = [r for r in results if r.get("found", False) and r.get("confidence", 0) < 0.86]
         # Other URLs tested includes everything that wasn't found (found=False or missing 'found' key)
         other_urls = [r for r in results if not r.get("found", False)]
-        
+
         # Generate unique ID for this instance
         widget_id = f"ftap-panel-widget-{id(self)}"
-        
+
         html = f'''
         <div class="url-display-widget" id="{widget_id}">
             <div class="url-search-container">
-                <input type="text" 
-                       class="url-search-input" 
+                <input type="text"
+                       class="url-search-input"
                        placeholder="🔍 Search panels (e.g., admin, login, dashboard)..."
                        onkeyup="filterFtapPanels('{widget_id}')">
                 <span class="url-count-badge">Total: {len(results)} URL(s) Tested</span>
             </div>
-            
+
             <div class="url-groups-container">
         '''
-        
+
         # Generate exposed panels group
         if exposed_panels:
             html += self._generate_group_html("Exposed Admin Panels", exposed_panels, f"{widget_id}-exposed", "🔐")
-        
+
         # Generate other findings group
         if other_findings:
             html += self._generate_group_html("Other Findings", other_findings, f"{widget_id}-other", "📋")
-        
+
         # Generate other URLs tested group
         if other_urls:
             html += self._generate_group_html("Other URLs Tested", other_urls, f"{widget_id}-tested", "🔍")
-        
+
         html += '''
             </div>
         </div>
         '''
-        
+
         return html
 
     def _generate_group_html(self, group_name, panels, group_id, icon):
@@ -662,7 +663,7 @@ class FtapPlugin(KastPlugin):
         panels_per_page = 50
         total_panels = len(panels)
         total_pages = (total_panels + panels_per_page - 1) // panels_per_page
-        
+
         html = f'''
         <div class="url-group" data-group="{group_id}">
             <div class="url-group-header" onclick="toggleUrlGroup('{group_id}')">
@@ -674,21 +675,21 @@ class FtapPlugin(KastPlugin):
             <div class="url-group-content" id="{group_id}-content" style="display: none;">
                 <div class="ftap-panels-list" id="{group_id}-list">
         '''
-        
+
         # Add all panels with page data attributes
         for page_num in range(total_pages):
             start_idx = page_num * panels_per_page
             end_idx = min(start_idx + panels_per_page, total_panels)
-            
+
             for idx in range(start_idx, end_idx):
                 panel = panels[idx]
                 display_style = 'display: none;' if page_num > 0 else ''
                 html += self._get_panel_html(panel, idx + 1, group_id, page_num + 1, display_style)
-        
+
         html += '''
                 </div>
         '''
-        
+
         # Add pagination controls if needed
         if total_pages > 1:
             html += f'''
@@ -700,12 +701,12 @@ class FtapPlugin(KastPlugin):
                     <button onclick="changeUrlPage('{group_id}', 1)" class="url-page-btn">Next »</button>
                 </div>
             '''
-        
+
         html += '''
             </div>
         </div>
         '''
-        
+
         return html
 
     def _get_panel_html(self, panel, panel_idx, group_id, page_num, display_style):
@@ -713,14 +714,13 @@ class FtapPlugin(KastPlugin):
         Generate HTML for a single admin panel card.
         Simplified flat display matching katana's style - all details always visible.
         """
-        panel_id = f"{group_id}-panel-{panel_idx}"
         url = panel.get("url", "N/A")
         title = panel.get("title", "Unknown")
         confidence = panel.get("confidence", 0)
         status_code = panel.get("status_code", "N/A")
         has_login = panel.get("has_login_form", False)
         technologies = panel.get("technologies", [])
-        
+
         # Determine confidence color
         if confidence >= 0.9:
             confidence_color = "#28a745"
@@ -728,10 +728,10 @@ class FtapPlugin(KastPlugin):
             confidence_color = "#ffc107"
         else:
             confidence_color = "#dc3545"
-        
+
         # Create searchable data attribute
         search_text = f"{url} {title} {' '.join(technologies)}".lower()
-        
+
         # Build a clean, always-visible card matching katana's simplicity
         html = f'''
         <div class="url-item" data-page="{page_num}" data-url="{search_text}" style="{display_style}">
@@ -757,7 +757,7 @@ class FtapPlugin(KastPlugin):
                         <span style="margin-left: 0.5em; color: #083344; font-size: 0.85em;">{'✓ Yes' if has_login else '✗ No'}</span>
                     </div>
         '''
-        
+
         if technologies:
             html += '''
                     <div style="margin: 0.4em 0;">
@@ -770,13 +770,13 @@ class FtapPlugin(KastPlugin):
                         </div>
                     </div>
             '''
-        
+
         html += '''
                 </div>
             </div>
         </div>
         '''
-        
+
         return html
 
     def _generate_pdf_panel_list(self, findings, max_panels=50, login_findings=None):
@@ -1040,49 +1040,49 @@ class FtapPlugin(KastPlugin):
             output_filename = "ftap.csv"
         else:  # txt
             output_filename = "ftap.txt"
-        
+
         # Build command dynamically based on configuration
         cmd = ["ftap", "--url", target]
-        
+
         # Add detection mode
         cmd.extend(["--detection-mode", self.detection_mode])
-        
+
         # Add output directory and format
         cmd.extend(["-d", str(output_dir)])
         cmd.extend(["-e", self.export_format])
         cmd.extend(["-f", output_filename])
-        
+
         # Add wordlist if specified
         if self.wordlist_path:
             cmd.extend(["-w", self.wordlist_path])
-        
+
         # Add wordlist update if enabled
         if self.update_wordlist:
             cmd.append("--update-wordlist")
             if self.wordlist_source:
                 cmd.extend(["--source", self.wordlist_source])
-        
+
         # Add advanced features
         if self.machine_learning:
             cmd.append("--machine-learning")
-        
+
         if self.fuzzing:
             cmd.append("--fuzzing")
-        
+
         if self.http3:
             cmd.append("--http3")
-        
+
         # Add concurrency if specified
         if self.concurrency is not None:
             cmd.extend(["--concurrency", str(self.concurrency)])
-        
+
         # Add interactive mode if enabled
         if self.interactive:
             cmd.append("-i")
-        
+
         # Build operations description
         operations = f"Scan for admin panels using {self.detection_mode} mode"
-        
+
         if self.machine_learning:
             operations += " with machine learning detection"
         if self.fuzzing:
@@ -1093,7 +1093,7 @@ class FtapPlugin(KastPlugin):
             operations += f", concurrency: {self.concurrency}"
         if self.wordlist_path:
             operations += f", custom wordlist: {self.wordlist_path}"
-        
+
         return {
             "commands": [' '.join(cmd)],
             "description": self.description,

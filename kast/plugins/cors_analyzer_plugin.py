@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import requests
@@ -121,7 +121,7 @@ class CorsAnalyzerPlugin(KastPlugin):
         return True  # pure Python / requests, no external tool
 
     def run(self, target: str, output_dir, report_only: bool):
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(str(output_dir), "cors_analyzer.json")
 
         if report_only:
@@ -168,7 +168,7 @@ class CorsAnalyzerPlugin(KastPlugin):
         return self.get_result_dict("success", results, timestamp)
 
     def post_process(self, raw_output, output_dir) -> str:
-        ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        ts = datetime.now(UTC).isoformat(timespec="milliseconds")
 
         if isinstance(raw_output, dict) and raw_output.get("disposition") == "fail":
             processed = {

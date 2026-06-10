@@ -7,9 +7,7 @@ tests mock subprocess to verify command construction. The Python-side
 
 from __future__ import annotations
 
-import subprocess
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -17,10 +15,8 @@ from click.testing import CliRunner
 from kast.cli.self_update import (
     _find_update_script,
     _read_local_version,
-    _read_remote_version,
     self_update,
 )
-
 
 # -- helpers ----------------------------------------------------------------
 
@@ -130,7 +126,7 @@ def test_self_update_dry_run_passes_dry_run_flag(fake_script):
     runner = CliRunner()
     mock_run = _mock_subprocess_run()
     with patch("kast.cli.self_update.subprocess.run", mock_run):
-        result = runner.invoke(self_update, ["--dry-run"])
+        runner.invoke(self_update, ["--dry-run"])
     cmd = mock_run.call_args.args[0]
     assert "--dry-run" in cmd
 
@@ -139,7 +135,7 @@ def test_self_update_list_backups_passes_flag(fake_script):
     runner = CliRunner()
     mock_run = _mock_subprocess_run()
     with patch("kast.cli.self_update.subprocess.run", mock_run):
-        result = runner.invoke(self_update, ["--list-backups"])
+        runner.invoke(self_update, ["--list-backups"])
     cmd = mock_run.call_args.args[0]
     assert "--list-backups" in cmd
 
@@ -148,7 +144,7 @@ def test_self_update_rollback_passes_timestamp(fake_script):
     runner = CliRunner()
     mock_run = _mock_subprocess_run()
     with patch("kast.cli.self_update.subprocess.run", mock_run):
-        result = runner.invoke(self_update, ["--rollback", "20260501_120000"])
+        runner.invoke(self_update, ["--rollback", "20260501_120000"])
     cmd = mock_run.call_args.args[0]
     assert "--rollback" in cmd
     assert "20260501_120000" in cmd
@@ -158,7 +154,7 @@ def test_self_update_install_dir_passes_through(fake_script):
     runner = CliRunner()
     mock_run = _mock_subprocess_run()
     with patch("kast.cli.self_update.subprocess.run", mock_run):
-        result = runner.invoke(self_update, ["--install-dir", "/opt/kast-test"])
+        runner.invoke(self_update, ["--install-dir", "/opt/kast-test"])
     cmd = mock_run.call_args.args[0]
     assert "--install-dir" in cmd
     assert "/opt/kast-test" in cmd

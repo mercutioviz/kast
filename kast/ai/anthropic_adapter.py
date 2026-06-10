@@ -14,7 +14,6 @@ from anthropic import Anthropic, APIError
 
 from kast.ai.base import AIGenerationError, AIResponse
 
-
 DEFAULT_MODEL = "claude-sonnet-4-6"
 DEFAULT_TIMEOUT_SECS = 60.0
 

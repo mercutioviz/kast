@@ -1,10 +1,9 @@
 # utils.py
-import sys
-import os
 import importlib.util
-from pathlib import Path
 import inspect
-from abc import ABC
+import os
+import sys
+from pathlib import Path
 
 # Ensure parent directory of 'kast' is in sys.path
 kast_dir = os.path.dirname(os.path.abspath(__file__))
@@ -99,35 +98,35 @@ def show_dependency_tree(registry, scan_mode, log):
             'instance': plugin_instance
         }
         plugin_metadata.append(metadata)
-    
+
     # Sort by priority (already sorted, but ensure consistency)
     plugin_metadata.sort(key=lambda x: x['priority'])
-    
+
     # Display execution order
     output_lines.append("Execution Order (by priority):\n")
-    
+
     dep_count = 0
     independent_count = 0
-    
+
     for meta in plugin_metadata:
         # Status indicator
         status = "✓" if meta['available'] else "✗"
         availability = "Available" if meta['available'] else "Not Available"
-        
+
         # Format plugin header
         output_lines.append(f"  [{status}] Priority {meta['priority']:3d} | {meta['name']} ({meta['scan_type']})")
         output_lines.append(f"      Display Name: {meta['display_name']}")
         output_lines.append(f"      Description:  {meta['description']}")
         output_lines.append(f"      Status:       {availability}")
-        
+
         # Format dependencies
         if meta['dependencies']:
             dep_count += 1
-            output_lines.append(f"      Dependencies:")
+            output_lines.append("      Dependencies:")
             for dep in meta['dependencies']:
                 dep_plugin = dep.get('plugin', 'unknown')
                 condition = dep.get('condition')
-                
+
                 # Try to describe the condition
                 condition_desc = "custom condition"
                 if condition and hasattr(condition, '__name__'):
@@ -141,27 +140,27 @@ def show_dependency_tree(registry, scan_mode, log):
                         condition_desc = "requires failure"
                     else:
                         condition_desc = "custom condition"
-                
+
                 output_lines.append(f"        └─ {dep_plugin} ({condition_desc})")
         else:
             independent_count += 1
-            output_lines.append(f"      Dependencies: None")
-        
+            output_lines.append("      Dependencies: None")
+
         output_lines.append("")  # Blank line between plugins
-    
+
     # Summary section
     output_lines.append("-"*70)
     output_lines.append("Dependency Summary:")
     output_lines.append(f"  - Total plugins (in mode):  {len(plugin_metadata)}")
     output_lines.append(f"  - With dependencies:        {dep_count}")
     output_lines.append(f"  - Independent:              {independent_count}")
-    
+
     if filtered_out:
         output_lines.append(f"  - Filtered out (mode):      {len(filtered_out)}")
         plugins_str = ', '.join(f"{p['name']} ({p['scan_type']})" for p in filtered_out)
         output_lines.append(f"    ({plugins_str})")
-    
+
     output_lines.append("="*70)
     output_lines.append("")
-    
+
     return "\n".join(output_lines)

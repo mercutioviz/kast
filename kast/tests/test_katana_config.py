@@ -8,43 +8,38 @@ This test verifies that the Katana plugin properly:
 """
 
 import unittest
-import sys
-import os
 from unittest.mock import Mock
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from plugins.katana_plugin import KatanaPlugin
-from config_manager import ConfigManager
+from kast.config_manager import ConfigManager
+from kast.plugins.katana_plugin import KatanaPlugin
 
 
 class TestKatanaConfig(unittest.TestCase):
     """Test Katana plugin configuration integration."""
-    
+
     def setUp(self):
         """Set up test fixtures."""
         # Create mock CLI args
         self.cli_args = Mock()
         self.cli_args.verbose = False
         self.cli_args.set = []
-        
+
         # Create ConfigManager
         self.config_manager = ConfigManager(self.cli_args)
-    
+
     def test_schema_registration(self):
         """Test that plugin schema is registered with ConfigManager."""
         # Create plugin (this should register schema)
-        plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+        KatanaPlugin(self.cli_args, self.config_manager)
+
         # Verify schema was registered
         self.assertIn("katana", self.config_manager.plugin_schemas)
-        
+
         # Verify schema structure
         schema = self.config_manager.plugin_schemas["katana"]
         self.assertEqual(schema["type"], "object")
         self.assertEqual(schema["title"], "Katana Configuration")
-        
+
         # Verify all expected properties exist
         properties = schema["properties"]
         self.assertIn("depth", properties)
@@ -65,11 +60,11 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertIn("xhr_extraction", properties)
         self.assertIn("extension_filter", properties)
         self.assertIn("omit_body", properties)
-    
+
     def test_default_configuration(self):
         """Test that plugin loads default values from schema."""
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         # Verify defaults
         self.assertEqual(plugin.depth, 3)
         self.assertEqual(plugin.js_crawl, False)
@@ -89,7 +84,7 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertEqual(plugin.xhr_extraction, False)
         self.assertEqual(plugin.extension_filter, [])
         self.assertEqual(plugin.omit_body, True)
-    
+
     def test_config_from_file(self):
         """Test loading configuration from config file."""
         # Simulate config file data
@@ -117,9 +112,9 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         # Verify config values were loaded
         self.assertEqual(plugin.depth, 5)
         self.assertEqual(plugin.js_crawl, True)
@@ -139,7 +134,7 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertEqual(plugin.xhr_extraction, True)
         self.assertEqual(plugin.extension_filter, ["png", "jpg", "css"])
         self.assertEqual(plugin.omit_body, False)
-    
+
     def test_cli_overrides(self):
         """Test that CLI overrides take precedence over config file."""
         # Set up config file values
@@ -152,7 +147,7 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         # Set up CLI overrides
         self.config_manager.cli_overrides = {
             "katana": {
@@ -161,21 +156,21 @@ class TestKatanaConfig(unittest.TestCase):
                 "timeout": 60
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         # Verify CLI overrides take precedence
         self.assertEqual(plugin.depth, 7)
         self.assertEqual(plugin.rate_limit, 200)
         self.assertEqual(plugin.timeout, 60)
-    
+
     def test_command_building_with_defaults(self):
         """Test that commands are built correctly with default config."""
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify command includes default values
         self.assertIn("katana", command)
         self.assertIn("-silent", command)
@@ -185,7 +180,7 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertNotIn("-jc", command)  # js_crawl=False
         self.assertIn("-hl", command)  # headless=True (default)
         self.assertNotIn("-rl ", command)  # rate_limit=150 (default, not added)
-    
+
     def test_command_building_with_custom_depth(self):
         """Test command building with custom crawl depth."""
         self.config_manager.config_data = {
@@ -195,15 +190,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify depth is included
         self.assertIn("-d 5", command)
-    
+
     def test_command_building_with_js_crawl(self):
         """Test command building with JavaScript crawling enabled."""
         self.config_manager.config_data = {
@@ -213,15 +208,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify -jc flag is included
         self.assertIn("-jc", command)
-    
+
     def test_command_building_with_crawl_duration(self):
         """Test command building with crawl duration limit."""
         self.config_manager.config_data = {
@@ -231,15 +226,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify crawl duration is included
         self.assertIn("-ct 300s", command)
-    
+
     def test_command_building_with_known_files(self):
         """Test command building with known files crawling."""
         self.config_manager.config_data = {
@@ -249,15 +244,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify known files flag is included
         self.assertIn("-kf all", command)
-    
+
     def test_command_building_with_form_fill(self):
         """Test command building with automatic form filling."""
         self.config_manager.config_data = {
@@ -267,15 +262,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify form fill flag is included
         self.assertIn("-aff", command)
-    
+
     def test_command_building_with_breadth_first(self):
         """Test command building with breadth-first strategy."""
         self.config_manager.config_data = {
@@ -285,15 +280,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify strategy is included
         self.assertIn("-s breadth-first", command)
-    
+
     def test_command_building_with_concurrency(self):
         """Test command building with custom concurrency."""
         self.config_manager.config_data = {
@@ -303,15 +298,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify concurrency is included
         self.assertIn("-c 25", command)
-    
+
     def test_command_building_with_rate_limit(self):
         """Test command building with custom rate limit."""
         self.config_manager.config_data = {
@@ -321,15 +316,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify rate limit is included
         self.assertIn("-rl 50", command)
-    
+
     def test_command_building_with_delay(self):
         """Test command building with request delay."""
         self.config_manager.config_data = {
@@ -339,15 +334,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify delay is included
         self.assertIn("-rd 2", command)
-    
+
     def test_command_building_with_timeout(self):
         """Test command building with custom timeout."""
         self.config_manager.config_data = {
@@ -357,15 +352,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify timeout is included
         self.assertIn("-timeout 30", command)
-    
+
     def test_command_building_with_proxy(self):
         """Test command building with proxy configuration."""
         self.config_manager.config_data = {
@@ -375,15 +370,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify proxy is included
         self.assertIn("-proxy http://proxy.example.com:8080", command)
-    
+
     def test_command_building_with_field_scope(self):
         """Test command building with custom field scope."""
         self.config_manager.config_data = {
@@ -393,15 +388,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify field scope is included
         self.assertIn("-fs fqdn", command)
-    
+
     def test_command_building_with_headless(self):
         """Test command building with headless mode enabled."""
         self.config_manager.config_data = {
@@ -411,15 +406,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify headless flag is included
         self.assertIn("-hl", command)
-    
+
     def test_command_building_with_xhr_extraction(self):
         """Test command building with XHR extraction enabled."""
         self.config_manager.config_data = {
@@ -429,15 +424,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify XHR flag is included
         self.assertIn("-xhr", command)
-    
+
     def test_command_building_with_extension_filter(self):
         """Test command building with extension filtering."""
         self.config_manager.config_data = {
@@ -447,15 +442,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify extension filter is included
         self.assertIn("-ef png,jpg,css,woff", command)
-    
+
     def test_command_building_without_omit_body(self):
         """Test command building with omit_body disabled."""
         self.config_manager.config_data = {
@@ -465,15 +460,15 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify -ob flag is NOT included
         self.assertNotIn("-ob", command)
-    
+
     def test_operations_description(self):
         """Test that operations description reflects config values."""
         self.config_manager.config_data = {
@@ -487,19 +482,19 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         operations = dry_run_info["operations"]
-        
+
         # Verify operations description includes config values
         self.assertIn("depth: 5", operations)
         self.assertIn("JS crawling", operations)
         self.assertIn("rate: 100/s", operations)
         self.assertIn("timeout: 30s", operations)
         self.assertIn("filtering: png, css", operations)
-    
+
     def test_operations_description_with_headless(self):
         """Test operations description when headless mode is enabled."""
         self.config_manager.config_data = {
@@ -509,12 +504,12 @@ class TestKatanaConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = KatanaPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         operations = dry_run_info["operations"]
-        
+
         # Verify operations description includes headless mode
         self.assertIn("headless mode", operations)
 

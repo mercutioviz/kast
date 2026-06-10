@@ -11,7 +11,6 @@ import pytest
 from kast.ai.base import AIConfigError, AIGenerationError
 from kast.ai.http_adapter import HttpAdapter
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

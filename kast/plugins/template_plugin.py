@@ -3,14 +3,15 @@ File: plugins/template_plugin.py
 Description: Template for KAST plugins. Copy and adapt for new tools.
 """
 
-import subprocess
-import shutil
 import json
 import os
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
-from kast.core.atomic import write_json_atomic
+import subprocess
+from datetime import UTC, datetime
 from pprint import pformat
+
+from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
+
 
 class TemplatePlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
@@ -46,9 +47,9 @@ class TemplatePlugin(KastPlugin):
         Run the tool and return standardized result dict.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
-        
+
         # Example command structure
         cmd = [
             "toolname",
@@ -85,7 +86,7 @@ class TemplatePlugin(KastPlugin):
                     )
 
             # Load results from output file
-            with open(output_file, "r") as f:
+            with open(output_file) as f:
                 results = json.load(f)
 
             return self.get_result_dict(
@@ -107,7 +108,7 @@ class TemplatePlugin(KastPlugin):
         """
         # Load findings from various input types
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
-            with open(raw_output, "r") as f:
+            with open(raw_output) as f:
                 findings = json.load(f)
         elif isinstance(raw_output, dict):
             findings = raw_output.get("results", raw_output)
@@ -147,7 +148,7 @@ class TemplatePlugin(KastPlugin):
         # - Vulnerability scanner: len(issues)
         # - Info gathering: number of detections/findings
         findings_count = len(findings) if isinstance(findings, list) else len(findings.keys()) if isinstance(findings, dict) else 0
-        
+
         # Generate summary using helper method
         summary = self._generate_summary(findings)
         self.debug(f"{self.name} summary: {summary}")
@@ -159,7 +160,7 @@ class TemplatePlugin(KastPlugin):
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,  # Count of primary findings
             "summary": summary or f"{self.name} did not produce any findings",
@@ -180,11 +181,11 @@ class TemplatePlugin(KastPlugin):
         """
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
         self.debug(f"_generate_summary findings content: {pformat(findings)}")
-        
+
         if not findings:
             self.debug("No findings, returning default message")
             return f"No findings were produced by {self.name}."
-        
+
         # Example: Count items in findings
         if isinstance(findings, dict):
             count = len(findings)

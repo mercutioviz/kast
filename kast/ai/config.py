@@ -15,7 +15,6 @@ import yaml
 
 from kast.ai.base import AIAdapter, AIConfigError
 
-
 CONFIG_PATH = Path.home() / ".config" / "kast" / "ai.yaml"
 
 
@@ -66,7 +65,7 @@ def get_ai_adapter(
     base_url = os.environ.get("KAST_AI_BASE_URL") or file_cfg.get("base_url") or None
 
     if provider == "anthropic":
-        from kast.ai.anthropic_adapter import AnthropicAdapter, DEFAULT_MODEL
+        from kast.ai.anthropic_adapter import DEFAULT_MODEL, AnthropicAdapter
         return AnthropicAdapter(
             api_key=api_key,
             model=model or DEFAULT_MODEL,

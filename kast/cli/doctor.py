@@ -31,9 +31,9 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional
 
 import click
 from rich.console import Console
@@ -99,7 +99,7 @@ REQUIRED_MODULES = [
 ]
 
 
-def check_python_modules() -> List[CheckResult]:
+def check_python_modules() -> list[CheckResult]:
     results = []
     for mod in REQUIRED_MODULES:
         try:
@@ -130,7 +130,7 @@ EXTERNAL_TOOLS = [
 ]
 
 
-def check_external_tools() -> List[CheckResult]:
+def check_external_tools() -> list[CheckResult]:
     results = []
     for binary, plugin_name, hint in EXTERNAL_TOOLS:
         path = shutil.which(binary)
@@ -173,7 +173,7 @@ def check_external_tools() -> List[CheckResult]:
 class ToolUpdateSpec:
     binary: str
     display_name: str
-    local_version_cmd: List[str]
+    local_version_cmd: list[str]
     local_version_regex: str
     upstream_kind: str   # "github_release" | "npm" | "pypi"
     upstream_id: str
@@ -181,7 +181,7 @@ class ToolUpdateSpec:
     # Optional override for binary resolution. Default is shutil.which(binary).
     # Used for tools whose name collides with a Python package shipped in the
     # kast venv (httpx). Returns the resolved path or None.
-    path_resolver: Optional[Callable[[], Optional[str]]] = None
+    path_resolver: Callable[[], str | None] | None = None
 
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
@@ -190,7 +190,7 @@ _UPSTREAM_TIMEOUT = 5
 _CACHE_TTL_SECONDS = 86400  # 24 hours
 
 # Order mirrors EXTERNAL_TOOLS so the report sections line up visually.
-UPDATE_SPECS: List[ToolUpdateSpec] = [
+UPDATE_SPECS: list[ToolUpdateSpec] = [
     ToolUpdateSpec(
         binary="whatweb",
         display_name="whatweb",
@@ -262,7 +262,7 @@ def _strip_ansi(text: str) -> str:
     return _ANSI_RE.sub("", text)
 
 
-def _resolve_binary(spec: ToolUpdateSpec) -> Optional[str]:
+def _resolve_binary(spec: ToolUpdateSpec) -> str | None:
     """Return the absolute path to the binary this spec should invoke, or None.
 
     Custom ``path_resolver`` wins (used for tools whose PATH name collides with
@@ -273,7 +273,7 @@ def _resolve_binary(spec: ToolUpdateSpec) -> Optional[str]:
     return shutil.which(spec.binary)
 
 
-def _local_version(spec: ToolUpdateSpec) -> Optional[str]:
+def _local_version(spec: ToolUpdateSpec) -> str | None:
     """Run the tool's version command, return the first version string or None."""
     resolved = _resolve_binary(spec)
     if resolved is None:
@@ -294,7 +294,7 @@ def _local_version(spec: ToolUpdateSpec) -> Optional[str]:
     return m.group(1) if m else None
 
 
-def _http_get_json(url: str, headers: Optional[dict] = None) -> Optional[dict]:
+def _http_get_json(url: str, headers: dict | None = None) -> dict | None:
     """Stdlib JSON GET with timeout. Returns None on any error."""
     req = urllib.request.Request(url, headers=headers or {})
     try:
@@ -304,7 +304,7 @@ def _http_get_json(url: str, headers: Optional[dict] = None) -> Optional[dict]:
         return None
 
 
-def _github_latest(repo: str) -> Optional[str]:
+def _github_latest(repo: str) -> str | None:
     """Latest release tag from GitHub. Honors GITHUB_TOKEN if set."""
     headers = {"Accept": "application/vnd.github+json"}
     token = os.environ.get("GITHUB_TOKEN")
@@ -317,21 +317,21 @@ def _github_latest(repo: str) -> Optional[str]:
     return tag.lstrip("v").strip() or None
 
 
-def _npm_latest(package: str) -> Optional[str]:
+def _npm_latest(package: str) -> str | None:
     data = _http_get_json(f"https://registry.npmjs.org/{package}/latest")
     if not data:
         return None
     return data.get("version") or None
 
 
-def _pypi_latest(package: str) -> Optional[str]:
+def _pypi_latest(package: str) -> str | None:
     data = _http_get_json(f"https://pypi.org/pypi/{package}/json")
     if not data:
         return None
     return (data.get("info") or {}).get("version") or None
 
 
-def _upstream_version(spec: ToolUpdateSpec) -> Optional[str]:
+def _upstream_version(spec: ToolUpdateSpec) -> str | None:
     if spec.upstream_kind == "github_release":
         return _github_latest(spec.upstream_id)
     if spec.upstream_kind == "npm":
@@ -389,7 +389,7 @@ def _save_cache(cache: dict) -> None:
         pass
 
 
-def _cached_upstream_version(spec: ToolUpdateSpec, *, use_cache: bool) -> Optional[str]:
+def _cached_upstream_version(spec: ToolUpdateSpec, *, use_cache: bool) -> str | None:
     key = f"{spec.upstream_kind}:{spec.upstream_id}"
     now = time.time()
     cache = _load_cache() if use_cache else {}
@@ -405,9 +405,9 @@ def _cached_upstream_version(spec: ToolUpdateSpec, *, use_cache: bool) -> Option
     return latest
 
 
-def check_external_tool_updates(*, use_cache: bool = True) -> List[CheckResult]:
+def check_external_tool_updates(*, use_cache: bool = True) -> list[CheckResult]:
     """For each spec with the binary in PATH: report current/outdated/ahead/unknown."""
-    results: List[CheckResult] = []
+    results: list[CheckResult] = []
     section = "External Tool Updates"
 
     for spec in UPDATE_SPECS:
@@ -518,7 +518,7 @@ def check_log_dir_writable(log_dir: str = "/var/log/kast/") -> CheckResult:
         )
 
 
-def check_results_dir(path: Optional[Path] = None) -> CheckResult:
+def check_results_dir(path: Path | None = None) -> CheckResult:
     """Verify the resolved results dir is creatable.
 
     Resolution honors ``--results-dir`` / ``KAST_RESULTS_DIR`` /
@@ -550,7 +550,7 @@ CONFIG_SEARCH_PATHS = [
 ]
 
 
-def check_config_files() -> List[CheckResult]:
+def check_config_files() -> list[CheckResult]:
     """Each config search path: present + valid YAML, or absent."""
     import yaml as yaml_mod
 
@@ -645,7 +645,7 @@ def check_katana_browser() -> CheckResult:
     )
 
 
-def check_plugin_loading() -> List[CheckResult]:
+def check_plugin_loading() -> list[CheckResult]:
     """Every plugin class instantiates without exception."""
     from kast.registry import PluginRegistry
 
@@ -682,7 +682,7 @@ def check_plugin_loading() -> List[CheckResult]:
 # ---------------------------------------------------------------------------
 
 
-CHECKS: List[Callable[[], CheckResult | List[CheckResult]]] = [
+CHECKS: list[Callable[[], CheckResult | list[CheckResult]]] = [
     check_python_version,
     check_python_modules,
     check_external_tools,
@@ -695,14 +695,14 @@ CHECKS: List[Callable[[], CheckResult | List[CheckResult]]] = [
 ]
 
 
-def run_all_checks(results_dir: Optional[Path] = None) -> List[CheckResult]:
+def run_all_checks(results_dir: Path | None = None) -> list[CheckResult]:
     """Run every check and return a flat list of CheckResult.
 
     ``results_dir`` is forwarded to ``check_results_dir`` so callers (e.g.
     the ``doctor`` Click command) can honor ``--results-dir`` overrides.
     """
     resolved = results_dir if results_dir is not None else resolve_results_dir()
-    out: List[CheckResult] = []
+    out: list[CheckResult] = []
     for check in CHECKS:
         if check is check_results_dir:
             result = check_results_dir(resolved)
@@ -715,9 +715,9 @@ def run_all_checks(results_dir: Optional[Path] = None) -> List[CheckResult]:
     return out
 
 
-def render_report(results: List[CheckResult]) -> None:
+def render_report(results: list[CheckResult]) -> None:
     """Print a Rich table grouped by section."""
-    sections: dict[str, List[CheckResult]] = {}
+    sections: dict[str, list[CheckResult]] = {}
     for r in results:
         sections.setdefault(r.section, []).append(r)
 
@@ -739,7 +739,7 @@ def render_report(results: List[CheckResult]) -> None:
         console.print()
 
 
-def render_summary(results: List[CheckResult]) -> dict:
+def render_summary(results: list[CheckResult]) -> dict:
     """Print and return a one-line summary; counts by status."""
     counts = {OK: 0, WARN: 0, FAIL: 0, INFO: 0}
     for r in results:
@@ -763,14 +763,14 @@ def render_summary(results: List[CheckResult]) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _apply_safe_fixes(results_dir: Optional[Path] = None) -> List[CheckResult]:
+def _apply_safe_fixes(results_dir: Path | None = None) -> list[CheckResult]:
     """Run safe auto-fixes; return per-fix CheckResults summarizing actions taken.
 
     Safe fixes only — anything system-mutating (apt / go install) is left for
     the user to run, with the existing ``hint`` fields surfacing the commands.
     """
     section = "Auto-fix"
-    fixes: List[CheckResult] = []
+    fixes: list[CheckResult] = []
 
     if results_dir is None:
         results_dir = resolve_results_dir()
@@ -835,7 +835,7 @@ def _apply_safe_fixes(results_dir: Optional[Path] = None) -> List[CheckResult]:
     return fixes
 
 
-def _print_manual_remediation_checklist(results: List[CheckResult]) -> None:
+def _print_manual_remediation_checklist(results: list[CheckResult]) -> None:
     """Print a checklist of commands the user needs to run by hand."""
     manual = [r for r in results if r.status in (FAIL, WARN) and r.hint]
     if not manual:
@@ -859,12 +859,12 @@ def _print_manual_remediation_checklist(results: List[CheckResult]) -> None:
               help="Override the results dir checked by --fix and the perms check. "
                    "Precedence: this flag > $KAST_RESULTS_DIR > global.results_dir in config > ~/kast_results.")
 def doctor(json_output: bool, fix: bool, check_updates: bool, no_cache: bool,
-           results_dir: Optional[str]) -> None:
+           results_dir: str | None) -> None:
     """Run environment health checks (Python, tools, perms, plugins)."""
     resolved_results_dir = resolve_results_dir(results_dir)
     results = run_all_checks(resolved_results_dir)
 
-    fix_results: List[CheckResult] = []
+    fix_results: list[CheckResult] = []
     if fix:
         fix_results = _apply_safe_fixes(resolved_results_dir)
         # Re-run the checks after fixes so the report reflects new state.

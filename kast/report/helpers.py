@@ -1,10 +1,8 @@
 """Formatting and metadata helpers for the report pipeline.
 
-Module home for the small functions that were sprinkled through the v2
-``report_builder.py``. Both renderers and the data collector import from
-here. Kept distinct from ``kast.report.data`` (which orchestrates) and
-the renderers (which produce final artifacts) so the helpers can be
-unit-tested in isolation.
+Both renderers and the data collector import from here. Kept distinct
+from ``kast.report.data`` (which orchestrates) and the renderers (which
+produce final artifacts) so the helpers can be unit-tested in isolation.
 """
 
 from __future__ import annotations

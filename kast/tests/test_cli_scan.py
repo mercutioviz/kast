@@ -9,14 +9,14 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 from kast.cli.scan import (
     _read_scan_metadata,
+)
+from kast.cli.scan import (
     scan as scan_group,
 )
-
 
 # Reuse the v3 baseline as a known-good scan dir fixture
 BASELINE_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "baseline-v3.0-phase-a"
@@ -180,7 +180,7 @@ def test_scan_rerun_re_renders_html(tmp_path):
     assert not (target / "kast_report.html").exists()
 
     runner = CliRunner()
-    result = runner.invoke(scan_group, ["rerun", str(target)])
+    runner.invoke(scan_group, ["rerun", str(target)])
     # Tolerate exit codes — rerun may emit warnings about WeasyPrint etc.
     # But the HTML report MUST appear.
     assert (target / "kast_report.html").exists()

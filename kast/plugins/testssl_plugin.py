@@ -3,18 +3,20 @@ File: plugins/testssl_plugin.py
 Description: KAST plugin for testssl.sh - SSL/TLS security assessment tool
 """
 
-import subprocess
-import shutil
 import json
 import os
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
-from kast.core.atomic import write_json_atomic
+import shutil
+import subprocess
+from datetime import UTC, datetime
 from pprint import pformat
+
+from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
+
 
 class TestsslPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
-    
+
     # Configuration schema for kast-web integration
     config_schema = {
         "type": "object",
@@ -71,14 +73,14 @@ class TestsslPlugin(KastPlugin):
     output_type = "file"
 
     def __init__(self, cli_args, config_manager=None):
-        
+
         super().__init__(cli_args, config_manager)
-        
+
         self.command_executed = None
-        
+
         # Load configuration values
         self._load_plugin_config()
-    
+
     def _load_plugin_config(self):
         """Load configuration with defaults from schema."""
         # Get config values (defaults from schema if not set)
@@ -115,12 +117,12 @@ class TestsslPlugin(KastPlugin):
         Run testssl and return standardized result dict.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
-        
+
         # Build command dynamically based on configuration
         cmd = ["testssl"]
-        
+
         # Add test flags based on configuration
         if self.test_protocols:
             cmd.append("-p")
@@ -162,7 +164,7 @@ class TestsslPlugin(KastPlugin):
                 self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
                 # In report-only mode, check if results already exist
                 if os.path.exists(output_file):
-                    with open(output_file, "r") as f:
+                    with open(output_file) as f:
                         results = json.load(f)
                     return self.get_result_dict(
                         disposition="success",
@@ -203,7 +205,7 @@ class TestsslPlugin(KastPlugin):
                     )
 
             # Load results from output file
-            with open(output_file, "r") as f:
+            with open(output_file) as f:
                 results = json.load(f)
 
             return self.get_result_dict(
@@ -226,7 +228,7 @@ class TestsslPlugin(KastPlugin):
         """
         # Load findings from various input types
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
-            with open(raw_output, "r") as f:
+            with open(raw_output) as f:
                 findings = json.load(f)
         elif isinstance(raw_output, dict):
             findings = raw_output.get("results", raw_output)
@@ -248,27 +250,27 @@ class TestsslPlugin(KastPlugin):
         if not scan_results:
             self.debug("No scan results found")
             scan_results = [{}]
-        
+
         scan_data = scan_results[0] if scan_results else {}
-        
+
         # Check for scan problems (connection failures, etc.)
         if scan_data.get("id") == "scanProblem" and scan_data.get("severity") == "FATAL":
             scan_problem_msg = scan_data.get("finding", "Unknown scan problem")
             self.debug(f"Scan problem detected: {scan_problem_msg}")
-            
+
             # Set concise summary for connection failures
             summary = "Unable to complete TLS scan."
-            
+
             # Format command for report notes
             report_notes = self._format_command_for_report()
-            
+
             # Build processed result for scan failure
             processed = {
                 "plugin-name": self.name,
                 "plugin-description": self.description,
                 "plugin-display-name": getattr(self, 'display_name', None),
                 "plugin-website-url": getattr(self, 'website_url', None),
-                "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
                 "findings": findings,
                 "summary": summary or f"{self.name} did not produce any findings",
                 "details": f"Unable to complete SSL/TLS scan:\n\n{scan_problem_msg}",
@@ -277,12 +279,12 @@ class TestsslPlugin(KastPlugin):
                 "report": report_notes,
                 "results_message": "Scan could not be completed. See details above for more information."
             }
-            
+
             processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
             write_json_atomic(processed_path, processed)
-            
+
             return processed_path
-        
+
         # Extract protocols, vulnerabilities, cipher tests, and server defaults
         protocols = scan_data.get("protocols", [])
         vulnerabilities = scan_data.get("vulnerabilities", [])
@@ -384,13 +386,13 @@ class TestsslPlugin(KastPlugin):
             results_message = "Scan completed successfully. No vulnerabilities or cipher issues detected."
         else:
             results_message = f"Scan completed. Found {len(issues)} issue(s). See details above."
-        
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
@@ -548,28 +550,28 @@ class TestsslPlugin(KastPlugin):
         """
         if not findings:
             return "No SSL/TLS scan results available."
-        
+
         # Extract scan results
         scan_results = findings.get("scanResult", [])
         if not scan_results:
             return "No SSL/TLS scan results available."
-        
+
         scan_data = scan_results[0] if scan_results else {}
         vulnerabilities = scan_data.get("vulnerabilities", [])
-        
+
         # Count vulnerabilities by severity
         severity_counts = {}
         for vuln in vulnerabilities:
             severity = vuln.get("severity", "UNKNOWN")
             if severity not in ["OK", "INFO"]:
                 severity_counts[severity] = severity_counts.get(severity, 0) + 1
-        
+
         if not severity_counts:
             return "SSL/TLS configuration appears secure. No vulnerabilities detected."
-        
+
         # Build summary message
         total_issues = sum(severity_counts.values())
-        
+
         if total_issues == 1:
             return "SSL/TLS scan detected 1 security issue requiring attention."
         else:
@@ -578,7 +580,7 @@ class TestsslPlugin(KastPlugin):
                 if severity in severity_counts:
                     count = severity_counts[severity]
                     severity_details.append(f"{count} {severity}")
-            
+
             if severity_details:
                 return f"SSL/TLS scan detected {total_issues} security issues: {', '.join(severity_details)}."
             else:
@@ -591,7 +593,7 @@ class TestsslPlugin(KastPlugin):
         """
         if not self.command_executed:
             return "Command not available"
-        
+
         return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
     def get_dry_run_info(self, target, output_dir):
@@ -600,10 +602,10 @@ class TestsslPlugin(KastPlugin):
         Builds the actual command with current configuration.
         """
         output_file = os.path.join(output_dir, f"{self.name}.json")
-        
+
         # Build command with current configuration
         cmd = ["testssl"]
-        
+
         # Add test flags based on configuration
         if self.test_protocols:
             cmd.append("-p")
@@ -624,7 +626,7 @@ class TestsslPlugin(KastPlugin):
 
         # Add JSON output and target
         cmd.extend(["-oJ", output_file, target])
-        
+
         return {
             "commands": [' '.join(cmd)],
             "description": self.description,

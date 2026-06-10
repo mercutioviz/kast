@@ -27,7 +27,6 @@ and identity is settable without going through ``__init__``.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from kast.plugins.base import KastPlugin
 from kast.utils import discover_plugins as _discover_plugin_classes
@@ -75,12 +74,12 @@ class PluginRegistry:
         self,
         logger: logging.Logger,
         cli_args: object = None,
-        config_manager: Optional[object] = None,
+        config_manager: object | None = None,
     ) -> None:
         self.logger = logger
         self.cli_args = cli_args if cli_args is not None else make_minimal_args()
         self.config_manager = config_manager
-        self._classes: Optional[list[type[KastPlugin]]] = None
+        self._classes: list[type[KastPlugin]] | None = None
         self._instances: dict[str, KastPlugin] = {}
         self._loaded = False
 
@@ -142,7 +141,7 @@ class PluginRegistry:
                 self._instances[inst.name] = inst
         self._loaded = True
 
-    def _instantiate(self, cls: type[KastPlugin]) -> Optional[KastPlugin]:
+    def _instantiate(self, cls: type[KastPlugin]) -> KastPlugin | None:
         """Construct a plugin instance with the registry's cli_args/config_manager.
 
         Phase A5 unified all plugins on ``__init__(self, cli_args, config_manager=None)``,

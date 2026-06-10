@@ -6,12 +6,11 @@ canonical-severity-sorted issue list, fixing the v2 PDF path which used
 a stale ``severity_order`` dict that mis-sorted Informational issues.
 """
 
-from kast.report.data import collect_report_data
-from kast.report_builder import (
+from kast.report import (
     calculate_waf_statistics,
     generate_html_report,
-    generate_pdf_report,
 )
+from kast.report.data import collect_report_data
 
 
 def _sample_plugin_results():

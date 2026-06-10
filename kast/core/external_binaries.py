@@ -10,8 +10,6 @@ binary must search well-known system paths first.
 from __future__ import annotations
 
 import os
-from typing import Optional
-
 
 _PD_HTTPX_CANDIDATES = [
     "/usr/local/bin/httpx",
@@ -21,7 +19,7 @@ _PD_HTTPX_CANDIDATES = [
 ]
 
 
-def find_pd_httpx() -> Optional[str]:
+def find_pd_httpx() -> str | None:
     """Return the path to the ProjectDiscovery httpx binary, or None."""
     for path in _PD_HTTPX_CANDIDATES:
         if os.path.isfile(path) and os.access(path, os.X_OK):

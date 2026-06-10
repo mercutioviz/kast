@@ -5,13 +5,14 @@ Description: KAST plugin for OWASP ZAP with multi-mode support (local, remote)
 
 import json
 import os
-import yaml
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
+import yaml
+
+from kast.core.atomic import write_json_atomic
 from kast.plugins.base import KastPlugin
 from kast.scripts.zap_providers import LocalZapProvider, RemoteZapProvider
-from kast.core.atomic import write_json_atomic
 
 # Substrings (lowercase) that indicate a WAF can address the finding.
 # Checked against the alert name with case-insensitive substring match.
@@ -79,7 +80,7 @@ _ZAP_PLUGINID_TO_KAST_ISSUE = {
 
 class ZapPlugin(KastPlugin):
     priority = 200  # Run later (higher number = lower priority)
-    
+
     # Configuration schema for kast-web integration
     # Note: ZAP uses hierarchical YAML config, schema mirrors that structure
     config_schema = {
@@ -226,9 +227,9 @@ class ZapPlugin(KastPlugin):
     output_type = "file"
 
     def __init__(self, cli_args, config_manager=None):
-        
+
         super().__init__(cli_args, config_manager)
-        
+
         # Provider components
         self.provider = None
         self.zap_client = None
@@ -242,13 +243,13 @@ class ZapPlugin(KastPlugin):
     def is_available(self):
         """
         Check if ZAP plugin can run
-        
+
         The plugin is available if Docker is installed (for local mode) or if
         remote mode config is provided. Always returns True since remote mode
         requires no local tool.
         """
         import shutil
-        
+
         # Check for Docker (local mode)
         if shutil.which("docker") is not None:
             return True
@@ -259,13 +260,13 @@ class ZapPlugin(KastPlugin):
     def _load_config(self):
         """
         Load ZAP configuration from YAML file with ConfigManager CLI overrides
-        
+
         Search order (consistent with ConfigManager):
         1. ./kast_config.yaml (project) - plugins.zap section
         2. ~/.config/kast/config.yaml (user) - plugins.zap section
         3. /etc/kast/config.yaml (system) - plugins.zap section
         4. kast/config/zap_config.yaml (installation - backward compat)
-        
+
         :return: Configuration dictionary
         """
         # DEBUG: Check if ConfigManager is available
@@ -273,26 +274,26 @@ class ZapPlugin(KastPlugin):
             self.debug(f"ConfigManager available: {type(self.config_manager)}")
         else:
             self.debug("WARNING: ConfigManager is None - CLI overrides will not be applied!")
-        
+
         # Define search paths (same as ConfigManager)
         unified_config_paths = [
             Path("./kast_config.yaml"),  # Project-specific
             Path.home() / ".config" / "kast" / "config.yaml",  # User config (XDG)
             Path("/etc/kast/config.yaml"),  # System-wide
         ]
-        
+
         config = None
         config_source = None
-        
+
         # First, try unified config files (look for plugins.zap section)
         for config_path in unified_config_paths:
             config_path = config_path.expanduser()
             if config_path.exists():
                 try:
                     self.debug(f"Checking for ZAP config in {config_path}")
-                    with open(config_path, 'r') as f:
+                    with open(config_path) as f:
                         unified_config = yaml.safe_load(f)
-                    
+
                     # Check if this file has a plugins.zap section
                     if isinstance(unified_config, dict) and \
                        'plugins' in unified_config and \
@@ -304,7 +305,7 @@ class ZapPlugin(KastPlugin):
                 except Exception as e:
                     self.debug(f"Error reading {config_path}: {e}")
                     continue
-        
+
         # If not found in unified configs, try the standalone ZAP config file
         if config is None:
             standalone_paths = [
@@ -315,7 +316,7 @@ class ZapPlugin(KastPlugin):
                 if config_path.exists():
                     try:
                         self.debug(f"Checking standalone ZAP config: {config_path}")
-                        with open(config_path, 'r') as f:
+                        with open(config_path) as f:
                             config = yaml.safe_load(f)
                         config_source = str(config_path)
                         self.debug(f"Found ZAP config in standalone format: {config_path}")
@@ -323,43 +324,43 @@ class ZapPlugin(KastPlugin):
                     except Exception as e:
                         self.debug(f"Error reading {config_path}: {e}")
                         continue
-        
+
         # If still no config found, raise error
         if config is None:
             searched_paths = [str(p) for p in unified_config_paths] + \
                            [str(p) for p in standalone_paths]
             raise FileNotFoundError(
-                f"ZAP config not found. Searched:\n" + 
+                "ZAP config not found. Searched:\n" +
                 "\n".join(f"  - {p}" for p in searched_paths)
             )
-        
+
         # Expand environment variables
         config = self._expand_env_vars(config)
-        
+
         # Apply CLI overrides from ConfigManager
         if self.config_manager:
             config = self._apply_cli_overrides(config)
-        
+
         self.debug(f"Loaded ZAP config from {config_source} (mode: {config.get('execution_mode', 'auto')})")
         return config
-    
+
     def _apply_cli_overrides(self, config):
         """
         Apply CLI overrides from ConfigManager to loaded YAML config
-        
+
         Only overrides strategic parameters that users commonly adjust.
         Preserves the hierarchical YAML structure.
-        
+
         :param config: Configuration dictionary from YAML
         :return: Configuration with CLI overrides applied
         """
         self.debug("=== Applying CLI Overrides ===")
         self.debug(f"Config before overrides - execution_mode: {config.get('execution_mode', 'NOT SET')}")
-        
+
         if not self.config_manager:
             self.debug("No ConfigManager available, skipping CLI overrides")
             return config
-        
+
         # Get entire plugin config from ConfigManager (includes CLI overrides)
         try:
             plugin_config = self.config_manager.get_plugin_config(self.name)
@@ -367,7 +368,7 @@ class ZapPlugin(KastPlugin):
         except Exception as e:
             self.debug(f"Error getting plugin config from ConfigManager: {e}")
             return config
-        
+
         # Strategic parameters that can be overridden via CLI
         # Format: 'nested.key.path' maps to config['nested']['key']['path']
         overrideable_params = [
@@ -390,77 +391,77 @@ class ZapPlugin(KastPlugin):
             'zap_config.report_name',
             'zap_config.automation_plan'
         ]
-        
+
         override_count = 0
         for param_path in overrideable_params:
             # Extract value from plugin config using nested path
             self.debug(f"  Checking override for: {param_path}")
             override_value = self._get_nested_value(plugin_config, param_path)
             self.debug(f"    Found in plugin_config: {override_value} (type: {type(override_value).__name__ if override_value is not None else 'None'})")
-            
+
             # Only apply if value differs from what's in YAML config
             yaml_value = self._get_nested_value(config, param_path)
-            
+
             if override_value is not None and override_value != yaml_value:
                 # Apply the override to nested config
                 self._set_nested_value(config, param_path, override_value)
                 self.debug(f"✓ CLI override applied: {param_path} = {override_value} (was: {yaml_value})")
                 override_count += 1
-        
+
         self.debug(f"=== Applied {override_count} CLI override(s) ===")
         self.debug(f"Config after overrides - execution_mode: {config.get('execution_mode', 'NOT SET')}")
-        
+
         return config
-    
+
     def _get_nested_value(self, config, path):
         """
         Get a value from nested dictionary using dot notation path
-        
+
         Example: _get_nested_value(config, 'local.api_port')
                  returns config['local']['api_port']
-        
+
         :param config: Configuration dictionary
         :param path: Dot-notation path (e.g., 'local.api_port')
         :return: Value at path, or None if not found
         """
         keys = path.split('.')
         current = config
-        
+
         for key in keys:
             if isinstance(current, dict) and key in current:
                 current = current[key]
             else:
                 return None
-        
+
         return current
-    
+
     def _set_nested_value(self, config, path, value):
         """
         Set a value in nested dictionary using dot notation path
-        
+
         Example: _set_nested_value(config, 'local.api_port', 8081)
                  sets config['local']['api_port'] = 8081
-        
+
         :param config: Configuration dictionary
         :param path: Dot-notation path (e.g., 'local.api_port')
         :param value: Value to set
         """
         keys = path.split('.')
         current = config
-        
+
         # Navigate to the parent of the target key
         for key in keys[:-1]:
             if key not in current:
                 current[key] = {}
             current = current[key]
-        
+
         # Set the final value
         current[keys[-1]] = value
 
     def _expand_env_vars(self, obj):
         """
         Recursively expand environment variables in config
-        
+
         :param obj: Configuration object (dict, list, or str)
         :return: Expanded object
         """
@@ -478,25 +479,25 @@ class ZapPlugin(KastPlugin):
         """
         Normalize target URL by adding HTTPS scheme if missing.
         Respects explicit HTTP/HTTPS if user provides it.
-        
+
         Examples:
           www.example.com -> https://www.example.com
           example.com -> https://example.com
           http://example.com -> http://example.com (unchanged)
           https://example.com -> https://example.com (unchanged)
-        
+
         :param target: Target URL (may or may not have scheme)
         :return: Normalized URL with scheme
         """
         from urllib.parse import urlparse
-        
+
         parsed = urlparse(target)
-        
+
         # If scheme already present, use as-is (respects user's explicit choice)
         if parsed.scheme in ['http', 'https']:
             self.debug(f"Target has explicit scheme: {target}")
             return target
-        
+
         # No scheme - default to HTTPS
         normalized = f"https://{target}"
         self.debug(f"No scheme detected, using HTTPS: {normalized}")
@@ -505,48 +506,48 @@ class ZapPlugin(KastPlugin):
     def _validate_automation_plan(self, plan_content):
         """
         Validate ZAP automation plan YAML
-        
+
         :param plan_content: YAML content as string
         :return: Tuple of (is_valid: bool, error_message: str or None)
         """
         try:
             # Parse YAML
             plan = yaml.safe_load(plan_content)
-            
+
             # Basic structure validation
             if not isinstance(plan, dict):
                 return False, "Automation plan must be a YAML dictionary"
-            
+
             # Check for required top-level keys
             if 'env' not in plan:
                 return False, "Automation plan missing required 'env' section"
-            
+
             if 'jobs' not in plan:
                 return False, "Automation plan missing required 'jobs' section"
-            
+
             # Validate env section
             env = plan.get('env', {})
             if not isinstance(env, dict):
                 return False, "'env' section must be a dictionary"
-            
+
             # Validate jobs section
             jobs = plan.get('jobs', [])
             if not isinstance(jobs, list):
                 return False, "'jobs' section must be a list"
-            
+
             if len(jobs) == 0:
                 return False, "'jobs' section cannot be empty"
-            
+
             # Validate each job has a type
             for idx, job in enumerate(jobs):
                 if not isinstance(job, dict):
                     return False, f"Job at index {idx} must be a dictionary"
                 if 'type' not in job:
                     return False, f"Job at index {idx} missing required 'type' field"
-            
+
             self.debug("Automation plan validation passed")
             return True, None
-            
+
         except yaml.YAMLError as e:
             return False, f"YAML parsing error: {str(e)}"
         except Exception as e:
@@ -555,34 +556,34 @@ class ZapPlugin(KastPlugin):
     def _load_automation_plan(self):
         """
         Load and validate ZAP automation plan content
-        
+
         :return: YAML content as string, or None if not found/invalid
         """
         zap_config = self.config.get('zap_config', {})
-        automation_plan_path = Path(zap_config.get('automation_plan', 
+        automation_plan_path = Path(zap_config.get('automation_plan',
                                     'kast/config/zap_automation_plan.yaml'))
-        
+
         if not automation_plan_path.exists():
             # Try relative to this file
             automation_plan_path = Path(__file__).parent.parent / "config" / "zap_automation_plan.yaml"
-        
+
         if not automation_plan_path.exists():
             self.debug("Warning: Automation plan not found")
             return None
-        
+
         try:
-            with open(automation_plan_path, 'r') as f:
+            with open(automation_plan_path) as f:
                 plan_content = f.read()
-            
+
             # Validate the plan
             is_valid, error_msg = self._validate_automation_plan(plan_content)
             if not is_valid:
                 self.debug(f"Automation plan validation failed: {error_msg}")
                 return None
-            
+
             self.debug(f"Loaded automation plan from {automation_plan_path}")
             return plan_content
-            
+
         except Exception as e:
             self.debug(f"Error loading automation plan: {e}")
             return None
@@ -590,33 +591,33 @@ class ZapPlugin(KastPlugin):
     def run(self, target, output_dir, report_only):
         """Run ZAP scan using appropriate provider"""
         self.setup(target, output_dir)
-        
+
         # Normalize target URL (add https:// if no scheme provided)
         target = self._normalize_target_url(target)
-        
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
-        
+
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
+
         if report_only:
             # In report-only mode, check for existing results
             output_file = os.path.join(output_dir, f"{self.name}.json")
             if os.path.exists(output_file):
-                with open(output_file, "r") as f:
+                with open(output_file) as f:
                     results = json.load(f)
                 return self.get_result_dict("success", results, timestamp)
             else:
                 return self.get_result_dict("fail", "No existing results found", timestamp)
-        
+
         try:
             # Load configuration
             self.config = self._load_config()
-            
+
             # Validate remote mode requirements
             execution_mode = self.config.get('execution_mode', 'auto')
             if execution_mode == 'remote':
                 remote_config = self.config.get('remote', {})
                 api_url = remote_config.get('api_url', '')
                 api_key = remote_config.get('api_key', '')
-                
+
                 # Check if URL is missing or unexpanded environment variable
                 if not api_url or api_url.startswith('${'):
                     error_msg = "\n" + "="*70 + "\n"
@@ -630,7 +631,7 @@ class ZapPlugin(KastPlugin):
                     error_msg += "  3. Config file (zap_config.yaml):\n"
                     error_msg += "     remote:\n"
                     error_msg += "       api_url: http://zap.example.com:8080\n\n"
-                    
+
                     # Also check and warn about missing API key (in yellow)
                     if not api_key or api_key.startswith('${'):
                         error_msg += "\033[93m"  # Yellow color
@@ -640,14 +641,14 @@ class ZapPlugin(KastPlugin):
                         error_msg += "  2. Environment: export KAST_ZAP_API_KEY=YOUR_KEY\n"
                         error_msg += "  3. Config file: Set remote.api_key in zap_config.yaml\n"
                         error_msg += "\033[0m\n"  # Reset color
-                    
+
                     error_msg += "="*70 + "\n"
-                    
+
                     # Print to console (not just debug log)
                     print(error_msg)
                     self.debug("Remote mode validation failed: Missing api_url")
                     return self.get_result_dict("fail", "Remote mode requires api_url to be configured", timestamp)
-                
+
                 # Warn about missing API key (but don't fail) - in yellow
                 if not api_key or api_key.startswith('${'):
                     warning_msg = "\n\033[93m"  # Yellow color
@@ -663,7 +664,7 @@ class ZapPlugin(KastPlugin):
                     warning_msg += "\033[0m"  # Reset color
                     print(warning_msg)
                     self.debug("Remote mode: No API key provided")
-            
+
             # Select provider based on execution mode
             _mode = self.config.get('execution_mode', 'auto')
             if _mode == 'remote':
@@ -681,38 +682,38 @@ class ZapPlugin(KastPlugin):
 
             provider_mode = self.provider.get_mode_name()
             self.debug(f"Using {provider_mode} provider for ZAP scan")
-            
+
             # Provision ZAP instance
             self.debug("Provisioning ZAP instance...")
             success, self.zap_client, self.instance_info = self.provider.provision(target, output_dir)
-            
+
             if not success:
                 error_msg = self.instance_info.get('error', 'Unknown error')
                 self.debug(f"Failed to provision ZAP instance: {error_msg}")
                 return self.get_result_dict("fail", f"Provisioning failed: {error_msg}", timestamp)
-            
+
             self.debug(f"ZAP instance ready: {self.instance_info}")
-            
+
             # Determine if using automation framework based on mode config
             mode_config = self.config.get(provider_mode, {})
             use_automation = mode_config.get('use_automation_framework', True)
-            
+
             plan_id = None  # Track plan ID for monitoring
-            
+
             if use_automation:
                 # Load and validate automation plan
                 automation_plan = self._load_automation_plan()
-                
+
                 if not automation_plan:
                     # Automation framework enabled but plan is missing/invalid - FAIL
                     error_msg = "Automation framework enabled but automation plan is missing or invalid"
                     self.debug(f"ERROR: {error_msg}")
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", error_msg, timestamp)
-                
+
                 # Substitute target URL in the plan
                 plan_with_target = automation_plan.replace('${TARGET_URL}', target)
-                
+
                 # Write the plan to output directory BEFORE uploading
                 plan_output_path = os.path.join(output_dir, 'zap_automation_plan.yaml')
                 try:
@@ -721,18 +722,18 @@ class ZapPlugin(KastPlugin):
                     self.debug(f"Automation plan saved to: {plan_output_path}")
                 except Exception as e:
                     self.debug(f"Warning: Failed to save automation plan to output directory: {e}")
-                
+
                 # Upload and execute automation plan
                 self.debug("Uploading and executing automation plan...")
                 plan_id = self.provider.upload_automation_plan(automation_plan, target)
-                
+
                 if not plan_id:
                     # Upload failed - FAIL (per requirement: failed AF attempts should fail the scan)
                     error_msg = "Failed to upload/execute automation plan"
                     self.debug(f"ERROR: {error_msg}")
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", error_msg, timestamp)
-                
+
                 self.debug(f"Automation plan running (plan_id: {plan_id})")
             else:
                 # Automation framework explicitly disabled - use direct API
@@ -740,23 +741,23 @@ class ZapPlugin(KastPlugin):
                 if not self._run_api_scan(target):
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", "API scan failed", timestamp)
-            
+
             # Monitor scan progress
             zap_config = self.config.get('zap_config', {})
             timeout_minutes = zap_config.get('timeout_minutes', 60)
             poll_interval = zap_config.get('poll_interval_seconds', 30)
-            
+
             if use_automation and plan_id:
                 # Use plan-specific monitoring with progress snapshots
                 self.debug(f"Monitoring automation plan progress (timeout: {timeout_minutes}m, poll: {poll_interval}s)")
                 self.debug(f"Progress snapshots will be written to: {output_dir}/zap_scan_progress.json")
-                
+
                 success, progress = self.provider.wait_for_plan_completion(
                     timeout=timeout_minutes * 60,
                     poll_interval=poll_interval,
                     output_dir=output_dir
                 )
-                
+
                 if not success:
                     error_msg = "Automation plan execution failed or timed out"
                     if progress and progress.get('error'):
@@ -765,7 +766,7 @@ class ZapPlugin(KastPlugin):
                     self.debug(f"ERROR: {error_msg}")
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", error_msg, timestamp)
-                
+
                 self.debug("✓ Automation plan completed successfully")
             else:
                 # Use generic scan monitoring (backward compatibility for API-based scans)
@@ -776,31 +777,31 @@ class ZapPlugin(KastPlugin):
                 ):
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", "Scan timeout", timestamp)
-            
+
             # Download results
             self.debug("Downloading scan results...")
             report_name = zap_config.get('report_name', 'zap_report.json')
             local_report = self.provider.download_results(output_dir, report_name)
-            
+
             if not local_report or not os.path.exists(local_report):
                 self.debug("Warning: Report not found, generating via API...")
                 local_report = os.path.join(output_dir, f"{self.name}.json")
                 self.zap_client.generate_report(local_report, 'json')
-            
+
             # Load results
-            with open(local_report, 'r') as f:
+            with open(local_report) as f:
                 results = json.load(f)
-            
+
             # Add provider info to results
             results['provider_mode'] = provider_mode
             results['instance_info'] = self.instance_info
-            
+
             # Cleanup
             self.debug("Cleaning up...")
             self.provider.cleanup()
-            
+
             return self.get_result_dict("success", results, timestamp)
-            
+
         except Exception as e:
             self.debug(f"ZAP plugin failed: {e}")
             import traceback
@@ -811,18 +812,18 @@ class ZapPlugin(KastPlugin):
     def _run_api_scan(self, target):
         """
         Run ZAP scan using direct API calls (for remote/local without automation)
-        
+
         :param target: Target URL
         :return: True if successful
         """
         try:
             # Create a new context
             self.debug(f"Creating ZAP context for {target}")
-            
+
             # Access the target to seed ZAP
-            self.zap_client._make_request(f'/JSON/core/action/accessUrl/', 
+            self.zap_client._make_request('/JSON/core/action/accessUrl/',
                                          params={'url': target})
-            
+
             # Start spider scan
             self.debug("Starting spider scan...")
             spider_result = self.zap_client._make_request(
@@ -831,7 +832,7 @@ class ZapPlugin(KastPlugin):
             )
             spider_id = spider_result.get('scan', '0')
             self.debug(f"Spider scan started: {spider_id}")
-            
+
             # Start active scan
             self.debug("Starting active scan...")
             ascan_result = self.zap_client._make_request(
@@ -840,9 +841,9 @@ class ZapPlugin(KastPlugin):
             )
             ascan_id = ascan_result.get('scan', '0')
             self.debug(f"Active scan started: {ascan_id}")
-            
+
             return True
-            
+
         except Exception as e:
             self.debug(f"API scan failed: {e}")
             return False
@@ -860,11 +861,11 @@ class ZapPlugin(KastPlugin):
         # Load findings - handle multiple input types
         findings = {}
         disposition = "success"  # Default disposition
-        
+
         if isinstance(raw_output, str):
             # Could be a file path or error message
             if os.path.isfile(raw_output):
-                with open(raw_output, "r") as f:
+                with open(raw_output) as f:
                     findings = json.load(f)
             else:
                 # It's an error message string
@@ -883,39 +884,39 @@ class ZapPlugin(KastPlugin):
                     disposition = "fail"
             else:
                 findings = raw_output
-        
+
         provider_mode = findings.get('provider_mode', 'unknown')
         instance_info = findings.get('instance_info', {})
-        
+
         # Extract alerts from nested site structure
         # ZAP report structure: findings['site'] is an array of site objects,
         # each containing an 'alerts' array
         all_alerts = []
         sites = findings.get('site', [])
-        
+
         # Handle both array and single site formats
         if not isinstance(sites, list):
             sites = [sites] if sites else []
-        
+
         site_breakdown = []  # Track per-site statistics
-        
+
         for site in sites:
             site_name = site.get('@name', 'Unknown')
             site_alerts = site.get('alerts', [])
-            
+
             # Handle both array and single alert formats
             if not isinstance(site_alerts, list):
                 site_alerts = [site_alerts] if site_alerts else []
-            
+
             if site_alerts:
                 site_breakdown.append({
                     'name': site_name,
                     'alert_count': len(site_alerts)
                 })
                 all_alerts.extend(site_alerts)
-        
+
         self.debug(f"Extracted {len(all_alerts)} alerts from {len(sites)} site(s)")
-        
+
         # Map riskcode to risk names
         risk_map = {
             '3': 'High',
@@ -923,7 +924,7 @@ class ZapPlugin(KastPlugin):
             '1': 'Low',
             '0': 'Informational'
         }
-        
+
         # Group by risk, tag WAF-addressable; map known rule IDs to kast issues
         risk_counts = {'High': 0, 'Medium': 0, 'Low': 0, 'Informational': 0}
         issues = []
@@ -966,32 +967,32 @@ class ZapPlugin(KastPlugin):
                 f"ZAP scan ({provider_mode} mode) identified {total} security findings. "
                 f"{waf_addressable_count} of {total} are directly addressable by a WAF."
             )
-        
+
         self.debug(f"{self.name} findings_count: {findings_count}")
-        
+
         # Build details with per-site breakdown
         details = f"Execution Mode: {provider_mode}\n"
         details += f"Total Alerts: {total}\n"
         details += f"Sites Scanned: {len(sites)}\n\n"
-        
+
         # Risk breakdown
         details += "Risk Breakdown:\n"
         for risk, count in risk_counts.items():
             if count > 0:
                 details += f"  {risk}: {count}\n"
-        
+
         # Per-site breakdown
         if site_breakdown:
             details += "\nPer-Site Alert Count:\n"
             for site_info in site_breakdown:
                 details += f"  {site_info['name']}: {site_info['alert_count']} alerts\n"
-        
+
         processed = {
             "plugin-name": self.name,
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
             "plugin-website-url": self.website_url,
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "disposition": disposition,
             "findings": findings,
             "findings_count": findings_count,
@@ -1005,8 +1006,8 @@ class ZapPlugin(KastPlugin):
             "code_fix_count": code_fix_count,
             "zap_kast_issues": kast_issues,  # registry IDs for TCO + WAF framing
         }
-        
+
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
         write_json_atomic(processed_path, processed)
-        
+
         return processed_path

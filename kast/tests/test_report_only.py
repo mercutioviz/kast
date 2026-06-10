@@ -4,16 +4,17 @@ Simple test script to verify --report-only target extraction from kast_info.json
 """
 
 import json
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
+
 
 def test_kast_info_extraction():
     """Test that we can extract target from kast_info.json"""
-    
+
     # Create a temporary directory with a sample kast_info.json
     temp_dir = Path(tempfile.mkdtemp())
-    
+
     try:
         # Create sample kast_info.json
         kast_info = {
@@ -31,28 +32,28 @@ def test_kast_info_extraction():
                 "log_dir": "/var/log/kast/"
             }
         }
-        
+
         kast_info_path = temp_dir / "kast_info.json"
         with open(kast_info_path, 'w') as f:
             json.dump(kast_info, f, indent=2)
-        
+
         print(f"✓ Created test kast_info.json at: {kast_info_path}")
-        
+
         # Read it back and verify
-        with open(kast_info_path, 'r') as f:
+        with open(kast_info_path) as f:
             loaded_info = json.load(f)
-        
+
         if 'cli_arguments' in loaded_info and 'target' in loaded_info['cli_arguments']:
             target = loaded_info['cli_arguments']['target']
             print(f"✓ Successfully extracted target: {target}")
             print(f"\nTest directory: {temp_dir}")
-            print(f"\nYou can test with:")
+            print("\nYou can test with:")
             print(f"  python main.py --report-only {temp_dir}")
             return True
         else:
             print("✗ Failed to extract target from kast_info.json")
             return False
-            
+
     except Exception as e:
         print(f"✗ Test failed with error: {e}")
         return False

@@ -8,14 +8,15 @@ otherwise) and the JSON output shape (consumed by external tooling).
 
 import json
 import os
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
 
 from kast.cli.doctor import (
-    OK, WARN, FAIL, INFO,
+    FAIL,
+    INFO,
+    OK,
+    WARN,
     CheckResult,
     check_issue_registry,
     check_plugin_loading,
@@ -23,7 +24,6 @@ from kast.cli.doctor import (
     check_results_dir,
     doctor,
 )
-
 
 # -- individual checks -------------------------------------------------------
 

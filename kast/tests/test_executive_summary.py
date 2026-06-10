@@ -1,10 +1,9 @@
-import os
-from kast.report_builder import generate_html_report
+from kast.report import generate_html_report
 
 
 def test_plugin_executive_summaries_in_report(tmp_path):
     """Test that plugin executive summaries are collected and displayed in the report."""
-    
+
     # Prepare fake plugin results with executive summaries
     plugin_results = [
         {
@@ -46,21 +45,21 @@ def test_plugin_executive_summaries_in_report(tmp_path):
     ]
 
     out_file = tmp_path / "test_executive_summary_report.html"
-    
+
     # Generate the HTML report
     generate_html_report(plugin_results, str(out_file), target="example.com")
 
     # Read generated HTML
     html = out_file.read_text()
-    
+
     # The template renders this section as "Scan Findings" (was "Plugin
     # Findings" in earlier versions; the assertion fell out of date with
     # the template rename).
     assert "Scan Findings" in html
-    
+
     # Check that the "Potential Issues" section header exists
     assert "Potential Issues" in html
-    
+
     # Verify the plugin executive summary CONTENT appears in the report.
     # (Earlier versions of the template rendered the plugin name as
     # "Wafw00f:" with a colon prefix; the current template renders just
@@ -75,7 +74,7 @@ def test_plugin_executive_summaries_in_report(tmp_path):
     # must NOT contribute a "Scan Findings" entry. Check that the
     # whatweb-specific exec_summary text doesn't appear in the
     # exec-summary section of the output.
-    exec_summary_section = html.split("Potential Issues")[0]
+    html.split("Potential Issues")[0]
     # The whatweb fixture had executive_summary="" so nothing whatweb-
     # specific should appear in the exec summary section.
     # (Empty-summary skip is the contract.)
@@ -86,7 +85,7 @@ def test_plugin_executive_summaries_in_report(tmp_path):
 
 def test_report_without_executive_summaries(tmp_path):
     """Test that report works correctly when no plugins have executive summaries."""
-    
+
     plugin_results = [
         {
             "plugin-name": "test_plugin",
@@ -98,42 +97,42 @@ def test_report_without_executive_summaries(tmp_path):
     ]
 
     out_file = tmp_path / "test_no_exec_summary_report.html"
-    
+
     # Generate the HTML report
     generate_html_report(plugin_results, str(out_file), target="example.com")
 
     # Read generated HTML
     html = out_file.read_text()
-    
+
     # When no plugins have executive summaries, the "Scan Findings" section
     # should not appear (used to be "Plugin Findings"; renamed in the template).
     assert "Scan Findings" not in html
-    
+
     # But "Potential Issues" should still exist (from the main executive summary)
     assert "Potential Issues" in html
-    
+
     print("✓ Report without executive summaries works correctly!")
 
 
 if __name__ == "__main__":
-    import tempfile
     import shutil
-    
+    import tempfile
+
     # Create a temporary directory
     temp_dir = tempfile.mkdtemp()
-    
+
     try:
         from pathlib import Path
         tmp_path = Path(temp_dir)
-        
+
         print("Running test_plugin_executive_summaries_in_report...")
         test_plugin_executive_summaries_in_report(tmp_path)
         print()
-        
+
         print("Running test_report_without_executive_summaries...")
         test_report_without_executive_summaries(tmp_path)
         print()
-        
+
         print("✅ All tests passed!")
     finally:
         # Clean up

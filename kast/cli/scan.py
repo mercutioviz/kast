@@ -622,7 +622,7 @@ def _run_scan(
     orchestrator = ScannerOrchestrator(
         selected_plugins, args, out_dir, log, is_report_only
     )
-    results = orchestrator.run()
+    orchestrator.run()
 
     end_time = time.time()
     end_timestamp = datetime.now().isoformat()
@@ -698,7 +698,7 @@ def _run_scan(
         for pf in processed_files:
             console.print(f"  - {pf}")
         try:
-            from kast.report_builder import generate_html_report, generate_pdf_report
+            from kast.report import generate_html_report, generate_pdf_report
 
             if format_ in ("html", "both"):
                 html_path = out_dir / "kast_report.html"

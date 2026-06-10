@@ -5,15 +5,12 @@ Test Mozilla Observatory post-processing: tests dict is split into
 
 import json
 import os
-import sys
 import tempfile
 import unittest
 from unittest.mock import Mock
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from plugins.observatory_plugin import ObservatoryPlugin, _split_tests_by_status
-from config_manager import ConfigManager
+from kast.config_manager import ConfigManager
+from kast.plugins.observatory_plugin import ObservatoryPlugin, _split_tests_by_status
 
 
 def _raw_findings(tests):

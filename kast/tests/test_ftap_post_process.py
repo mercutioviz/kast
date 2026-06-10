@@ -3,12 +3,12 @@ File: tests/test_ftap_post_process.py
 Description: Test the ftap plugin post-processing functionality
 """
 
-import unittest
-import os
 import json
+import os
+import shutil
 import sys
 import tempfile
-import shutil
+import unittest
 from unittest.mock import Mock
 
 # Add kast to path
@@ -19,14 +19,14 @@ from kast.plugins.ftap_plugin import FtapPlugin
 
 class TestFtapPostProcess(unittest.TestCase):
     """Test suite for ftap plugin post-processing."""
-    
+
     def setUp(self):
         """Set up test fixtures."""
         self.mock_cli_args = Mock()
         self.mock_cli_args.verbose = False
         self.plugin = FtapPlugin(self.mock_cli_args)
         self.test_dir = tempfile.mkdtemp()
-        
+
         # Sample ftap data (similar to the provided sample)
         self.sample_data = {
             "scan_info": {
@@ -74,24 +74,24 @@ class TestFtapPostProcess(unittest.TestCase):
                 }
             ]
         }
-        
+
     def tearDown(self):
         """Clean up test fixtures."""
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
-    
+
     def test_post_process_with_findings(self):
         """Test post-processing with admin panel findings."""
         # Process the sample data
         processed_path = self.plugin.post_process(self.sample_data, self.test_dir)
-        
+
         # Verify processed file was created
         self.assertTrue(os.path.exists(processed_path))
-        
+
         # Load and verify processed data
-        with open(processed_path, 'r') as f:
+        with open(processed_path) as f:
             processed = json.load(f)
-        
+
         # Check required fields
         self.assertIn("plugin-name", processed)
         self.assertEqual(processed["plugin-name"], "ftap")
@@ -99,24 +99,24 @@ class TestFtapPostProcess(unittest.TestCase):
         self.assertIn("executive_summary", processed)
         self.assertIn("summary", processed)
         self.assertIn("details", processed)
-        
+
         # Verify issues were extracted — one consolidated entry regardless of panel count
         self.assertEqual(len(processed["issues"]), 1)
         issue = processed["issues"][0]
         self.assertEqual(issue["id"], "exposed_admin_panel")
         self.assertIn("4 exposed admin panel", issue["description"])
-        
+
         # Verify summary
         self.assertIn("4 exposed admin panels", processed["summary"])
-        
+
         # Verify executive summary is simplified (one sentence)
         self.assertEqual(processed["executive_summary"], "Found 4 admin panels.")
-        
+
         # Verify details section
         self.assertIn("Exposed Admin Panels:", processed["details"])
         self.assertIn("Hackazon", processed["details"])
         self.assertIn("Webscantest Admin", processed["details"])
-        
+
     def test_post_process_no_findings(self):
         """Test post-processing with no admin panel findings."""
         empty_data = {
@@ -126,28 +126,28 @@ class TestFtapPostProcess(unittest.TestCase):
             },
             "results": []
         }
-        
+
         processed_path = self.plugin.post_process(empty_data, self.test_dir)
-        
-        with open(processed_path, 'r') as f:
+
+        with open(processed_path) as f:
             processed = json.load(f)
-        
+
         # Verify no issues were found
         self.assertEqual(len(processed["issues"]), 0)
         self.assertIn("No exposed admin panels", processed["summary"])
         self.assertEqual(processed["executive_summary"], "No admin panels found.")
-        
+
     def test_generate_summary(self):
         """Test summary generation."""
         # Test with findings
         summary = self.plugin._generate_summary(self.sample_data)
         self.assertIn("Found 4 exposed admin panels", summary)
-        
+
         # Test with no findings
         empty_data = {"results": []}
         summary = self.plugin._generate_summary(empty_data)
         self.assertIn("No exposed admin panels", summary)
-        
+
         # Test with single finding (with high confidence >= 0.86)
         single_data = {
             "results": [
@@ -160,11 +160,11 @@ class TestFtapPostProcess(unittest.TestCase):
         }
         summary = self.plugin._generate_summary(single_data)
         self.assertIn("Found 1 exposed admin panel", summary)
-    
+
     def test_build_details(self):
         """Test details building."""
         details = self.plugin._build_details(self.sample_data)
-        
+
         # Check for key information
         self.assertIn("Exposed Admin Panels:", details)
         self.assertIn("Panel #1:", details)
@@ -173,19 +173,19 @@ class TestFtapPostProcess(unittest.TestCase):
         self.assertIn("Confidence: 90.0%", details)
         self.assertIn("Login Form Detected: Yes", details)
         self.assertIn("Technologies: Node.js, jQuery, PHP, Bootstrap", details)
-        
+
     def test_build_executive_summary(self):
         """Test executive summary building."""
         summary = self.plugin._build_executive_summary(self.sample_data)
-        
+
         # Check for simplified one-sentence format
         self.assertEqual(summary, "Found 4 admin panels.")
-        
+
         # Test with no findings
         empty_data = {"results": []}
         summary_empty = self.plugin._build_executive_summary(empty_data)
         self.assertEqual(summary_empty, "No admin panels found.")
-        
+
         # Test with single finding
         single_data = {
             "results": [
@@ -198,7 +198,7 @@ class TestFtapPostProcess(unittest.TestCase):
         }
         summary_single = self.plugin._build_executive_summary(single_data)
         self.assertEqual(summary_single, "Found 1 admin panel.")
-        
+
     def test_issue_registry_entry(self):
         """Test that exposed_admin_panel exists in issue registry."""
         # Load issue registry
@@ -207,13 +207,13 @@ class TestFtapPostProcess(unittest.TestCase):
             "data",
             "issue_registry.json"
         )
-        
-        with open(registry_path, 'r') as f:
+
+        with open(registry_path) as f:
             registry = json.load(f)
-        
+
         # Verify exposed_admin_panel entry exists
         self.assertIn("exposed_admin_panel", registry)
-        
+
         entry = registry["exposed_admin_panel"]
         self.assertEqual(entry["display_name"], "Exposed Admin Panel")
         self.assertEqual(entry["severity"], "High")

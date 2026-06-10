@@ -5,14 +5,16 @@ Description: Analyzes output from passive plugins (katana, whatweb, script_detec
              agents, semantic search platforms, and RAG-based knowledge tools.
 """
 
+import json
 import os
 import re
-import json
+from datetime import UTC, datetime
+
 import requests
 import urllib3
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
+
 from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -244,7 +246,7 @@ class AiSurfaceDetectionPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def run(self, target, output_dir, report_only):
-        ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        ts = datetime.now(UTC).isoformat(timespec="milliseconds")
 
         if not self.enabled:
             return self.get_result_dict(
@@ -559,7 +561,7 @@ class AiSurfaceDetectionPlugin(KastPlugin):
     # ------------------------------------------------------------------
 
     def post_process(self, raw_output, output_dir):
-        ts = raw_output.get("timestamp", datetime.now(timezone.utc).isoformat(timespec="milliseconds"))
+        ts = raw_output.get("timestamp", datetime.now(UTC).isoformat(timespec="milliseconds"))
         results_data = raw_output.get("results", {})
         target = results_data.get("target", "unknown")
         detections = results_data.get("detections", [])

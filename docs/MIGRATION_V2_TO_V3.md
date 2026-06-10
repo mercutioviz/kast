@@ -210,14 +210,15 @@ In v2, plugins emitted both `custom_html` (interactive) and `custom_html_pdf` (s
 
 These will affect you only if you `import kast.something` from your own code. End users running kast from the CLI don't see them.
 
-### `kast.report_builder` is a compatibility shim
+### `kast.report_builder` is gone
 
-The report pipeline split into `kast/report/`:
+The report pipeline lives in `kast/report/`:
 - `kast.report.data.collect_report_data(plugin_results, target)` — assembles the shared dict
 - `kast.report.html.render_html(report_data, ...)` and `kast.report.pdf.render_pdf(report_data, ...)`
+- One-shot ergonomic entrypoints: `kast.report.generate_html_report(...)` and `kast.report.generate_pdf_report(...)`
 - Helpers in `kast.report.helpers`
 
-Existing imports (`from kast.report_builder import generate_html_report, generate_pdf_report, ...`) still work — the shim re-exports — but new code should import directly from `kast.report`.
+The `kast.report_builder` compatibility shim was retained during v3.0 development and removed in v3.0.21. Update any `from kast.report_builder import ...` calls to `from kast.report import ...`.
 
 ### `PluginRegistry`
 

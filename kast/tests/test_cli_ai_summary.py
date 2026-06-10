@@ -3,15 +3,12 @@
 We mock ``kast.ai.config.get_ai_adapter`` so no real API call is made.
 """
 
-import json
-from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 from click.testing import CliRunner
 
-from kast.ai import AIResponse
-from kast.cli.scan import _build_ai_info, scan as scan_group
+from kast.cli.scan import _build_ai_info
+from kast.cli.scan import scan as scan_group
 
 
 def test_build_ai_info_disabled():
@@ -63,7 +60,7 @@ def test_scan_dry_run_with_ai_flag_skips_adapter(monkeypatch):
     monkeypatch.setattr("kast.ai.config.get_ai_adapter", fake_get_adapter)
 
     with runner.isolated_filesystem():
-        result = runner.invoke(
+        runner.invoke(
             scan_group,
             ["--target", "example.com", "--ai-summary", "--dry-run",
              "-o", "outdir", "--log-dir", "."],

@@ -16,10 +16,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
-
 
 _DEFAULT_RESULTS_DIR = "~/kast_results"
 
@@ -30,7 +28,7 @@ _CONFIG_SEARCH_PATHS = [
 ]
 
 
-def _from_config_files() -> Optional[str]:
+def _from_config_files() -> str | None:
     for path in _CONFIG_SEARCH_PATHS:
         try:
             path = path.expanduser()
@@ -51,7 +49,7 @@ def _from_config_files() -> Optional[str]:
     return None
 
 
-def resolve_results_dir(cli_arg: Optional[str] = None) -> Path:
+def resolve_results_dir(cli_arg: str | None = None) -> Path:
     """Return the base results directory, honoring CLI / env / config / default.
 
     The path is expanded (``~`` and ``$VAR``) but not created.

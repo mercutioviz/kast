@@ -2,7 +2,8 @@
 
 import pytest
 
-from kast.ai import AIConfigError, config as config_mod
+from kast.ai import AIConfigError
+from kast.ai import config as config_mod
 
 
 @pytest.fixture

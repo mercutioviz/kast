@@ -4,8 +4,8 @@ Description: Base class for all KAST plugins. Provides required interface and pr
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-import shutil
+from datetime import UTC, datetime
+
 
 class KastPlugin(ABC):
     """
@@ -73,37 +73,37 @@ class KastPlugin(ABC):
     def _load_config(self):
         """
         Load and validate plugin configuration.
-        
+
         This method loads configuration from the ConfigManager, merges with
         CLI overrides, and validates against the plugin's schema.
-        
+
         :return: Dictionary of configuration values
         """
         if not self.config_manager:
             return {}
-        
+
         # Get merged config (file + CLI overrides)
         config = self.config_manager.get_plugin_config(self.name)
-        
+
         # Validate config
         is_valid, errors = self.config_manager.validate_plugin_config(self.name, config)
         if not is_valid:
             self.debug(f"Configuration validation warnings for {self.name}:")
             for error in errors:
                 self.debug(f"  - {error}")
-        
+
         return config
-    
+
     def get_config(self, key, default=None):
         """
         Get a configuration value with optional default.
-        
+
         :param key: Configuration key
         :param default: Default value if key not found
         :return: Configuration value or default
         """
         return self.config.get(key, default)
-    
+
     def setup(self, target, output_dir):
         """
         Optional setup step before running the plugin.
@@ -180,7 +180,7 @@ class KastPlugin(ABC):
         """
         return {
             "name": self.name,
-            "timestamp": timestamp or datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": timestamp or datetime.now(UTC).isoformat(timespec="milliseconds"),
             "disposition": disposition,
             "results": results,
         }
@@ -197,11 +197,11 @@ class KastPlugin(ABC):
     def post_process(self, raw_output, output_dir):
         """
         Post-process the raw output from the plugin.
-        
+
         This method should normalize the plugin output and extract key information
         for reporting. The processed output should be saved as a JSON file with
         the following standard fields:
-        
+
         Required fields:
         - plugin-name: The plugin's name (self.name)
         - plugin-description: The plugin's description
@@ -213,7 +213,7 @@ class KastPlugin(ABC):
         - details: Formatted multi-line string with key details
         - issues: List of identified issues (empty list if none)
         - executive_summary: High-level summary for executive reports
-        
+
         Note on findings_count:
         Each plugin should count its "primary output" - the main thing it was designed to find:
         - URL discovery plugins: Count of URLs found
@@ -221,7 +221,7 @@ class KastPlugin(ABC):
         - Vulnerability scanners: Count of issues/vulnerabilities
         - Information gathering: Count of detections/findings
         Always use an integer value, even if 0 (never null/undefined).
-        
+
         :param raw_output: Raw output (string, dict, or file path)
         :param output_dir: Directory to write processed JSON
         :return: Path to processed JSON file
@@ -231,16 +231,16 @@ class KastPlugin(ABC):
     def _generate_summary(self, findings):
         """
         Generate a human-readable summary from plugin findings.
-        
+
         This method provides a default implementation that can be overridden
         in subclasses to provide tool-specific summaries. The summary should
         be a concise, human-readable description of what was found.
-        
+
         Example overrides:
         - For vulnerability scanners: "Found 3 high, 5 medium, 2 low severity issues"
         - For WAF detection: "Detected WAF: Cloudflare"
         - For subdomain enumeration: "Discovered 42 subdomains"
-        
+
         :param findings: Raw or processed findings (dict, list, or other)
         :return: str summary of findings
         """
@@ -256,19 +256,19 @@ class KastPlugin(ABC):
     def get_dry_run_info(self, target, output_dir):
         """
         Return information about what this plugin would do in a real run.
-        
+
         This method should be overridden in subclasses to provide detailed
         information about commands that would be executed or operations that
         would be performed during a dry-run.
-        
+
         For external tool plugins:
         - Return the actual CLI commands that would be executed
         - Include all configuration-dependent flags and parameters
-        
+
         For internal logic plugins:
         - Describe the operations that would be performed
         - List the steps in sequence
-        
+
         :param target: The target that would be scanned
         :param output_dir: The output directory that would be used
         :return: Dict with keys:

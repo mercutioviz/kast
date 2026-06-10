@@ -3,14 +3,15 @@ File: plugins/observatory_plugin.py
 Description: Plugin for running Mozilla Observatory as part of KAST.
 """
 
-import subprocess
-import shutil
-import os
 import json
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
-from kast.core.atomic import write_json_atomic
+import os
+import shutil
+import subprocess
+from datetime import UTC, datetime
 from pprint import pformat
+
+from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
 
 # Maps Observatory test result strings to issue_registry.json IDs.
 # Keys are the raw result values Observatory emits; values are issue_ids.
@@ -55,7 +56,7 @@ def _split_tests_by_status(tests):
 
 class ObservatoryPlugin(KastPlugin):
     priority = 5  # High priority (lower number = higher priority)
-    
+
     # Configuration schema for kast-web integration
     config_schema = {
         "type": "object",
@@ -99,14 +100,14 @@ class ObservatoryPlugin(KastPlugin):
     output_type = "stdout"
 
     def __init__(self, cli_args, config_manager=None):
-        
+
         super().__init__(cli_args, config_manager)
-        
+
         self.command_executed = None  # Store the command for reporting
-        
+
         # Load configuration values
         self._load_plugin_config()
-    
+
     def _load_plugin_config(self):
         """Load configuration with defaults from schema."""
         # Get config values (defaults from schema if not set)
@@ -134,7 +135,7 @@ class ObservatoryPlugin(KastPlugin):
         Returns a standardized result dictionary.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "mozilla_observatory.json")
         self.debug(f"Output file will be: {output_file}")
 
@@ -143,7 +144,7 @@ class ObservatoryPlugin(KastPlugin):
             "mdn-http-observatory-scan",
             target
         ]
-        
+
         # Add any additional arguments from config
         if self.additional_args:
             cmd.extend(self.additional_args)
@@ -166,13 +167,13 @@ class ObservatoryPlugin(KastPlugin):
         for attempt in range(self.retry_attempts):
             if attempt > 0:
                 self.debug(f"Retry attempt {attempt + 1} of {self.retry_attempts}")
-            
+
             try:
                 if report_only:
                     self.debug(f"[REPORT ONLY] Would run command: {' '.join(cmd)}")
                     # In report-only mode, check if results already exist
                     if os.path.exists(output_file):
-                        with open(output_file, "r") as f:
+                        with open(output_file) as f:
                             results = json.load(f)
                         return self.get_result_dict(
                             disposition="success",
@@ -189,9 +190,9 @@ class ObservatoryPlugin(KastPlugin):
                     # Execute command with timeout
                     with open(output_file, "w") as outfile:
                         proc = subprocess.run(
-                            cmd, 
-                            stdout=outfile, 
-                            stderr=subprocess.PIPE, 
+                            cmd,
+                            stdout=outfile,
+                            stderr=subprocess.PIPE,
                             text=True,
                             timeout=self.timeout
                         )
@@ -207,7 +208,7 @@ class ObservatoryPlugin(KastPlugin):
                         )
 
                 # Read the output file
-                with open(output_file, "r") as f:
+                with open(output_file) as f:
                     results = json.load(f)
 
                 return self.get_result_dict(
@@ -234,7 +235,7 @@ class ObservatoryPlugin(KastPlugin):
                     disposition="fail",
                     results=last_error
                 )
-        
+
         # Should not reach here, but just in case
         return self.get_result_dict(
             disposition="fail",
@@ -247,7 +248,7 @@ class ObservatoryPlugin(KastPlugin):
         Extracts relevant summary information.
         """
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
-            with open(raw_output, "r") as f:
+            with open(raw_output) as f:
                 findings = json.load(f)
         elif isinstance(raw_output, dict):
             findings = raw_output
@@ -321,7 +322,7 @@ class ObservatoryPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary or f"{self.name} did not produce any findings",
@@ -343,7 +344,7 @@ class ObservatoryPlugin(KastPlugin):
         """
         if not self.command_executed:
             return "Command not available"
-        
+
         return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
     def _find_issues(self, findings):
@@ -355,7 +356,7 @@ class ObservatoryPlugin(KastPlugin):
         issues = []
         failed = findings.get("results", {}).get("tests", {}).get("failed", {})
 
-        for test_name, test_data in failed.items():
+        for _test_name, test_data in failed.items():
             if test_data.get("pass") is False:
                 result = test_data.get("result", "")
                 issue_id = _OBSERVATORY_RESULT_TO_ISSUE.get(result, result)
@@ -393,7 +394,7 @@ class ObservatoryPlugin(KastPlugin):
             "mdn-http-observatory-scan",
             target
         ]
-        
+
         return {
             "commands": [' '.join(cmd)],
             "description": self.description

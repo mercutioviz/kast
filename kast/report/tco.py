@@ -17,10 +17,9 @@ human-readable strings.
 from __future__ import annotations
 
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 from kast.report_templates import get_issue_metadata
-
 
 _TIMEFRAME_RE = re.compile(
     r"^\s*(\d+)(?:\s*-\s*(\d+))?\s*(day|days|week|weeks)\s*$",

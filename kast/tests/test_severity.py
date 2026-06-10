@@ -5,7 +5,7 @@ in the v2 audit (5a.12) and the legacy "Issue ID not found." sentinel
 that report_templates.get_severity used to return.
 """
 
-from kast.core.severity import Severity, SEVERITY_ORDER, severity_sort_key
+from kast.core.severity import SEVERITY_ORDER, Severity, severity_sort_key
 
 
 def test_severity_string_equality():

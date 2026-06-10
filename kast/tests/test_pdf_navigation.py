@@ -4,19 +4,18 @@ Test script to generate a sample PDF report with navigation features.
 This script creates a PDF with multiple tools and issues to test all navigation links.
 """
 
-import os
 import sys
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from kast.report_builder import generate_pdf_report
+from kast.report import generate_pdf_report
 
 
 def test_pdf_navigation():
     """Generate a sample PDF report to test navigation features."""
-    
+
     # Create sample plugin results with multiple tools and issues
     plugin_results = [
         {
@@ -114,20 +113,20 @@ def test_pdf_navigation():
             ]
         }
     ]
-    
+
     # Generate PDF report
     output_path = "test_navigation_report.pdf"
     target = "example.com"
-    
-    print(f"Generating PDF report with navigation features...")
+
+    print("Generating PDF report with navigation features...")
     print(f"Target: {target}")
     print(f"Output: {output_path}")
     print(f"Tools: {len(plugin_results)}")
-    
+
     try:
         generate_pdf_report(plugin_results, output_path, target=target)
         print("\n✓ PDF report generated successfully!")
-        print(f"\nThe report includes:")
+        print("\nThe report includes:")
         print("  • Table of Contents with links to all major sections")
         print("  • Clickable severity boxes on the cover page")
         print("  • Executive Summary with 'View Details' links to tools")

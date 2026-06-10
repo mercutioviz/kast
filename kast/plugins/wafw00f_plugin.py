@@ -13,9 +13,8 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from kast.core.atomic import write_json_atomic
 from kast.plugins.external_tool import ExternalToolPlugin
 
 
@@ -122,7 +121,7 @@ class Wafw00fPlugin(ExternalToolPlugin):
         if report_only:
             return super().run(target, output_dir, report_only)
 
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(str(output_dir), self.output_filename)
         stdout_file = os.path.join(str(output_dir), "wafw00f_stdout.txt")
 
@@ -216,7 +215,7 @@ class Wafw00fPlugin(ExternalToolPlugin):
 
         return {
             "name": self.name,
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "disposition": "success",
             "results": results_list,
         }

@@ -1,6 +1,5 @@
 """Tests for kast.ai.prompts — frontmatter + section parsing."""
 
-from pathlib import Path
 
 import pytest
 
@@ -29,21 +28,21 @@ def _write_prompt(tmp_path, body):
 
 
 def test_no_frontmatter_raises(tmp_path, monkeypatch):
-    p = _write_prompt(tmp_path, "## System\nhi\n## User\nthere\n")
+    _write_prompt(tmp_path, "## System\nhi\n## User\nthere\n")
     monkeypatch.setattr(prompts_mod, "PROMPTS_DIR", tmp_path)
     with pytest.raises(ValueError, match="missing YAML frontmatter"):
         prompts_mod.load_prompt("test_prompt")
 
 
 def test_missing_section_raises(tmp_path, monkeypatch):
-    p = _write_prompt(tmp_path, "---\nversion: 1\n---\n## System\nhi\n")
+    _write_prompt(tmp_path, "---\nversion: 1\n---\n## System\nhi\n")
     monkeypatch.setattr(prompts_mod, "PROMPTS_DIR", tmp_path)
     with pytest.raises(ValueError, match="must contain '## System' and '## User'"):
         prompts_mod.load_prompt("test_prompt")
 
 
 def test_sections_split_correctly(tmp_path, monkeypatch):
-    p = _write_prompt(
+    _write_prompt(
         tmp_path,
         "---\nname: t\nversion: 1\n---\n\n## System\n\nA system message.\n\n## User\n\nA user message with {{ target }}.\n",
     )

@@ -29,7 +29,7 @@ V3_SUBCOMMANDS = frozenset({
 })
 
 
-def _translate_v2_argv(argv: List[str]) -> List[str]:
+def _translate_v2_argv(argv: list[str]) -> list[str]:
     """Translate v2-style argv into v3 subcommand form.
 
     Returns a new argv list (without ``sys.argv[0]``). Caller assigns to

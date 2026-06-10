@@ -2,13 +2,11 @@
 KAST - Kali Automated Scan Tool
 """
 
-from . import utils
-from . import orchestrator
-from . import report_builder
-from . import report_templates
+from . import orchestrator, report_templates, utils
 
 try:
-    from importlib.metadata import PackageNotFoundError, version as _pkg_version
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
     __version__ = _pkg_version("kast")
 except (ImportError, Exception):
     from pathlib import Path as _Path

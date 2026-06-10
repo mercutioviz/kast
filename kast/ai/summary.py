@@ -16,7 +16,6 @@ from jinja2 import Template
 from kast.ai.base import AIAdapter, AIGenerationError
 from kast.ai.prompts import load_prompt
 
-
 logger = logging.getLogger(__name__)
 
 

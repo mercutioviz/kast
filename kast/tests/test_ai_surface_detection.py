@@ -7,7 +7,6 @@ import json
 import os
 import tempfile
 import unittest
-from unittest.mock import MagicMock
 
 from kast.plugins.ai_surface_detection_plugin import AiSurfaceDetectionPlugin
 

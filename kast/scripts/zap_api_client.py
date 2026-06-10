@@ -3,20 +3,23 @@ ZAP API Client for Cloud Plugin
 Handles interaction with OWASP ZAP REST API
 """
 
-import requests
-import time
 import json
-from kast.core.atomic import write_json_atomic
+import time
+from datetime import UTC
 from pathlib import Path
+
+import requests
+
+from kast.core.atomic import write_json_atomic
 
 
 class ZAPAPIClient:
     """Client for interacting with OWASP ZAP REST API"""
-    
+
     def __init__(self, api_url, api_key=None, timeout=30, debug_callback=None):
         """
         Initialize ZAP API client
-        
+
         :param api_url: Base URL for ZAP API (e.g., http://host:8080)
         :param api_key: Optional API key for authentication
         :param timeout: Request timeout in seconds
@@ -27,15 +30,15 @@ class ZAPAPIClient:
         self.timeout = timeout
         self.debug = debug_callback or (lambda x: None)
         self.session = requests.Session()
-        
+
         # Add API key to all requests if provided
         if self.api_key:
             self.session.params = {'apikey': self.api_key}
-    
+
     def _make_request(self, endpoint, method='GET', params=None, data=None, files=None):
         """
         Make HTTP request to ZAP API
-        
+
         :param endpoint: API endpoint path
         :param method: HTTP method (GET, POST, etc.)
         :param params: Query parameters
@@ -44,13 +47,13 @@ class ZAPAPIClient:
         :return: Response JSON or None
         """
         url = f"{self.api_url}{endpoint}"
-        
+
         try:
             self.debug(f"ZAP API request: {method} {url}")
-            
+
             # Prepare headers
             headers = {}
-            
+
             # For file uploads OR form data, include API key in headers and data
             if (files or data) and self.api_key:
                 headers['X-ZAP-API-Key'] = self.api_key
@@ -60,7 +63,7 @@ class ZAPAPIClient:
                 # Add API key to data if not already present
                 if 'apikey' not in data:
                     data['apikey'] = self.api_key
-            
+
             response = self.session.request(
                 method=method,
                 url=url,
@@ -70,9 +73,9 @@ class ZAPAPIClient:
                 headers=headers,
                 timeout=self.timeout
             )
-            
+
             response.raise_for_status()
-            
+
             # Try to parse JSON response
             try:
                 result = response.json()
@@ -81,15 +84,15 @@ class ZAPAPIClient:
             except json.JSONDecodeError:
                 self.debug(f"Non-JSON response: {response.text[:200]}")
                 return {'text': response.text}
-                
+
         except requests.exceptions.RequestException as e:
             self.debug(f"ZAP API request failed: {e}")
             raise
-    
+
     def check_connection(self):
         """
         Check if ZAP is accessible
-        
+
         :return: True if accessible, False otherwise
         """
         try:
@@ -99,11 +102,11 @@ class ZAPAPIClient:
         except Exception as e:
             self.debug(f"Connection check failed: {e}")
             return False
-    
+
     def get_version(self):
         """
         Get ZAP version information with detailed error reporting
-        
+
         :return: Tuple of (success: bool, version: str, error_msg: str)
         """
         try:
@@ -113,7 +116,7 @@ class ZAPAPIClient:
                 return True, version, None
             else:
                 return False, None, "Invalid response from ZAP (no version field)"
-        except requests.exceptions.ConnectionError as e:
+        except requests.exceptions.ConnectionError:
             return False, None, f"Connection refused - verify ZAP is running and accessible at {self.api_url}"
         except requests.exceptions.Timeout:
             return False, None, f"Connection timeout - ZAP at {self.api_url} is not responding"
@@ -126,7 +129,7 @@ class ZAPAPIClient:
                 return False, None, f"HTTP {e.response.status_code}: {e.response.reason}"
         except Exception as e:
             return False, None, f"Unexpected error: {str(e)}"
-    
+
     def new_session(self):
         """
         Start a new ZAP session, clearing all previous scan data (Sites tree, alerts, scan state).
@@ -148,28 +151,28 @@ class ZAPAPIClient:
     def wait_for_ready(self, timeout=300, poll_interval=10):
         """
         Wait for ZAP to be ready
-        
+
         :param timeout: Maximum wait time in seconds
         :param poll_interval: Seconds between checks
         :return: True if ready, False if timeout
         """
         self.debug(f"Waiting for ZAP to be ready (timeout: {timeout}s)")
-        
+
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self.check_connection():
                 self.debug("ZAP is ready")
                 return True
             time.sleep(poll_interval)
-        
+
         self.debug("Timeout waiting for ZAP")
         return False
-    
+
     def upload_automation_plan(self, plan_path, remote_plan_path='/zap/config/automation_plan.yaml'):
         """
         Upload automation framework plan to ZAP
         Note: This requires SSH access, not API. This is a placeholder.
-        
+
         :param plan_path: Local path to automation plan
         :param remote_plan_path: Remote path where plan will be uploaded
         :return: Remote path
@@ -177,12 +180,12 @@ class ZAPAPIClient:
         # This method is informational - actual upload happens via SSH
         self.debug(f"Automation plan will be uploaded to: {remote_plan_path}")
         return remote_plan_path
-    
+
     def start_automation_scan(self, plan_path, target_url):
         """
         Start ZAP automation framework scan
         Note: This typically requires running ZAP with the -autorun flag
-        
+
         :param plan_path: Path to automation plan YAML
         :param target_url: Target URL to scan
         :return: Scan information
@@ -190,47 +193,47 @@ class ZAPAPIClient:
         # The automation framework is typically started via command line, not API
         # This method documents the expected behavior
         self.debug(f"Starting automation scan for {target_url}")
-        
+
         return {
             'plan_path': plan_path,
             'target_url': target_url,
             'status': 'started'
         }
-    
+
     def get_scan_status(self):
         """
         Get current scan status
-        
+
         :return: Status information
         """
         try:
             # Get spider status
             spider_status = self._make_request('/JSON/spider/view/status/')
-            
+
             # Get active scan status
             active_scan_status = self._make_request('/JSON/ascan/view/status/')
-            
+
             # Get number of alerts
             alerts = self._make_request('/JSON/core/view/numberOfAlerts/')
-            
+
             status = {
                 'spider_status': spider_status.get('status', '0'),
                 'active_scan_status': active_scan_status.get('status', '0'),
                 'alert_count': alerts.get('numberOfAlerts', '0'),
                 'in_progress': self._is_scan_in_progress(spider_status, active_scan_status)
             }
-            
+
             self.debug(f"Scan status: {status}")
             return status
-            
+
         except Exception as e:
             self.debug(f"Failed to get scan status: {e}")
             return None
-    
+
     def _is_scan_in_progress(self, spider_status, active_scan_status):
         """
         Determine if any scan is in progress
-        
+
         :param spider_status: Spider status dict
         :param active_scan_status: Active scan status dict
         :return: True if scan in progress
@@ -238,41 +241,41 @@ class ZAPAPIClient:
         try:
             spider_pct = int(spider_status.get('status', '100'))
             ascan_pct = int(active_scan_status.get('status', '100'))
-            
+
             return spider_pct < 100 or ascan_pct < 100
         except:
             return False
-    
+
     def wait_for_scan_completion(self, timeout=3600, poll_interval=30):
         """
         Poll scan status until completion or timeout
-        
+
         :param timeout: Maximum wait time in seconds
         :param poll_interval: Seconds between status checks
         :return: True if completed, False if timeout
         """
         self.debug(f"Waiting for scan completion (timeout: {timeout}s, poll: {poll_interval}s)")
-        
+
         start_time = time.time()
         while time.time() - start_time < timeout:
             status = self.get_scan_status()
-            
+
             if status and not status.get('in_progress', True):
                 self.debug("Scan completed")
                 return True
-            
+
             elapsed = int(time.time() - start_time)
             self.debug(f"Scan still in progress... ({elapsed}s elapsed)")
-            
+
             time.sleep(poll_interval)
-        
+
         self.debug("Timeout waiting for scan completion")
         return False
-    
+
     def get_plan_progress(self, plan_id):
         """
         Get automation plan progress
-        
+
         :param plan_id: Plan ID from runPlan response
         :return: Progress dict with started, finished, info, warn, error
         """
@@ -285,11 +288,11 @@ class ZAPAPIClient:
         except Exception as e:
             self.debug(f"Failed to get plan progress: {e}")
             return None
-    
+
     def wait_for_plan_completion(self, plan_id, timeout=3600, poll_interval=30, output_dir=None):
         """
         Poll automation plan progress until completion or timeout
-        
+
         :param plan_id: Plan ID to monitor
         :param timeout: Maximum wait time in seconds
         :param poll_interval: Seconds between status checks
@@ -297,26 +300,26 @@ class ZAPAPIClient:
         :return: Tuple of (success: bool, final_progress: dict)
         """
         self.debug(f"Waiting for plan {plan_id} completion (timeout: {timeout}s, poll: {poll_interval}s)")
-        
+
         if output_dir:
             self.debug(f"Progress snapshots will be written to {output_dir}")
-        
+
         start_time = time.time()
         last_info_count = 0
         scan_start_time = None
-        
+
         while time.time() - start_time < timeout:
             progress = self.get_plan_progress(plan_id)
-            
+
             if not progress:
                 self.debug("Warning: Could not get plan progress")
                 time.sleep(poll_interval)
                 continue
-            
+
             # Capture start time from first progress response
             if not scan_start_time and progress.get('started'):
                 scan_start_time = progress.get('started')
-            
+
             # Write progress snapshot if output_dir provided
             if output_dir:
                 self._write_progress_snapshot(
@@ -326,12 +329,12 @@ class ZAPAPIClient:
                     elapsed_seconds=int(time.time() - start_time),
                     output_dir=output_dir
                 )
-            
+
             # Check if finished
             finished = progress.get('finished', '')
             if finished:
                 self.debug(f"✓ Plan completed at {finished}")
-                
+
                 # Write final snapshot
                 if output_dir:
                     self._write_progress_snapshot(
@@ -342,7 +345,7 @@ class ZAPAPIClient:
                         output_dir=output_dir,
                         final=True
                     )
-                
+
                 # Check for errors
                 errors = progress.get('error', [])
                 if errors:
@@ -350,56 +353,56 @@ class ZAPAPIClient:
                     for error in errors:
                         self.debug(f"  ERROR: {error}")
                     return False, progress
-                
+
                 return True, progress
-            
+
             # Log progress updates
             info = progress.get('info', [])
             if len(info) > last_info_count:
                 for msg in info[last_info_count:]:
                     self.debug(f"  Progress: {msg}")
                 last_info_count = len(info)
-            
+
             # Check for warnings
             warnings = progress.get('warn', [])
             if warnings:
                 for warn in warnings:
                     self.debug(f"  Warning: {warn}")
-            
+
             elapsed = int(time.time() - start_time)
             self.debug(f"Plan still running... ({elapsed}s elapsed, {len(info)} updates)")
             time.sleep(poll_interval)
-        
+
         self.debug(f"Timeout waiting for plan {plan_id} completion")
         return False, None
-    
+
     def get_json_report(self):
         """
         Download JSON report from ZAP using the jsonreport endpoint
-        
+
         :return: Report dict
         """
         try:
             self.debug("Fetching JSON report from ZAP...")
             result = self._make_request('/OTHER/core/other/jsonreport/')
-            
+
             # The response might be wrapped in 'text' or be direct JSON
             if isinstance(result, dict) and 'text' in result:
                 # Parse the text as JSON
                 report = json.loads(result['text'])
                 self.debug(f"JSON report retrieved ({len(report.get('site', []))} sites)")
                 return report
-            
-            self.debug(f"JSON report retrieved")
+
+            self.debug("JSON report retrieved")
             return result
         except Exception as e:
             self.debug(f"Failed to get JSON report: {e}")
             raise
-    
+
     def get_alerts(self, base_url=None):
         """
         Retrieve all alerts from ZAP
-        
+
         :param base_url: Optional filter by base URL
         :return: List of alerts
         """
@@ -407,21 +410,21 @@ class ZAPAPIClient:
             params = {}
             if base_url:
                 params['baseurl'] = base_url
-            
+
             result = self._make_request('/JSON/core/view/alerts/', params=params)
             alerts = result.get('alerts', [])
-            
+
             self.debug(f"Retrieved {len(alerts)} alerts")
             return alerts
-            
+
         except Exception as e:
             self.debug(f"Failed to retrieve alerts: {e}")
             return []
-    
+
     def generate_report(self, output_path, report_type='json', title='KAST ZAP Scan'):
         """
         Generate scan report
-        
+
         :param output_path: Path to save report
         :param report_type: Report format (json, html, xml)
         :param title: Report title
@@ -429,48 +432,48 @@ class ZAPAPIClient:
         """
         try:
             self.debug(f"Generating {report_type} report")
-            
+
             if report_type == 'json':
                 # Get all alerts
                 alerts = self.get_alerts()
-                
+
                 # Build report structure
                 report = {
                     'title': title,
                     'alerts': alerts,
                     'alert_count': len(alerts)
                 }
-                
+
                 # Save to file
                 output_path = Path(output_path)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
-                
+
                 write_json_atomic(output_path, report)
-                
+
                 self.debug(f"Report saved to {output_path}")
                 return str(output_path)
-                
+
             else:
                 # For HTML/XML reports, use ZAP's report generation
                 endpoint = f'/OTHER/core/other/{report_type}report/'
                 response = self._make_request(endpoint)
-                
+
                 output_path = Path(output_path)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
-                
+
                 with open(output_path, 'w') as f:
                     f.write(response.get('text', ''))
-                
+
                 return str(output_path)
-                
+
         except Exception as e:
             self.debug(f"Failed to generate report: {e}")
             raise
-    
+
     def shutdown_zap(self):
         """
         Shutdown ZAP instance
-        
+
         :return: True if successful
         """
         try:
@@ -480,17 +483,17 @@ class ZAPAPIClient:
         except Exception as e:
             self.debug(f"Failed to shutdown ZAP: {e}")
             return False
-    
+
     def get_zap_info(self):
         """
         Get ZAP version and configuration information
-        
+
         :return: Dictionary with ZAP info
         """
         try:
             version = self._make_request('/JSON/core/view/version/')
             alerts_summary = self._make_request('/JSON/core/view/alertsSummary/')
-            
+
             return {
                 'version': version.get('version', 'unknown'),
                 'alerts_summary': alerts_summary
@@ -498,11 +501,11 @@ class ZAPAPIClient:
         except Exception as e:
             self.debug(f"Failed to get ZAP info: {e}")
             return {}
-    
+
     def _write_progress_snapshot(self, plan_id, progress, scan_start_time, elapsed_seconds, output_dir, final=False):
         """
         Write progress snapshot to output directory
-        
+
         :param plan_id: Plan ID being monitored
         :param progress: Progress dict from planProgress API
         :param scan_start_time: ISO timestamp when scan started
@@ -511,54 +514,54 @@ class ZAPAPIClient:
         :param final: Whether this is the final snapshot
         """
         try:
-            from datetime import datetime, timezone
-            
+            from datetime import datetime
+
             # Collect additional metrics (with error handling for each)
             alerts_summary = {}
             num_alerts = 0
             spider_percent = 0
             ascan_percent = 0
             passive_queue = 0
-            
+
             try:
                 alerts_summary_result = self._make_request('/JSON/core/view/alertsSummary/')
                 if alerts_summary_result:
                     alerts_summary = alerts_summary_result
             except Exception as e:
                 self.debug(f"Could not fetch alerts summary: {e}")
-            
+
             try:
                 num_alerts_result = self._make_request('/JSON/core/view/numberOfAlerts/')
                 if num_alerts_result:
                     num_alerts = int(num_alerts_result.get('numberOfAlerts', 0))
             except Exception as e:
                 self.debug(f"Could not fetch alert count: {e}")
-            
+
             try:
                 spider_status = self._make_request('/JSON/spider/view/status/')
                 if spider_status:
                     spider_percent = int(spider_status.get('status', 0))
             except Exception as e:
                 self.debug(f"Could not fetch spider status: {e}")
-            
+
             try:
                 ascan_status = self._make_request('/JSON/ascan/view/status/')
                 if ascan_status:
                     ascan_percent = int(ascan_status.get('status', 0))
             except Exception as e:
                 self.debug(f"Could not fetch active scan status: {e}")
-            
+
             try:
                 pscan_records = self._make_request('/JSON/pscan/view/recordsToScan/')
                 if pscan_records:
                     passive_queue = int(pscan_records.get('recordsToScan', 0))
             except Exception as e:
                 self.debug(f"Could not fetch passive scan queue: {e}")
-            
+
             # Build snapshot
             snapshot = {
                 "scan_started": scan_start_time,
-                "last_updated": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+                "last_updated": datetime.now(UTC).isoformat(timespec="milliseconds"),
                 "elapsed_seconds": elapsed_seconds,
                 "plan_id": plan_id,
                 "status": "completed" if progress.get('finished') else "running",
@@ -576,15 +579,15 @@ class ZAPAPIClient:
                 "warnings": progress.get('warn', []),
                 "errors": progress.get('error', [])
             }
-            
+
             # Write to file
             output_path = Path(output_dir) / 'zap_scan_progress.json'
             write_json_atomic(output_path, snapshot)
-            
+
             # Log summary on first and final writes
             if elapsed_seconds == 0 or final:
                 self.debug(f"Progress snapshot written: {num_alerts} alerts, spider {spider_percent}%, ascan {ascan_percent}%")
-            
+
         except Exception as e:
             # Don't fail the scan if progress writing fails
             self.debug(f"Warning: Failed to write progress snapshot: {e}")

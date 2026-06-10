@@ -15,15 +15,11 @@ the README).
 
 import json
 import re
-import shutil
 from pathlib import Path
-
-import pytest
 
 from kast.core.severity import Severity
 from kast.report import generate_html_report
 from kast.report.data import collect_report_data
-
 
 BASELINE_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "baseline-v3.0-phase-a"
 
@@ -97,19 +93,6 @@ def test_severity_counts_use_canonical_keys():
 def test_all_10_plugins_present():
     """All 10 plugins from the baseline appear in detailed_results."""
     data = collect_report_data(_load_plugin_results(), target="example.com")
-    expected_plugins = {
-        "ai_chatbot_detection",
-        "ftap",
-        "katana",
-        "mozilla_observatory",
-        "org_discovery",
-        "related_sites",
-        "script_detection",
-        "subfinder",
-        "testssl",
-        "wafw00f",
-        "whatweb",
-    }
     # 10 plugins ran in the baseline (no observatory in this fixture set,
     # but related_sites and others compensate). Actual count:
     assert len(data["detailed_results"]) == 10

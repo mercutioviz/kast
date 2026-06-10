@@ -8,7 +8,6 @@ contract documented in ``docs/web-integration.md`` breaks.
 
 from kast.cli import _translate_v2_argv
 
-
 # -- pass-through cases ------------------------------------------------------
 
 

@@ -269,7 +269,7 @@ def registry_promote(scan_dir: str, accept_all: bool, dry_run: bool) -> None:
         console.print(f"  Reported by: {cand.get('plugin_display_name')} "
                       f"(plugin: {cand.get('plugin_name')})")
         console.print(f"  Occurrences: {cand.get('occurrence_count', 1)}")
-        console.print(f"  Suggested:")
+        console.print("  Suggested:")
         console.print(f"    severity:        {suggested.get('severity')}")
         console.print(f"    category:        {suggested.get('category')}")
         console.print(f"    waf_addressable: {suggested.get('waf_addressable')}")

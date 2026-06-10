@@ -6,18 +6,18 @@ from YAML files and CLI arguments. It provides a centralized way to manage
 plugin settings and export schemas for GUI tools like kast-web.
 """
 
-import yaml
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-from collections import defaultdict
+from typing import Any
+
+import yaml
 
 
 class ConfigManager:
     """
     Manages configuration loading, validation, and schema export for KAST plugins.
-    
+
     Configuration priority (highest to lowest):
     1. CLI overrides (--set plugin.key=value)
     2. CLI arguments (legacy --httpx-rate-limit)
@@ -26,49 +26,48 @@ class ConfigManager:
     5. System config (/etc/kast/config.yaml)
     6. Plugin defaults (from schema)
     """
-    
+
     CONFIG_VERSION = "1.1"
-    
+
     def __init__(self, cli_args=None, logger=None):
         """
         Initialize the configuration manager.
-        
+
         :param cli_args: Parsed CLI arguments from argparse
         :param logger: Logger instance for debug/error messages
         """
         self.cli_args = cli_args
         self.logger = logger or logging.getLogger("kast.config")
-        
+
         # Define config file search paths (in priority order)
         self.config_paths = [
             Path("./kast_config.yaml"),  # Project-specific
             Path.home() / ".config" / "kast" / "config.yaml",  # User config (XDG)
             Path("/etc/kast/config.yaml"),  # System-wide
         ]
-        
+
         # Loaded configuration data
         self.config_data = {
             "kast": {"config_version": self.CONFIG_VERSION},
             "global": {},
             "plugins": {}
         }
-        
+
         # Plugin schemas (populated by plugins during registration)
         self.plugin_schemas = {}
-        
+
         # CLI overrides parsed from --set arguments
         self.cli_overrides = {}
-        
-    def load(self, config_file: Optional[str] = None) -> bool:
+
+    def load(self, config_file: str | None = None) -> bool:
         """
         Load configuration from file or default locations.
-        
+
         :param config_file: Specific config file path (from --config arg)
         :return: True if config loaded successfully, False otherwise
         """
         loaded_file = None
-        config_file_error = None
-        
+
         # If specific config file provided, try to load it
         if config_file:
             config_path = Path(config_file).expanduser()
@@ -79,7 +78,7 @@ class ConfigManager:
                     self.logger.info(f"Loaded config from: {config_path}")
                 except Exception as e:
                     self.logger.error(f"Failed to load config from {config_path}: {e}")
-                    config_file_error = str(e)
+                    str(e)
             else:
                 self.logger.warning(f"Config file not found: {config_path}")
                 # Don't return early - still need to parse CLI overrides
@@ -96,79 +95,79 @@ class ConfigManager:
                     except Exception as e:
                         self.logger.warning(f"Failed to load config from {config_path}: {e}")
                         continue
-        
+
         # IMPORTANT: Always parse CLI overrides, even if config file not found
         # CLI overrides have highest priority and should work standalone
         if self.cli_args and hasattr(self.cli_args, 'set') and self.cli_args.set:
             self._parse_cli_overrides(self.cli_args.set)
             self.logger.debug(f"Parsed {len(self.cli_overrides)} plugin CLI override(s)")
-        
+
         if loaded_file:
             self.logger.debug(f"Configuration loaded from {loaded_file}")
             return True
         else:
             self.logger.debug("No configuration file found, using defaults and CLI overrides")
             return False
-    
-    def _load_yaml_file(self, path: Path) -> Dict[str, Any]:
+
+    def _load_yaml_file(self, path: Path) -> dict[str, Any]:
         """
         Load and parse a YAML configuration file.
-        
+
         :param path: Path to YAML file
         :return: Parsed configuration dictionary
         """
-        with open(path, 'r') as f:
+        with open(path) as f:
             data = yaml.safe_load(f)
-        
+
         # Ensure required top-level keys exist
         if not isinstance(data, dict):
             raise ValueError("Config file must contain a YAML dictionary")
-        
+
         if "plugins" not in data:
             data["plugins"] = {}
         if "global" not in data:
             data["global"] = {}
         if "kast" not in data:
             data["kast"] = {"config_version": self.CONFIG_VERSION}
-        
+
         return data
-    
-    def _parse_cli_overrides(self, set_args: List[str]) -> None:
+
+    def _parse_cli_overrides(self, set_args: list[str]) -> None:
         """
         Parse --set arguments into nested dictionary structure.
-        
+
         Supports arbitrary nesting levels for complex plugin configurations.
-        
+
         Examples:
             --set related_sites.httpx_rate_limit=20
             --set testssl.timeout=600
             --set zap.remote.api_key=kast01
             --set zap.cloud.aws.region=us-west-2
-        
+
         :param set_args: List of "plugin.key[.key...]=value" strings
         """
         for arg in set_args:
             if '=' not in arg:
                 self.logger.warning(f"Invalid --set format (missing '='): {arg}")
                 continue
-            
+
             key_path, value = arg.split('=', 1)
             parts = key_path.split('.')
-            
+
             if len(parts) < 2:
                 self.logger.warning(f"Invalid --set format (expected plugin.key=value): {arg}")
                 continue
-            
+
             plugin_name = parts[0]
             config_keys = parts[1:]  # Remaining parts form the nested key path
-            
+
             # Try to parse value as appropriate type
             parsed_value = self._parse_value(value)
-            
+
             # Initialize plugin entry if needed
             if plugin_name not in self.cli_overrides:
                 self.cli_overrides[plugin_name] = {}
-            
+
             # Build nested dictionary structure
             current = self.cli_overrides[plugin_name]
             for key in config_keys[:-1]:
@@ -179,17 +178,17 @@ class ConfigManager:
                     self.logger.warning(f"Overwriting non-dict value at {plugin_name}.{'.'.join(config_keys[:config_keys.index(key)+1])}")
                     current[key] = {}
                 current = current[key]
-            
+
             # Set the final value
             final_key = config_keys[-1]
             current[final_key] = parsed_value
-            
+
             self.logger.debug(f"CLI override: {key_path} = {parsed_value}")
-    
+
     def _parse_value(self, value: str) -> Any:
         """
         Parse string value into appropriate Python type.
-        
+
         :param value: String value from CLI
         :return: Parsed value (int, float, bool, list, or str)
         """
@@ -198,31 +197,31 @@ class ConfigManager:
             return True
         if value.lower() in ('false', 'no', '0'):
             return False
-        
+
         # Try null
         if value.lower() in ('null', 'none', ''):
             return None
-        
+
         # Try integer
         try:
             return int(value)
         except ValueError:
             pass
-        
+
         # Try float
         try:
             return float(value)
         except ValueError:
             pass
-        
+
         # Try list (comma-separated)
         if ',' in value:
             return [item.strip() for item in value.split(',')]
-        
+
         # Default to string
         return value
-    
-    def register_plugin_schema(self, plugin_name: str, schema: Dict[str, Any]) -> None:
+
+    def register_plugin_schema(self, plugin_name: str, schema: dict[str, Any]) -> None:
         """
         Register a plugin's configuration schema.
 
@@ -254,44 +253,44 @@ class ConfigManager:
                 )
                 continue
             self.register_plugin_schema(name, schema)
-    
-    def get_plugin_config(self, plugin_name: str) -> Dict[str, Any]:
+
+    def get_plugin_config(self, plugin_name: str) -> dict[str, Any]:
         """
         Get configuration for a specific plugin.
-        
+
         Merges settings from:
         1. Plugin defaults (from schema)
         2. Config file
         3. CLI overrides
-        
+
         :param plugin_name: Name of the plugin
         :return: Merged configuration dictionary
         """
         # Start with plugin defaults from schema
         config = self._get_defaults_from_schema(plugin_name)
-        
+
         # Deep merge with config file settings
         if plugin_name in self.config_data.get("plugins", {}):
             config = self._deep_merge(config, self.config_data["plugins"][plugin_name])
-        
+
         # Deep merge CLI overrides (highest priority)
         if plugin_name in self.cli_overrides:
             config = self._deep_merge(config, self.cli_overrides[plugin_name])
-        
+
         return config
-    
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
         """
         Deep merge two dictionaries, with override taking precedence.
-        
+
         Recursively merges nested dictionaries instead of replacing them.
-        
+
         :param base: Base dictionary
         :param override: Override dictionary (takes precedence)
         :return: Merged dictionary
         """
         result = base.copy()
-        
+
         for key, value in override.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 # Both are dicts - recursively merge
@@ -299,44 +298,44 @@ class ConfigManager:
             else:
                 # Override value (not both dicts, or key doesn't exist in base)
                 result[key] = value
-        
+
         return result
-    
-    def _get_defaults_from_schema(self, plugin_name: str) -> Dict[str, Any]:
+
+    def _get_defaults_from_schema(self, plugin_name: str) -> dict[str, Any]:
         """
         Extract default values from a plugin's schema.
-        
+
         :param plugin_name: Name of the plugin
         :return: Dictionary of default values
         """
         defaults = {}
-        
+
         if plugin_name not in self.plugin_schemas:
             return defaults
-        
+
         schema = self.plugin_schemas[plugin_name]
         properties = schema.get("properties", {})
-        
+
         for key, prop_schema in properties.items():
             if "default" in prop_schema:
                 defaults[key] = prop_schema["default"]
-        
+
         return defaults
-    
-    def get_global_config(self) -> Dict[str, Any]:
+
+    def get_global_config(self) -> dict[str, Any]:
         """
         Get global configuration settings.
-        
+
         :return: Global configuration dictionary
         """
         return self.config_data.get("global", {})
-    
+
     def export_schema(self, format: str = "json") -> str:
         """
         Export complete configuration schema for all registered plugins.
-        
+
         This is used by GUI tools like kast-web to auto-generate forms.
-        
+
         :param format: Output format ("json" or "yaml")
         :return: Serialized schema string
         """
@@ -367,20 +366,20 @@ class ConfigManager:
             },
             "plugins": {}
         }
-        
+
         # Add all registered plugin schemas
         for plugin_name, plugin_schema in self.plugin_schemas.items():
             schema["plugins"][plugin_name] = plugin_schema
-        
+
         if format == "yaml":
             return yaml.dump(schema, default_flow_style=False, sort_keys=False)
         else:
             return json.dumps(schema, indent=2)
-    
-    def create_default_config(self, output_path: Optional[str] = None) -> str:
+
+    def create_default_config(self, output_path: str | None = None) -> str:
         """
         Create a default configuration file with all plugin options.
-        
+
         :param output_path: Optional path for config file (default: ~/.config/kast/config.yaml)
         :return: Path to created config file
         """
@@ -388,10 +387,10 @@ class ConfigManager:
             config_path = Path(output_path).expanduser()
         else:
             config_path = Path.home() / ".config" / "kast" / "config.yaml"
-        
+
         # Create directory if needed
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Build default config with all registered plugins
         default_config = {
             "kast": {
@@ -403,11 +402,11 @@ class ConfigManager:
             },
             "plugins": {}
         }
-        
+
         # Add defaults for each plugin from schemas
         for plugin_name in self.plugin_schemas:
             default_config["plugins"][plugin_name] = self._get_defaults_from_schema(plugin_name)
-        
+
         # Write to file
         with open(config_path, 'w') as f:
             yaml.dump(
@@ -417,14 +416,14 @@ class ConfigManager:
                 sort_keys=False,
                 allow_unicode=True
             )
-        
+
         self.logger.info(f"Created default config at: {config_path}")
         return str(config_path)
-    
-    def show_current_config(self, plugin_name: Optional[str] = None) -> str:
+
+    def show_current_config(self, plugin_name: str | None = None) -> str:
         """
         Display current configuration (merged from all sources).
-        
+
         :param plugin_name: Optional plugin name to show only that plugin's config
         :return: YAML string of current configuration
         """
@@ -442,56 +441,56 @@ class ConfigManager:
                 "global": self.get_global_config(),
                 "plugins": {}
             }
-            
+
             # Add all registered plugins
             for pname in self.plugin_schemas:
                 config["plugins"][pname] = self.get_plugin_config(pname)
-        
+
         return yaml.dump(config, default_flow_style=False, sort_keys=False)
-    
-    def validate_plugin_config(self, plugin_name: str, config: Dict[str, Any]) -> tuple[bool, List[str]]:
+
+    def validate_plugin_config(self, plugin_name: str, config: dict[str, Any]) -> tuple[bool, list[str]]:
         """
         Validate plugin configuration against its schema.
-        
+
         :param plugin_name: Name of the plugin
         :param config: Configuration dictionary to validate
         :return: Tuple of (is_valid, list_of_errors)
         """
         errors = []
-        
+
         if plugin_name not in self.plugin_schemas:
             return True, []  # No schema = no validation
-        
+
         schema = self.plugin_schemas[plugin_name]
         properties = schema.get("properties", {})
-        
+
         # Check each config value against schema
         for key, value in config.items():
             if key not in properties:
                 errors.append(f"Unknown config key: {key}")
                 continue
-            
+
             prop_schema = properties[key]
-            
+
             # Type validation
             expected_type = prop_schema.get("type")
             if expected_type:
                 if not self._validate_type(value, expected_type):
                     errors.append(f"{key}: Expected type {expected_type}, got {type(value).__name__}")
-            
+
             # Minimum/maximum validation for numbers
             if isinstance(value, (int, float)):
                 if "minimum" in prop_schema and value < prop_schema["minimum"]:
                     errors.append(f"{key}: Value {value} below minimum {prop_schema['minimum']}")
                 if "maximum" in prop_schema and value > prop_schema["maximum"]:
                     errors.append(f"{key}: Value {value} above maximum {prop_schema['maximum']}")
-        
+
         return len(errors) == 0, errors
-    
+
     def _validate_type(self, value: Any, expected_type: Any) -> bool:
         """
         Validate value type against JSON Schema type specification.
-        
+
         :param value: Value to validate
         :param expected_type: JSON Schema type (string or list of strings)
         :return: True if type matches, False otherwise
@@ -499,11 +498,11 @@ class ConfigManager:
         # Handle list of allowed types (e.g., ["integer", "null"])
         if isinstance(expected_type, list):
             return any(self._validate_type(value, t) for t in expected_type)
-        
+
         # Handle null
         if expected_type == "null":
             return value is None
-        
+
         # Type mapping
         type_map = {
             "string": str,
@@ -513,9 +512,9 @@ class ConfigManager:
             "array": list,
             "object": dict
         }
-        
+
         expected_python_type = type_map.get(expected_type)
         if expected_python_type:
             return isinstance(value, expected_python_type)
-        
+
         return True  # Unknown type = pass validation

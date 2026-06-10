@@ -19,10 +19,10 @@ Usage:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Severity levels in kast.
 
     Inherits from str so members compare equal to their string values:
@@ -41,7 +41,7 @@ class Severity(str, Enum):
         return self.value
 
     @classmethod
-    def from_registry(cls, value: object) -> "Severity":
+    def from_registry(cls, value: object) -> Severity:
         """Parse a severity value with normalization.
 
         Accepts:

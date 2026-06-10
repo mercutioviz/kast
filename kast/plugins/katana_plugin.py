@@ -3,14 +3,14 @@ File: plugins/katana_plugin.py
 Description: Site crawler and URL finder plugin for KAST.
 """
 
-import subprocess
-import shutil
 import os
-import json
-from datetime import datetime, timezone
-from kast.plugins.base import KastPlugin
-from kast.core.atomic import write_json_atomic
+import shutil
+import subprocess
+from datetime import UTC, datetime
 from pprint import pformat
+
+from kast.core.atomic import write_json_atomic
+from kast.plugins.base import KastPlugin
 
 # Categories ordered by security priority (first-match wins per URL).
 INTERESTING_PATH_PATTERNS = {
@@ -42,7 +42,7 @@ INTERESTING_PATH_PATTERNS = {
 
 class KatanaPlugin(KastPlugin):
     priority = 60  # Set plugin run order (lower runs earlier)
-    
+
     # Configuration schema for kast-web integration
     config_schema = {
         "type": "object",
@@ -167,16 +167,16 @@ class KatanaPlugin(KastPlugin):
     website_url = "https://github.com/projectdiscovery/katana"
     scan_type = "passive"  # or "active"
     output_type = "file"  # or "stdout"
-    
+
     def __init__(self, cli_args, config_manager=None):
-        
+
         super().__init__(cli_args, config_manager)
-        
+
         self.command_executed = None  # Store the command for reporting
-        
+
         # Load configuration values
         self._load_plugin_config()
-    
+
     def _load_plugin_config(self):
         """Load configuration with defaults from schema."""
         # Get config values (defaults from schema if not set)
@@ -198,7 +198,7 @@ class KatanaPlugin(KastPlugin):
         self.xhr_extraction = self.get_config('xhr_extraction', False)
         self.extension_filter = self.get_config('extension_filter', [])
         self.omit_body = self.get_config('omit_body', True)
-        
+
         self.debug(f"Katana config loaded: "
                   f"depth={self.depth}, "
                   f"js_crawl={self.js_crawl}, "
@@ -229,72 +229,72 @@ class KatanaPlugin(KastPlugin):
         """
         Run the tool and return standardized result dict.
         """
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, "katana.txt")
-        
+
         # Build command dynamically based on configuration
         cmd = ["katana", "-silent", "-u", target]
-        
+
         # Add crawl configuration
         if self.depth != 3:  # Only add if different from default
             cmd.extend(["-d", str(self.depth)])
-        
+
         if self.js_crawl:
             cmd.append("-jc")
-        
+
         if self.crawl_duration > 0:
             cmd.extend(["-ct", f"{self.crawl_duration}s"])
-        
+
         if self.known_files:
             cmd.extend(["-kf", self.known_files])
-        
+
         if self.automatic_form_fill:
             cmd.append("-aff")
-        
+
         if self.strategy != "depth-first":  # Only add if not default
             cmd.extend(["-s", self.strategy])
-        
+
         # Add rate limiting and concurrency
         if self.concurrency != 10:  # Only add if different from default
             cmd.extend(["-c", str(self.concurrency)])
-        
+
         if self.parallelism != 10:  # Only add if different from default
             cmd.extend(["-p", str(self.parallelism)])
-        
+
         if self.rate_limit != 150:  # Only add if different from default
             cmd.extend(["-rl", str(self.rate_limit)])
-        
+
         if self.delay > 0:
             cmd.extend(["-rd", str(self.delay)])
-        
+
         # Add network configuration
         if self.timeout != 10:  # Only add if different from default
             cmd.extend(["-timeout", str(self.timeout)])
-        
+
         if self.retry != 1:  # Only add if different from default
             cmd.extend(["-retry", str(self.retry)])
-        
+
         if self.proxy:
             cmd.extend(["-proxy", self.proxy])
-        
+
         # Add scope configuration
         if self.field_scope != "rdn":  # Only add if different from default
             cmd.extend(["-fs", self.field_scope])
-        
+
         # Add headless options
         if self.headless:
             cmd.append("-hl")
-        
+
         if self.xhr_extraction:
             cmd.append("-xhr")
-        
+
         # Add filtering options
         if self.extension_filter:
             cmd.extend(["-ef", ",".join(self.extension_filter)])
-        
+
         # Add output options
         cmd.extend(["-o", output_file])
-        
+
         if self.omit_body:
             cmd.append("-ob")
 
@@ -335,7 +335,7 @@ class KatanaPlugin(KastPlugin):
                 # Read plain text output file and store raw URLs
                 raw_urls = []
                 if os.path.exists(output_file):
-                    with open(output_file, "r") as f:
+                    with open(output_file) as f:
                         for line in f:
                             line = line.strip()
                             if line:
@@ -356,7 +356,7 @@ class KatanaPlugin(KastPlugin):
         """
         Normalize output, extract issues, and build executive_summary.
         Parse katana output to extract only URL paths after the target domain.
-        
+
         Args:
             raw_output: Raw plugin output
             output_dir: Directory containing output files
@@ -364,22 +364,22 @@ class KatanaPlugin(KastPlugin):
         """
         self.debug(f"{self.name} post_process called with raw_output type: {type(raw_output)}")
         self.debug(f"{self.name} post_process raw_output: {pformat(raw_output)}")
-        
+
         # Read the katana.txt file directly since that's where the actual output is
         katana_file = os.path.join(output_dir, "katana.txt")
-        
+
         target = self.cli_args.target
         raw_urls = []
-        
+
         # Try to get target from raw_output if it's a dict
         if isinstance(raw_output, dict):
             target = raw_output.get("target", "")
             raw_urls = raw_output.get("urls", [])
-        
+
         # If we don't have URLs yet, read from the katana.txt file
         if not raw_urls and os.path.exists(katana_file):
             self.debug(f"Reading URLs from {katana_file}")
-            with open(katana_file, "r") as f:
+            with open(katana_file) as f:
                 for line in f:
                     line = line.strip()
                     if line:
@@ -392,10 +392,10 @@ class KatanaPlugin(KastPlugin):
             parsed_url = self._extract_url_path(url, target)
             if parsed_url:
                 parsed_urls.append(parsed_url)
-        
+
         # Remove duplicates and sort
         parsed_urls = sorted(list(set(parsed_urls)))
-        
+
         self.debug(f"{self.name} parsed {len(raw_urls)} raw URLs into {len(parsed_urls)} unique URL paths")
 
         # Identify security-relevant paths observed during crawl (informational only)
@@ -424,7 +424,7 @@ class KatanaPlugin(KastPlugin):
         # Generate both HTML and PDF versions of URL display
         custom_html = self._generate_url_display_html(parsed_urls, interesting_endpoints)
         custom_html_pdf = self._generate_pdf_url_list(parsed_urls, interesting_endpoints)
-        
+
         self.debug(f"{self.name} summary: {summary}")
         self.debug(f"{self.name} issues: {issues}")
         self.debug(f"{self.name} details:\n{details}")
@@ -438,7 +438,7 @@ class KatanaPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": getattr(self, 'display_name', None),
             "plugin-website-url": getattr(self, 'website_url', None),
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": {"urls": parsed_urls},
             "findings_count": findings_count,
             "interesting_endpoints": interesting_endpoints,
@@ -464,31 +464,31 @@ class KatanaPlugin(KastPlugin):
         """
         if not self.command_executed:
             return "Command not available"
-        
+
         return f'<code style="color: #00008B; font-family: Consolas, \'Courier New\', monospace;">{self.command_executed}</code>'
 
     def _extract_url_path(self, full_url, target):
         """
         Extract the URL path portion after the target domain.
-        
+
         Example:
         Input: [a] [GET] https://waas.az.hackazon.lkscd.com/cart/view
         Target: waas.az.hackazon.lkscd.com
         Output: /cart/view
-        
+
         :param full_url: The complete URL from katana output
         :param target: The target domain
         :return: The URL path after the target domain
         """
         # Find the target domain in the URL
         target_index = full_url.find(target)
-        
+
         if target_index != -1:
             # Extract everything after the target domain
             path = full_url[target_index + len(target):]
             # If path is empty, return root
             return path if path else "/"
-        
+
         # If target not found in URL, return None to skip this URL
         self.debug(f"Target '{target}' not found in URL: {full_url}")
         return None
@@ -628,7 +628,7 @@ class KatanaPlugin(KastPlugin):
         Returns a dictionary where keys are extension names and values are lists of URLs.
         """
         groups = {}
-        
+
         for url in urls:
             # Determine the extension/category
             if '.' in url.split('?')[0].split('/')[-1]:
@@ -640,11 +640,11 @@ class KatanaPlugin(KastPlugin):
             else:
                 # No extension - likely a directory or endpoint
                 ext = "Endpoints"
-            
+
             if ext not in groups:
                 groups[ext] = []
             groups[ext].append(url)
-        
+
         return groups
 
     def _generate_group_html(self, group_name, urls, group_id):
@@ -654,10 +654,10 @@ class KatanaPlugin(KastPlugin):
         urls_per_page = 50
         total_urls = len(urls)
         total_pages = (total_urls + urls_per_page - 1) // urls_per_page
-        
+
         # Generate icon based on group type
         icon = self._get_group_icon(group_name)
-        
+
         html = f'''
         <div class="url-group" data-group="{group_id}">
             <div class="url-group-header" onclick="toggleUrlGroup('{group_id}')">
@@ -669,12 +669,12 @@ class KatanaPlugin(KastPlugin):
             <div class="url-group-content" id="{group_id}-content" style="display: none;">
                 <div class="url-list" id="{group_id}-list">
         '''
-        
+
         # Add all URLs with page data attributes
         for page_num in range(total_pages):
             start_idx = page_num * urls_per_page
             end_idx = min(start_idx + urls_per_page, total_urls)
-            
+
             for url in urls[start_idx:end_idx]:
                 # Make URL searchable and clickable
                 display_style = 'display: none;' if page_num > 0 else ''
@@ -683,11 +683,11 @@ class KatanaPlugin(KastPlugin):
                         <code class="url-path">{url}</code>
                     </div>
                 '''
-        
+
         html += '''
                 </div>
         '''
-        
+
         # Add pagination controls if needed
         if total_pages > 1:
             html += f'''
@@ -699,12 +699,12 @@ class KatanaPlugin(KastPlugin):
                     <button onclick="changeUrlPage('{group_id}', 1)" class="url-page-btn">Next »</button>
                 </div>
             '''
-        
+
         html += '''
             </div>
         </div>
         '''
-        
+
         return html
 
     def _get_group_icon(self, group_name):
@@ -748,9 +748,9 @@ class KatanaPlugin(KastPlugin):
         # Interesting endpoints section
         if interesting_endpoints:
             total_interesting = sum(len(v) for v in interesting_endpoints.values())
-            html += f'<div style="background:#fff8e6;border:1px solid #f0c040;border-radius:4px;padding:0.8em;margin-bottom:1em;">'
+            html += '<div style="background:#fff8e6;border:1px solid #f0c040;border-radius:4px;padding:0.8em;margin-bottom:1em;">'
             html += f'<div style="font-weight:700;font-size:0.9em;color:#7a5200;margin-bottom:0.3em;">Interesting Endpoints Observed ({total_interesting})</div>'
-            html += f'<div style="font-size:0.8em;color:#5a4000;margin-bottom:0.5em;">Paths found during normal crawl that may warrant security review.</div>'
+            html += '<div style="font-size:0.8em;color:#5a4000;margin-bottom:0.5em;">Paths found during normal crawl that may warrant security review.</div>'
             for category, paths in interesting_endpoints.items():
                 html += f'<div style="margin-bottom:0.4em;"><strong style="font-size:0.85em;">{category}:</strong>'
                 html += '<ul style="margin:0.2em 0 0.2em 1.2em;padding:0;">'
@@ -790,91 +790,91 @@ class KatanaPlugin(KastPlugin):
         Builds the actual command with current configuration.
         """
         output_file = os.path.join(output_dir, "katana.txt")
-        
+
         # Build command with current configuration (same as run() method)
         cmd = ["katana", "-silent", "-u", target]
-        
+
         # Add crawl configuration
         if self.depth != 3:
             cmd.extend(["-d", str(self.depth)])
-        
+
         if self.js_crawl:
             cmd.append("-jc")
-        
+
         if self.crawl_duration > 0:
             cmd.extend(["-ct", f"{self.crawl_duration}s"])
-        
+
         if self.known_files:
             cmd.extend(["-kf", self.known_files])
-        
+
         if self.automatic_form_fill:
             cmd.append("-aff")
-        
+
         if self.strategy != "depth-first":
             cmd.extend(["-s", self.strategy])
-        
+
         # Add rate limiting and concurrency
         if self.concurrency != 10:
             cmd.extend(["-c", str(self.concurrency)])
-        
+
         if self.parallelism != 10:
             cmd.extend(["-p", str(self.parallelism)])
-        
+
         if self.rate_limit != 150:
             cmd.extend(["-rl", str(self.rate_limit)])
-        
+
         if self.delay > 0:
             cmd.extend(["-rd", str(self.delay)])
-        
+
         # Add network configuration
         if self.timeout != 10:
             cmd.extend(["-timeout", str(self.timeout)])
-        
+
         if self.retry != 1:
             cmd.extend(["-retry", str(self.retry)])
-        
+
         if self.proxy:
             cmd.extend(["-proxy", self.proxy])
-        
+
         # Add scope configuration
         if self.field_scope != "rdn":
             cmd.extend(["-fs", self.field_scope])
-        
+
         # Add headless options
         if self.headless:
             cmd.append("-hl")
-        
+
         if self.xhr_extraction:
             cmd.append("-xhr")
-        
+
         # Add filtering options
         if self.extension_filter:
             cmd.extend(["-ef", ",".join(self.extension_filter)])
-        
+
         # Add output options
         cmd.extend(["-o", output_file])
-        
+
         if self.omit_body:
             cmd.append("-ob")
-        
+
         # Build operations description with config values
         operations_parts = []
         operations_parts.append(f"depth: {self.depth}")
-        
+
         if self.js_crawl:
             operations_parts.append("JS crawling")
-        
+
         if self.headless:
             operations_parts.append("headless mode")
-        
+
         operations_parts.append(f"rate: {self.rate_limit}/s")
         operations_parts.append(f"timeout: {self.timeout}s")
-        
+
         if self.extension_filter:
             operations_parts.append(f"filtering: {', '.join(self.extension_filter)}")
-        
+
         operations_desc = f"Web crawling ({', '.join(operations_parts)})"
-        
+
         return {
             "commands": [' '.join(cmd)],
             "description": self.description,

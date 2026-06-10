@@ -20,7 +20,6 @@ import pytest
 from kast.ai import AIResponse
 from kast.ai.evals.criteria import (
     CriterionResult,
-    STANDARD_CRITERIA,
     check_headline_length,
     check_headline_not_generic,
     check_key_findings_count,
@@ -39,7 +38,6 @@ from kast.ai.evals.runner import (
     run_golden_eval,
     write_golden,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -306,7 +304,6 @@ def test_run_eval_records_output():
 
 
 def test_run_eval_captures_generation_error():
-    from unittest.mock import patch
     from kast.ai.base import AIGenerationError
     scenario = EvalScenario(name="test", report_data=_minimal_report_data())
     adapter = MagicMock()

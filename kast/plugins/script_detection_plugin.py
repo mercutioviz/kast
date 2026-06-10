@@ -3,16 +3,17 @@ File: plugins/script_detection_plugin.py
 Description: Detects and analyzes external JavaScript files loaded by target website
 """
 
-import os
 import json
+import os
 import re
+from datetime import UTC, datetime
+from urllib.parse import urljoin, urlparse
+
 import requests
-from datetime import datetime, timezone
-from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
-from kast.plugins.base import KastPlugin
+
 from kast.core.atomic import write_json_atomic
-from pprint import pformat
+from kast.plugins.base import KastPlugin
 
 # (regex, library_name, (safe_major, safe_minor))
 # Matches versioned filenames like jquery-1.12.4.min.js or lodash/4.17.15/lodash.min.js
@@ -27,7 +28,7 @@ _VULNERABLE_JS_PATTERNS = [
 
 class ScriptDetectionPlugin(KastPlugin):
     priority = 10  # Run after Observatory (priority 5)
-    
+
     # Configuration schema for kast-web integration
     config_schema = {
         "type": "object",
@@ -86,9 +87,9 @@ class ScriptDetectionPlugin(KastPlugin):
     output_type = "stdout"
 
     def __init__(self, cli_args, config_manager=None):
-        
+
         super().__init__(cli_args, config_manager)
-        
+
         # Dependency: wait for Observatory to complete for correlation
         self.dependencies = [
             {
@@ -96,10 +97,10 @@ class ScriptDetectionPlugin(KastPlugin):
                 'condition': lambda result: result.get('disposition') in ['success', 'fail']
             }
         ]
-        
+
         # Load configuration values
         self._load_plugin_config()
-    
+
     def _load_plugin_config(self):
         """Load configuration with defaults from schema."""
         # Get config values (defaults from schema if not set)
@@ -124,8 +125,8 @@ class ScriptDetectionPlugin(KastPlugin):
         These should be in requirements.txt
         """
         try:
-            import requests
             import bs4
+            import requests
             return True
         except ImportError:
             return False
@@ -135,14 +136,14 @@ class ScriptDetectionPlugin(KastPlugin):
         Fetch target HTML and detect external scripts.
         """
         self.setup(target, output_dir)
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_file = os.path.join(output_dir, f"{self.name}.json")
-        
+
         if report_only:
-            self.debug(f"[REPORT ONLY] Would fetch and analyze scripts")
+            self.debug("[REPORT ONLY] Would fetch and analyze scripts")
             # In report-only mode, check if results already exist
             if os.path.exists(output_file):
-                with open(output_file, "r") as f:
+                with open(output_file) as f:
                     results = json.load(f)
                 return self.get_result_dict(
                     disposition="success",
@@ -155,7 +156,7 @@ class ScriptDetectionPlugin(KastPlugin):
                     results="No existing results found for report-only mode.",
                     timestamp=timestamp
                 )
-        
+
         # Create empty script_detection.json file first, so that kast-web knows we are running
         in_progress_file = os.path.join(output_dir, "script_detection.json")
         open(in_progress_file, 'a').close()
@@ -164,20 +165,20 @@ class ScriptDetectionPlugin(KastPlugin):
             # Fetch the HTML
             self.debug(f"Fetching HTML from {target}")
             html_content = self._fetch_html(target)
-            
+
             # Parse and analyze scripts
             self.debug("Parsing HTML and extracting scripts")
             script_analysis = self._analyze_scripts(html_content, target)
-            
+
             # Save raw results to file
             write_json_atomic(output_file, script_analysis)
-            
+
             return self.get_result_dict(
                 disposition="success",
                 results=script_analysis,
                 timestamp=timestamp
             )
-            
+
         except Exception as e:
             self.debug(f"Error during script detection: {e}")
             return self.get_result_dict(
@@ -194,24 +195,24 @@ class ScriptDetectionPlugin(KastPlugin):
         # Ensure target has protocol
         if not target.startswith(('http://', 'https://')):
             target = f'https://{target}'
-        
+
         # Build headers with configured user agent and custom headers
         headers = {
             'User-Agent': self.user_agent
         }
-        
+
         # Add any custom headers from config
         if self.custom_headers:
             headers.update(self.custom_headers)
             self.debug(f"Added custom headers: {list(self.custom_headers.keys())}")
-        
+
         self.debug(f"Fetching {target} with timeout={self.request_timeout}s, "
                   f"verify_ssl={self.verify_ssl}, follow_redirects={self.follow_redirects}")
-        
+
         # Make request with configured parameters
         # Note: requests library has a built-in max of 30 redirects
         response = requests.get(
-            target, 
+            target,
             headers=headers,
             timeout=self.request_timeout,
             verify=self.verify_ssl,
@@ -226,44 +227,44 @@ class ScriptDetectionPlugin(KastPlugin):
         Respects max_scripts_to_analyze configuration.
         """
         soup = BeautifulSoup(html_content, 'html.parser')
-        
+
         # Ensure target URL has protocol for parsing
         if not target_url.startswith(('http://', 'https://')):
             target_url = f'https://{target_url}'
-        
+
         target_origin = f"{urlparse(target_url).scheme}://{urlparse(target_url).netloc}"
-        
+
         # Find all script tags with src attribute
         script_tags = soup.find_all('script', src=True)
-        
+
         # Apply max_scripts_to_analyze limit if configured
         total_found = len(script_tags)
         if self.max_scripts_to_analyze is not None and total_found > self.max_scripts_to_analyze:
             self.debug(f"Limiting analysis to {self.max_scripts_to_analyze} scripts (found {total_found} total)")
             script_tags = script_tags[:self.max_scripts_to_analyze]
-        
+
         scripts = []
         for script in script_tags:
             src = script.get('src')
-            
+
             # Convert relative URLs to absolute
             absolute_url = urljoin(target_url, src)
             parsed_url = urlparse(absolute_url)
             script_origin = f"{parsed_url.scheme}://{parsed_url.netloc}"
-            
+
             # Check if same-origin
             is_same_origin = (script_origin == target_origin)
-            
+
             # Check for SRI
             has_sri = script.has_attr('integrity')
             integrity = script.get('integrity', None)
-            
+
             # Check for crossorigin attribute
             crossorigin = script.get('crossorigin', None)
-            
+
             # Check if loaded over HTTPS
             is_https = parsed_url.scheme == 'https'
-            
+
             script_info = {
                 'url': absolute_url,
                 'origin': script_origin,
@@ -277,9 +278,9 @@ class ScriptDetectionPlugin(KastPlugin):
                 'is_https': is_https,
                 'is_secure': is_https and (is_same_origin or has_sri)
             }
-            
+
             scripts.append(script_info)
-        
+
         # Calculate statistics
         same_origin_scripts = [s for s in scripts if s['is_same_origin']]
         cross_origin_scripts = [s for s in scripts if s['is_cross_origin']]
@@ -287,7 +288,7 @@ class ScriptDetectionPlugin(KastPlugin):
         scripts_without_sri = [s for s in scripts if not s['has_sri']]
         insecure_scripts = [s for s in scripts if not s['is_https']]
         unique_origins = list(set(s['origin'] for s in scripts))
-        
+
         # Group by origin for easier analysis
         scripts_by_origin = {}
         for script in scripts:
@@ -295,7 +296,7 @@ class ScriptDetectionPlugin(KastPlugin):
             if origin not in scripts_by_origin:
                 scripts_by_origin[origin] = []
             scripts_by_origin[origin].append(script)
-        
+
         analysis = {
             'target_url': target_url,
             'target_origin': target_origin,
@@ -313,7 +314,7 @@ class ScriptDetectionPlugin(KastPlugin):
             'scripts': scripts,
             'scripts_by_origin': scripts_by_origin
         }
-        
+
         return analysis
 
     def _correlate_with_observatory(self, output_dir):
@@ -324,17 +325,17 @@ class ScriptDetectionPlugin(KastPlugin):
         # Try processed file first, fall back to raw file
         processed_file = os.path.join(output_dir, "mozilla_observatory_processed.json")
         raw_file = os.path.join(output_dir, "mozilla_observatory.json")
-        
+
         observatory_file = processed_file if os.path.exists(processed_file) else raw_file
-        
+
         if not os.path.exists(observatory_file):
             self.debug("Observatory results not found")
             return None
-        
+
         try:
-            with open(observatory_file, 'r') as f:
+            with open(observatory_file) as f:
                 observatory_data = json.load(f)
-            
+
             # Handle both raw and processed Observatory formats
             if 'findings' in observatory_data:
                 # Processed format
@@ -348,15 +349,15 @@ class ScriptDetectionPlugin(KastPlugin):
                 issues = []
                 for test_name, test_data in tests.items():
                     if 'csp' in test_name.lower() or 'sri' in test_name.lower():
-                        if test_data.get('pass') == False:
+                        if not test_data.get('pass'):
                             issues.append(test_name)
-            
+
             # Extract CSP/SRI related issues
             csp_related = [
-                issue for issue in issues 
+                issue for issue in issues
                 if 'csp' in str(issue).lower() or 'sri' in str(issue).lower()
             ]
-            
+
             return {
                 'observatory_available': True,
                 'csp_sri_issues': csp_related,
@@ -389,7 +390,7 @@ class ScriptDetectionPlugin(KastPlugin):
             }
         else:
             findings = raw_output.get('results', {})
-            
+
             # Try to correlate with Observatory
             observatory_correlation = self._correlate_with_observatory(output_dir)
 
@@ -430,11 +431,11 @@ class ScriptDetectionPlugin(KastPlugin):
                 "observatory_correlation": observatory_correlation,
                 "vulnerable_libraries": vulnerable_libs,
             }
-        
+
         # Save processed results
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")
         write_json_atomic(processed_path, processed)
-        
+
         return processed_path
 
     def _generate_summary(self, findings, vulnerable_libs=None):
@@ -489,13 +490,13 @@ class ScriptDetectionPlugin(KastPlugin):
     def _generate_details(self, findings):
         """Generate detailed breakdown"""
         lines = []
-        
+
         scripts_by_origin = findings.get('scripts_by_origin', {})
-        
+
         for origin, scripts in scripts_by_origin.items():
             without_sri = sum(1 for s in scripts if not s['has_sri'])
             lines.append(f"{origin}: {len(scripts)} scripts ({without_sri} without SRI)")
-        
+
         return "\n".join(lines)
 
     def _detect_vulnerable_libraries(self, scripts):
@@ -573,34 +574,34 @@ class ScriptDetectionPlugin(KastPlugin):
             for v in vulnerable_libs:
                 html_parts.append(f'<li>{v["library"]} {v["version"]} — update to current release</li>')
             html_parts.append('</ul></div>')
-        
+
         if findings.get('insecure_http_scripts', 0) > 0:
             html_parts.append(f'<p style="color: #dc3545;"><strong>⚠️ Insecure HTTP Scripts:</strong> {findings.get("insecure_http_scripts", 0)}</p>')
-        
+
         html_parts.append('<div class="script-groups">')
-        
+
         for origin, scripts in scripts_by_origin.items():
             target_origin = findings.get('target_origin', '')
             is_same_origin = (origin == target_origin)
-            
-            html_parts.append(f'<div class="script-group">')
+
+            html_parts.append('<div class="script-group">')
             html_parts.append(f'<h5>{"🏠" if is_same_origin else "🌐"} {origin} ({len(scripts)} scripts)</h5>')
             html_parts.append('<ul class="script-list">')
-            
+
             for script in scripts[:10]:  # Limit to first 10 per origin
                 sri_indicator = "✓" if script['has_sri'] else "⚠️"
                 secure_indicator = "🔒" if script['is_https'] else "🔓"
                 html_parts.append(f'<li>{sri_indicator} {secure_indicator} {script["path"]}</li>')
-            
+
             if len(scripts) > 10:
                 html_parts.append(f'<li><em>... and {len(scripts) - 10} more</em></li>')
-            
+
             html_parts.append('</ul>')
             html_parts.append('</div>')
-        
+
         html_parts.append('</div>')
         html_parts.append('</div>')
-        
+
         return '\n'.join(html_parts)
 
     def get_dry_run_info(self, target, output_dir):
@@ -613,7 +614,7 @@ class ScriptDetectionPlugin(KastPlugin):
             display_target = f'https://{target}'
         else:
             display_target = target
-        
+
         return {
             "commands": [],  # No CLI commands
             "description": self.description,

@@ -7,18 +7,14 @@ All subprocess calls and HTTP calls are mocked — no network, no tools required
 
 import json
 import os
-import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch, MagicMock
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from unittest.mock import MagicMock, patch
 
 from kast.cli.doctor import (
-    UPDATE_SPECS,
-    ToolUpdateSpec,
     _CACHE_TTL_SECONDS,
+    UPDATE_SPECS,
     _cached_upstream_version,
     _compare_versions,
     _github_latest,
@@ -34,7 +30,6 @@ from kast.cli.doctor import (
     check_external_tool_updates,
 )
 from kast.core.external_binaries import find_pd_httpx
-
 
 # ----- regex fixtures: real --version output captured 2026-06 -----
 

@@ -12,16 +12,15 @@ adapter, inspect the output, and if it looks good write it to the golden path.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 import yaml
 
 from kast.ai.base import AIAdapter, AIGenerationError
+from kast.ai.evals.criteria import STANDARD_CRITERIA, CriterionResult
 from kast.ai.summary import generate_ai_summary
-from kast.ai.evals.criteria import CriterionResult, STANDARD_CRITERIA
-
 
 EVALS_DIR = Path(__file__).resolve().parent
 SCENARIOS_DIR = EVALS_DIR / "scenarios"

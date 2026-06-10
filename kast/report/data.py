@@ -1,11 +1,9 @@
 """Report data collector — shared between HTML and PDF renderers.
 
-The v2 ``report_builder.py`` had two ~99% identical functions
-(``generate_html_report`` and ``generate_pdf_report``) that each
-performed plugin iteration, issue resolution, severity sort,
-severity counting, WAF statistics, and missing-issue tracking before
-diverging on format-specific concerns. Phase A7 lifts that shared
-work here, behind a single ``collect_report_data`` entrypoint.
+``collect_report_data`` performs plugin iteration, issue resolution,
+severity sort, severity counting, WAF statistics, and missing-issue
+tracking. Renderers consume the dict it returns and apply only the
+format-specific differences.
 
 Renderers consume the dict this returns and apply only the
 format-specific differences (HTML copies CSS / references logo by

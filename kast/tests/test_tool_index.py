@@ -3,13 +3,7 @@
 Test script to verify the new tool index page in PDF reports
 """
 
-import sys
-import os
-
-# Add kast to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'kast'))
-
-from report_builder import generate_pdf_report
+from kast.report import generate_pdf_report
 
 # Sample plugin results with multiple tools
 sample_results = [
@@ -134,7 +128,7 @@ sample_results = [
 if __name__ == "__main__":
     print("Testing PDF generation with new tool index page...")
     print("=" * 60)
-    
+
     try:
         # Generate PDF report
         output_path = "test_tool_index_report.pdf"
@@ -143,7 +137,7 @@ if __name__ == "__main__":
             output_path=output_path,
             target="example.com"
         )
-        
+
         print("\n✓ PDF report generated successfully!")
         print(f"✓ Output file: {output_path}")
         print("\nThe report should now include:")
@@ -151,9 +145,10 @@ if __name__ == "__main__":
         print("  2. Each tool listed with its name and description")
         print("  3. Clickable links that navigate to the respective tool's details")
         print("\nPlease open the PDF to verify the changes.")
-        
+
     except Exception as e:
-        print(f"\n✗ Error generating PDF: {e}")
+        import sys
         import traceback
+        print(f"\n✗ Error generating PDF: {e}")
         traceback.print_exc()
         sys.exit(1)

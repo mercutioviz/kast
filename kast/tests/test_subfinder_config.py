@@ -8,43 +8,38 @@ This test verifies that the Subfinder plugin properly:
 """
 
 import unittest
-import sys
-import os
 from unittest.mock import Mock
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from plugins.subfinder_plugin import SubfinderPlugin
-from config_manager import ConfigManager
+from kast.config_manager import ConfigManager
+from kast.plugins.subfinder_plugin import SubfinderPlugin
 
 
 class TestSubfinderConfig(unittest.TestCase):
     """Test Subfinder plugin configuration integration."""
-    
+
     def setUp(self):
         """Set up test fixtures."""
         # Create mock CLI args
         self.cli_args = Mock()
         self.cli_args.verbose = False
         self.cli_args.set = []
-        
+
         # Create ConfigManager
         self.config_manager = ConfigManager(self.cli_args)
-    
+
     def test_schema_registration(self):
         """Test that plugin schema is registered with ConfigManager."""
         # Create plugin (this should register schema)
-        plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+        SubfinderPlugin(self.cli_args, self.config_manager)
+
         # Verify schema was registered
         self.assertIn("subfinder", self.config_manager.plugin_schemas)
-        
+
         # Verify schema structure
         schema = self.config_manager.plugin_schemas["subfinder"]
         self.assertEqual(schema["type"], "object")
         self.assertEqual(schema["title"], "Subfinder Configuration")
-        
+
         # Verify all expected properties exist
         properties = schema["properties"]
         self.assertIn("sources", properties)
@@ -58,11 +53,11 @@ class TestSubfinderConfig(unittest.TestCase):
         self.assertIn("proxy", properties)
         self.assertIn("collect_sources", properties)
         self.assertIn("active_only", properties)
-    
+
     def test_default_configuration(self):
         """Test that plugin loads default values from schema."""
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         # Verify defaults
         self.assertEqual(plugin.sources, [])
         self.assertEqual(plugin.exclude_sources, [])
@@ -75,7 +70,7 @@ class TestSubfinderConfig(unittest.TestCase):
         self.assertIsNone(plugin.proxy)
         self.assertEqual(plugin.collect_sources, True)
         self.assertEqual(plugin.active_only, False)
-    
+
     def test_config_from_file(self):
         """Test loading configuration from config file."""
         # Simulate config file data
@@ -96,9 +91,9 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         # Verify config values were loaded
         self.assertEqual(plugin.sources, ["crtsh", "github", "virustotal"])
         self.assertEqual(plugin.exclude_sources, ["alienvault"])
@@ -111,7 +106,7 @@ class TestSubfinderConfig(unittest.TestCase):
         self.assertEqual(plugin.proxy, "http://proxy.example.com:8080")
         self.assertEqual(plugin.collect_sources, False)
         self.assertEqual(plugin.active_only, True)
-    
+
     def test_cli_overrides(self):
         """Test that CLI overrides take precedence over config file."""
         # Set up config file values
@@ -124,7 +119,7 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         # Set up CLI overrides
         self.config_manager.cli_overrides = {
             "subfinder": {
@@ -133,21 +128,21 @@ class TestSubfinderConfig(unittest.TestCase):
                 "max_time": 20
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         # Verify CLI overrides take precedence
         self.assertEqual(plugin.rate_limit, 100)
         self.assertEqual(plugin.timeout, 120)
         self.assertEqual(plugin.max_time, 20)
-    
+
     def test_command_building_with_defaults(self):
         """Test that commands are built correctly with default config."""
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify command includes default values
         self.assertIn("subfinder", command)
         self.assertIn("-d example.com", command)
@@ -157,7 +152,7 @@ class TestSubfinderConfig(unittest.TestCase):
         self.assertNotIn("-nW", command)  # active_only=False
         self.assertNotIn("-s ", command)  # No specific sources
         self.assertNotIn("-rl ", command)  # rate_limit=0
-    
+
     def test_command_building_with_custom_sources(self):
         """Test command building with custom sources."""
         self.config_manager.config_data = {
@@ -167,15 +162,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify sources are included
         self.assertIn("-s crtsh,github,virustotal", command)
-    
+
     def test_command_building_with_exclude_sources(self):
         """Test command building with excluded sources."""
         self.config_manager.config_data = {
@@ -185,15 +180,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify excluded sources are included
         self.assertIn("-es alienvault,shodan", command)
-    
+
     def test_command_building_with_all_sources(self):
         """Test command building with all sources enabled."""
         self.config_manager.config_data = {
@@ -203,15 +198,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify -all flag is included
         self.assertIn("-all", command)
-    
+
     def test_command_building_with_rate_limit(self):
         """Test command building with rate limit."""
         self.config_manager.config_data = {
@@ -221,15 +216,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify rate limit is included
         self.assertIn("-rl 50", command)
-    
+
     def test_command_building_with_custom_timeouts(self):
         """Test command building with custom timeout values."""
         self.config_manager.config_data = {
@@ -240,16 +235,16 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify timeouts are included
         self.assertIn("-timeout 60", command)
         self.assertIn("-max-time 20", command)
-    
+
     def test_command_building_with_proxy(self):
         """Test command building with proxy configuration."""
         self.config_manager.config_data = {
@@ -259,15 +254,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify proxy is included
         self.assertIn("-proxy http://proxy.example.com:8080", command)
-    
+
     def test_command_building_with_active_only(self):
         """Test command building with active_only enabled."""
         self.config_manager.config_data = {
@@ -277,15 +272,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify -nW flag is included
         self.assertIn("-nW", command)
-    
+
     def test_command_building_without_collect_sources(self):
         """Test command building with collect_sources disabled."""
         self.config_manager.config_data = {
@@ -295,15 +290,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify -cs flag is NOT included
         self.assertNotIn("-cs", command)
-    
+
     def test_command_building_with_concurrent_goroutines(self):
         """Test command building with custom concurrent goroutines."""
         self.config_manager.config_data = {
@@ -313,15 +308,15 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         command = dry_run_info["commands"][0]
-        
+
         # Verify -t flag is included with custom value
         self.assertIn("-t 50", command)
-    
+
     def test_operations_description(self):
         """Test that operations description reflects config values."""
         self.config_manager.config_data = {
@@ -334,18 +329,18 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         operations = dry_run_info["operations"]
-        
+
         # Verify operations description includes config values
         self.assertIn("sources: crtsh, github", operations)
         self.assertIn("rate limit: 100/s", operations)
         self.assertIn("timeout: 90s", operations)
         self.assertIn("max time: 15m", operations)
-    
+
     def test_operations_description_with_all_sources(self):
         """Test operations description when using all sources."""
         self.config_manager.config_data = {
@@ -355,31 +350,31 @@ class TestSubfinderConfig(unittest.TestCase):
                 }
             }
         }
-        
+
         plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+
         dry_run_info = plugin.get_dry_run_info("example.com", "/tmp/output")
         operations = dry_run_info["operations"]
-        
+
         # Verify operations mentions all sources
         self.assertIn("all sources", operations)
-    
+
     def test_schema_export(self):
         """Test that plugin schema can be exported."""
-        plugin = SubfinderPlugin(self.cli_args, self.config_manager)
-        
+        SubfinderPlugin(self.cli_args, self.config_manager)
+
         # Export schema as JSON
         import json
         schema_json = self.config_manager.export_schema("json")
         schema = json.loads(schema_json)
-        
+
         # Verify subfinder plugin is in exported schema
         self.assertIn("subfinder", schema["plugins"])
-        
+
         # Verify schema properties
         subfinder_schema = schema["plugins"]["subfinder"]
         self.assertEqual(subfinder_schema["title"], "Subfinder Configuration")
-        
+
         # Verify defaults are in schema
         props = subfinder_schema["properties"]
         self.assertEqual(props["sources"]["default"], [])

@@ -10,12 +10,11 @@ tests don't depend on any real external tool.
 
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from kast.plugins.external_tool import ExternalToolPlugin
-
 
 # ---- fake plugin -----------------------------------------------------------
 

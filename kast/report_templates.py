@@ -8,14 +8,14 @@ ISSUE_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), 'data', 'issue_reg
 
 # Load issue metadata from the JSON file
 try:
-    with open(ISSUE_REGISTRY_PATH, 'r') as f:
+    with open(ISSUE_REGISTRY_PATH) as f:
         ISSUE_REGISTRY = json.load(f)
 except FileNotFoundError:
     ISSUE_REGISTRY = {}
     print(f"Warning: Issue registry file not found at {ISSUE_REGISTRY_PATH}")
 except json.JSONDecodeError:
     ISSUE_REGISTRY = {}
-    print(f"Warning: Issue registry file is not valid JSON.")
+    print("Warning: Issue registry file is not valid JSON.")
 
 # Function to get full metadata for a given issue ID
 def get_issue_metadata(issue_id):
@@ -74,7 +74,7 @@ def format_issue_for_report(issue):
     remediation = get_talking_point(issue_id)
     severity = get_severity(issue_id)
     category = get_category(issue_id)
-    
+
     # Get display name from issue registry, fallback to issue_id if not found
     issue_metadata = get_issue_metadata(issue_id)
     display_name = issue_metadata.get("display_name", issue_id) if issue_metadata else issue_id
@@ -112,7 +112,7 @@ def generate_executive_summary(issues):
     for sev in [s.value for s in Severity]:
         if severities[sev] > 0:
             severity_parts.append(f"{sev}={severities[sev]}")
-    
+
     severity_breakdown = ", ".join(severity_parts) if severity_parts else "None"
 
     summary = (

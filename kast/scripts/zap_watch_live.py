@@ -8,19 +8,18 @@ import select
 import sys
 import termios
 import threading
-import time
 import tty
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
 
+from rich import box
 from rich.console import Console
+from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
-from rich.layout import Layout
-from rich import box
 
 console = Console()
 

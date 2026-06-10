@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from unittest.mock import MagicMock
+
 from kast.plugins.testssl_plugin import TestsslPlugin
 
 
@@ -53,7 +54,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         self.assertTrue(os.path.exists(result_path))
 
         # Load and verify the processed results
-        with open(result_path, 'r') as f:
+        with open(result_path) as f:
             processed = json.load(f)
 
         # Verify key fields are present
@@ -64,7 +65,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         self.assertIn('SSL/TLS scan could not be completed', processed['executive_summary'])
         self.assertEqual(processed['issues'], [])
 
-        print(f"\n✓ Connection failure properly handled")
+        print("\n✓ Connection failure properly handled")
         print(f"  Summary: {processed['summary']}")
         print(f"  Details: {processed['details']}")
         print(f"  Executive Summary: {processed['executive_summary']}")
@@ -103,7 +104,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         self.assertTrue(os.path.exists(result_path))
 
         # Load and verify the processed results
-        with open(result_path, 'r') as f:
+        with open(result_path) as f:
             processed = json.load(f)
 
         # Verify normal processing occurred
@@ -112,7 +113,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         self.assertIn('No SSL/TLS vulnerabilities', processed['details'])
         self.assertIn('secure', processed['executive_summary'])
 
-        print(f"\n✓ Normal scan processing still works")
+        print("\n✓ Normal scan processing still works")
         print(f"  Summary: {processed['summary']}")
         print(f"  Executive Summary: {processed['executive_summary']}")
 
@@ -165,7 +166,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         self.assertTrue(os.path.exists(result_path))
 
         # Load and verify the processed results
-        with open(result_path, 'r') as f:
+        with open(result_path) as f:
             processed = json.load(f)
 
         # Verify correct counts in summary
@@ -173,7 +174,7 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         self.assertEqual(processed['summary'], 'Found 2 vulnerability issue(s), 1 TLS 1.2+ cipher issue(s).')
         self.assertEqual(len(processed['issues']), 3)  # 2 vulnerabilities + 1 cipher issue
 
-        print(f"\n✓ Summary correctly reports vulnerability and cipher counts")
+        print("\n✓ Summary correctly reports vulnerability and cipher counts")
         print(f"  Summary: {processed['summary']}")
         print(f"  Issues found: {len(processed['issues'])}")
         print(f"  Details preview: {processed['details'][:100]}...")

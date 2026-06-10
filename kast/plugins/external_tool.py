@@ -56,7 +56,7 @@ import json
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -103,7 +103,7 @@ class ExternalToolPlugin(KastPlugin):
         timeout, return-code check, missing-output detection, and raw
         output loading.
         """
-        timestamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
         output_path = os.path.join(str(output_dir), self.output_filename)
 
         if not self.is_available():
@@ -178,7 +178,7 @@ class ExternalToolPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
             "plugin-website-url": self.website_url,
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": findings,
             "findings_count": findings_count,
             "summary": summary,
@@ -306,7 +306,7 @@ class ExternalToolPlugin(KastPlugin):
             "plugin-description": self.description,
             "plugin-display-name": self.display_name,
             "plugin-website-url": self.website_url,
-            "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+            "timestamp": datetime.now(UTC).isoformat(timespec="milliseconds"),
             "findings": {"disposition": "fail", "results": error},
             "findings_count": 0,
             "summary": [{"Error": f"Plugin execution failed: {error}"}],

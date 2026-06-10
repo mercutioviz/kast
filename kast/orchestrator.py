@@ -10,10 +10,10 @@ plugin classes. The five duplicated try/except instantiation blocks
 have been collapsed into the registry.
 """
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import time
-from datetime import datetime
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 
 class ScannerOrchestrator:

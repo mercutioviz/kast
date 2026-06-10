@@ -1,5 +1,4 @@
-import os
-from kast.report_builder import generate_html_report
+from kast.report import generate_html_report
 
 
 def test_generate_html_report_string_and_dict_issues(tmp_path):
