@@ -9,7 +9,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from kast.plugins.ftap_plugin import FtapPlugin
 
@@ -42,18 +42,6 @@ class TestFtapPlugin(unittest.TestCase):
         # This will depend on whether the tool is installed
         result = self.plugin.is_available()
         self.assertIsInstance(result, bool)
-
-    @patch('subprocess.run')
-    def test_run_success(self, mock_run):
-        """Test successful plugin execution."""
-        # TODO: Implement based on tool's output format
-        pass
-
-    @patch('subprocess.run')
-    def test_run_failure(self, mock_run):
-        """Test plugin handles execution failures."""
-        # TODO: Implement failure scenarios
-        pass
 
     def _make_findings(self, panels):
         return {

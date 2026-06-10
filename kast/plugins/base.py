@@ -104,12 +104,8 @@ class KastPlugin(ABC):
         """
         return self.config.get(key, default)
 
-    def setup(self, target, output_dir):
-        """
-        Optional setup step before running the plugin.
-        Override in subclasses if needed.
-        """
-        pass
+    def setup(self, target, output_dir):  # noqa: B027  # intentional optional-override hook
+        """Optional pre-run hook. No-op default; subclasses may override."""
 
     def check_dependencies(self, previous_results):
         """

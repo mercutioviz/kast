@@ -8,6 +8,46 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.22] — 2026-06-10
+
+Bug fix and lint baseline cleanup. Ruff findings: 9 → 0.
+
+### Fixed
+
+- **`kast/ai/evals/criteria.py:114`** — `check_target_mentioned` used
+  `.lstrip("https://")` which strips characters rather than the substring.
+  `"https://htp.example.com".lstrip("https://")` would yield `".example.com"`,
+  causing the "target mentioned" eval criterion to misjudge targets whose
+  hostnames start with characters from the URL-scheme set. Replaced with
+  `.removeprefix("https://").removeprefix("http://")`.
+
+### Changed
+
+- **`kast/scripts/zap_api_client.py:246`** and **`kast/scripts/zap_providers.py:100,115`**
+  — replaced bare `except:` with specific exception lists
+  (`(ValueError, TypeError)` for int-parse paths;
+  `(subprocess.TimeoutExpired, FileNotFoundError, OSError)` for subprocess paths).
+- **`kast/plugins/script_detection_plugin.py:128-129`** — `is_available()` now
+  uses `importlib.util.find_spec(...)` instead of try-import. Drops the
+  unused-import flags ruff was raising.
+- **`kast/orchestrator.py:246`** — dependency-deadlock loop iterates
+  `pending_plugins.values()` instead of `.items()` (the key was unused).
+- **`kast/plugins/base.py:107`** — `KastPlugin.setup`: collapsed two-line
+  docstring + `pass` to a single-line docstring (Python convention for
+  intentional-no-op methods), with a `# noqa: B027` to acknowledge the
+  optional-override design.
+- **`kast/tests/test_ftap_plugin.py`** — deleted two TODO-stub tests
+  (`test_run_success`, `test_run_failure`) that just `pass`'d. The
+  `post_process` behavior they were meant to cover is exhaustively
+  tested in the 4 `test_post_process_*` tests already in the file.
+
+### Tests
+
+- 552 passed (down 2 from the deleted TODO stubs), 0 skipped, 3 xfailed.
+- 0 ruff findings.
+
+---
+
 ## [3.0.21] — 2026-06-10
 
 End-of-v3.0 housekeeping pass. No user-visible behavior changes; all changes are

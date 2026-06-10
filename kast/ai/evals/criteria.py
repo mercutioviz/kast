@@ -111,7 +111,8 @@ def check_target_mentioned(output: dict, *, context: dict | None = None) -> Crit
     """Target domain appears in headline or narrative (prompt goal: be specific)."""
     if context is None:
         return CriterionResult("target_mentioned", True, "Skipped — no context provided")
-    target = (context.get("target") or "").lower().lstrip("https://").lstrip("http://").split("/")[0]
+    raw_target = (context.get("target") or "").lower()
+    target = raw_target.removeprefix("https://").removeprefix("http://").split("/")[0]
     if not target:
         return CriterionResult("target_mentioned", True, "Skipped — target is empty")
     text = (output.get("headline", "") + " " + output.get("narrative", "")).lower()

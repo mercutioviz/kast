@@ -97,7 +97,7 @@ class LocalZapProvider(ZapInstanceProvider):
                                    text=True,
                                    timeout=5)
             return result.returncode == 0
-        except:
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return False
 
     def _find_running_zap_container(self):
@@ -112,7 +112,7 @@ class LocalZapProvider(ZapInstanceProvider):
                 container_name = result.stdout.strip().split('\n')[0]
                 self.debug(f"Found running ZAP container: {container_name}")
                 return container_name
-        except:
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             pass
         return None
 

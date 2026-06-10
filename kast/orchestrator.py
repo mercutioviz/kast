@@ -243,7 +243,7 @@ class ScannerOrchestrator:
                     self.log.error(
                         "Dependency deadlock detected! Some plugins cannot run:"
                     )
-                    for name, plugin in list(pending_plugins.items()):
+                    for plugin in list(pending_plugins.values()):
                         _, reason = plugin.check_dependencies(completed_plugins)
                         self.log.error(f"  - {plugin.name}: {reason}")
                         error_result = plugin.get_result_dict(

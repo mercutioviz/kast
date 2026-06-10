@@ -243,7 +243,7 @@ class ZAPAPIClient:
             ascan_pct = int(active_scan_status.get('status', '100'))
 
             return spider_pct < 100 or ascan_pct < 100
-        except:
+        except (ValueError, TypeError):
             return False
 
     def wait_for_scan_completion(self, timeout=3600, poll_interval=30):

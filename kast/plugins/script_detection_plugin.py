@@ -117,19 +117,10 @@ class ScriptDetectionPlugin(KastPlugin):
         self.debug("Setup completed.")
 
     def is_available(self):
-        """
-        Check if required dependencies are available.
-        For static HTML detection, we need:
-        - requests (Python package)
-        - beautifulsoup4 (Python package)
-        These should be in requirements.txt
-        """
-        try:
-            import bs4
-            import requests
-            return True
-        except ImportError:
-            return False
+        """``requests`` and ``beautifulsoup4`` are install-time deps; check
+        availability without importing them at module scope."""
+        from importlib.util import find_spec
+        return find_spec("bs4") is not None and find_spec("requests") is not None
 
     def run(self, target, output_dir, report_only):
         """
