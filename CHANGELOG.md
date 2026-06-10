@@ -4,7 +4,93 @@ All notable changes to kast are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] — Unreleased
+> **Patch versions v3.0.1 through v3.0.20 are tracked in git commit history only**
+> (see `git log --oneline`). Each commit subject names the version it shipped under.
+> This CHANGELOG resumes structured release notes at v3.0.21.
+
+## [3.0.21] — 2026-06-10
+
+End-of-v3.0 housekeeping pass. No user-visible behavior changes; all changes are
+internal cleanup, doc refreshes, and a lint baseline. Tests stay green throughout
+(555 passed, 0 skipped, 3 xfailed).
+
+### Removed
+
+- **`kast/scripts/create_plugin.py`** — v2-era plugin wizard. `template_plugin.py`
+  plus the `whatweb_plugin.py` / `wafw00f_plugin.py` reference migrations cover
+  the workflow.
+- **`kast/scripts/run_report_builder_test.py`** and **`demo_executive_summary.py`**
+  (+ tracked `demo_executive_summary_report.html` artifact) — demo scripts that
+  imported the now-deleted `report_builder` shim.
+- **`kast/scripts/TEST_SCRIPTS_README.md`** (596 lines) — documented the Terraform
+  cloud-mode test scripts deleted in Phase D10.
+- **`kast/report_builder.py`** — backward-compat shim retained during v3.0 development.
+  No external (kast-web) consumers; the 7 internal importers were migrated to
+  `kast.report` in this release.
+- **Six dead test files** (~755 lines total): `test_html_list_structure.py` and
+  `test_whatweb_full_integration.py` (self-admitted `@pytest.mark.skip` with
+  comment that the assertions are covered elsewhere); `test_tool_index.py`,
+  `test_testssl_plugin.py`, `test_testssl_clientproblem.py`, and
+  `demo_ftap_processing.py` (script-only with no test functions and hardcoded
+  `/home/kali/...` paths).
+- **Six unused dependencies** removed from `requirements.txt` and `pyproject.toml`:
+  `paramiko` (cloud SSH executor moved to kast-web), `aiohttp`, `aioquic`,
+  `diskcache`, `langdetect`, `scikit-learn`. Verified zero imports in `kast/`.
+- **`genai-instructions.md`**, **`.clinerules`**, and **`kast/.github/copilot-instructions.md`**
+  — non–Claude Code GenAI configuration that the project no longer needs.
+  All v3 patterns and rules are consolidated into `CLAUDE.md`.
+- **53 stale v2-era docs** under `kast/docs/` (cloud subsystem narratives,
+  one-time config migrations, historical fix recipes). The three active
+  installer references (`DEBIAN_13_INSTALLER_FIX.md`, `UBUNTU_24_COMPATIBILITY.md`,
+  `INSTALL_SCRIPT_IMPROVEMENTS.md`) remain.
+
+### Changed
+
+- **Doc audit**: `README.md`, `docs/VISION.md`, `docs/MIGRATION_V2_TO_V3.md`,
+  `docs/web-integration.md`, `docs/ZAP_USAGE.md`, and `kast/plugins/README.md`
+  refreshed against current v3 reality. The plugin authoring guide previously
+  taught the v2 footguns (set-attrs-before-super-init, `datetime.utcnow`, no
+  `ExternalToolPlugin`); rewritten as a concise v3 guide.
+- **`CLAUDE.md`** rewritten for post-ship reality: dropped pre-ship status
+  framing and "LANDED Phase X" tags; added explicit "Open threads" section
+  and reorganized rules into "Architecture and patterns" + "Plugin authoring
+  rules" sections. v3.1 deferred candidates moved to `docs/v3.1-backlog.md`.
+- **Test import paths**: 10 test files migrated from `sys.path.insert(...)` +
+  `from plugins.X import Y` (worked only by sys.path side-effect) to the proper
+  `from kast.plugins.X import Y` form.
+
+### Added
+
+- **Ruff lint baseline** (`pyproject.toml` `[tool.ruff]`): line-length 100,
+  target-version `py311`, rules `E/F/W/I/UP/B` (with `E501`/`B008` ignored,
+  `E402` allowed under `tests/`). 2,326 auto-fixes applied across ~80 files
+  (whitespace, import sorting, pyupgrade, f-string-without-placeholders).
+- **`docs/v3.1-backlog.md`** — deferred Tier 2/3/4 capability candidates
+  (`A2` pre-meeting briefing, `A3` per-audience remediation, `F3` shareable
+  URLs, `F4` per-partner theming, `E5` findings diff, etc.) plus a fresh
+  plugin-candidates section (CDN fingerprint, API surface detection, auth/SSO
+  discovery, bot signals, third-party scripts).
+
+### Fixed
+
+- **`kast/plugins/org_discovery_plugin.py:504`** — list comprehension had its
+  `if` clause referencing `h` before the `for h in ...` clause that defined it,
+  causing `NameError` whenever Shodan service filtering ran for a related
+  domain. Caught by ruff's `F821` undefined-name check.
+- **`kast/tests/test_tool_index.py:153`** — missing `import sys` for `sys.exit`
+  call in the script's error path. (File subsequently deleted in this release.)
+
+### Known followups
+
+- ~12 test files still have hardcoded `sys.path.insert(0, '/opt/kast')` or
+  similar hacks. Tests pass today because of import-order accident; worth a
+  mechanical cleanup pass.
+- 18 ruff findings remain (7 `F401` unused-import, 3 `B904` raise-without-from,
+  3 `E722` bare-except, plus minor `B005/B007/B027/UP035`). None are bugs.
+
+---
+
+## [3.0.0] — 2026-05
 
 The v3 coordinated release. Released alongside kast-web 2.0.0.
 
