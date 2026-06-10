@@ -457,5 +457,3 @@ class TestRelatedSitesConfig(unittest.TestCase):
         # and verifying the timeout parameter is passed correctly
 
 
-if __name__ == '__main__':
-    unittest.main()

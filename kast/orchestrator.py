@@ -1,14 +1,6 @@
-# orchestrator.py
-"""
-File: orchestrator.py
-Description: Orchestrates the execution of KAST plugins, manages plugin
-lifecycle, and aggregates results.
-
-In v3 (Phase A4), the orchestrator receives already-instantiated plugin
-instances from the caller (typically a PluginRegistry) rather than
-plugin classes. The five duplicated try/except instantiation blocks
-have been collapsed into the registry.
-"""
+"""Orchestrates plugin execution, manages plugin lifecycle, and aggregates
+results. Receives already-instantiated plugin instances (from a
+``PluginRegistry``), not classes."""
 
 import threading
 import time

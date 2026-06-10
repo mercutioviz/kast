@@ -1,4 +1,4 @@
-"""Tests for ``kast self-update`` (Phase B6).
+"""Tests for ``kast self-update``.
 
 The command shells out to ``update.sh`` for real updates, so most
 tests mock subprocess to verify command construction. The Python-side

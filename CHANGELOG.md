@@ -8,6 +8,41 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.23] — 2026-06-10
+
+Test hygiene and doc-drift sweep. 552 passed, 0 skipped, 3 xfailed,
+0 warnings (was 4 — the urllib3 InsecureRequestWarnings are now
+filtered out at the pytest level), 0 ruff findings.
+
+### Removed
+
+- **20 `if __name__ == "__main__":` blocks** from test files. v2-era
+  dead-code paths: pytest is the test runner and these blocks added
+  noise, broke during sys.path cleanups, and confused readers. The
+  one elaborate manual harness in `test_executive_summary.py` (a try
+  / finally tmpdir setup) is also gone.
+
+### Changed
+
+- **`pyproject.toml`**: added `[tool.pytest.ini_options]` with a
+  `filterwarnings` rule to ignore `urllib3.exceptions.InsecureRequestWarning`.
+  The CORS plugin makes real HTTPS calls to `example.com` with
+  `verify=False` during tests (probing CORS bypass); urllib3's warning
+  isn't actionable in our code.
+- **Phase X archaeology purged from code docstrings** (29 sites across
+  module docstrings, test docstrings, CLI option help text, and two
+  xfail markers). v3 has shipped; "(Phase A4)", "(Phase B8)",
+  "(Phase C8)" etc. are design history and add no value to a reader
+  trying to understand current code. The relevant historical docs
+  remain at `docs/v3-planning/`.
+
+### Tests
+
+- 552 passed, 0 skipped, 3 xfailed, 0 warnings, 4 subtests passed.
+- 0 ruff findings.
+
+---
+
 ## [3.0.22] — 2026-06-10
 
 Bug fix and lint baseline cleanup. Ruff findings: 9 → 0.

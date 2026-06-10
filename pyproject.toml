@@ -69,6 +69,13 @@ Homepage = "https://github.com/mercutioviz/kast"
 Repository = "https://github.com/mercutioviz/kast"
 Issues = "https://github.com/mercutioviz/kast/issues"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+  # CORS plugin makes real HTTPS calls to example.com during tests with
+  # verify=False (probing CORS bypass) — urllib3 warns for each. Not actionable.
+  "ignore::urllib3.exceptions.InsecureRequestWarning",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

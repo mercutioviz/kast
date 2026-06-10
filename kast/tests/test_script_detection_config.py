@@ -391,7 +391,3 @@ class TestScriptDetectionConfig(unittest.TestCase):
         self.assertEqual(plugin.max_redirects, 15)
         self.assertEqual(plugin.max_scripts_to_analyze, 25)
         self.assertEqual(plugin.custom_headers, {"X-Test": "value"})
-
-
-if __name__ == "__main__":
-    unittest.main()

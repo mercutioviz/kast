@@ -114,26 +114,3 @@ def test_report_without_executive_summaries(tmp_path):
     print("✓ Report without executive summaries works correctly!")
 
 
-if __name__ == "__main__":
-    import shutil
-    import tempfile
-
-    # Create a temporary directory
-    temp_dir = tempfile.mkdtemp()
-
-    try:
-        from pathlib import Path
-        tmp_path = Path(temp_dir)
-
-        print("Running test_plugin_executive_summaries_in_report...")
-        test_plugin_executive_summaries_in_report(tmp_path)
-        print()
-
-        print("Running test_report_without_executive_summaries...")
-        test_report_without_executive_summaries(tmp_path)
-        print()
-
-        print("✅ All tests passed!")
-    finally:
-        # Clean up
-        shutil.rmtree(temp_dir)

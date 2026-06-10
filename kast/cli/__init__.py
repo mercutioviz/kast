@@ -21,9 +21,9 @@ V3_SUBCOMMANDS = frozenset({
     "scan",
     "plugins",
     "config",
-    "registry",     # Phase B4
-    "doctor",       # Phase B5
-    "self-update",  # Phase B6
+    "registry",
+    "doctor",
+    "self-update",
     "version",
 })
 

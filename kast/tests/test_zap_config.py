@@ -139,12 +139,9 @@ class TestZapConfig(unittest.TestCase):
 
     @pytest.mark.xfail(
         reason="Real ZAP _apply_cli_overrides bug: execution_mode override "
-        "isn't honored. The ZAP cloud subsystem (including this code) is "
-        "migrating to kast-web in v3 Phase D; per CLAUDE.md we don't fix "
-        "non-critical bugs in this code in kast. xfail surfaces it without "
-        "blocking CI; if Phase D fixes it (or someone fixes it on the "
-        "kast-web side and the kast code is brought along), pytest will "
-        "report XPASS as a useful signal."
+        "isn't honored. Low-priority post-Phase-D residual: the cloud subsystem "
+        "moved to kast-web but the override path here still mis-routes. xfail "
+        "surfaces it without blocking CI."
     )
     def test_apply_cli_overrides_execution_mode(self):
         """Test applying CLI override for execution mode."""
@@ -162,9 +159,8 @@ class TestZapConfig(unittest.TestCase):
 
     @pytest.mark.xfail(
         reason="Real ZAP _apply_cli_overrides bug for nested values "
-        "(local.api_port etc.). Same migration story as "
-        "test_apply_cli_overrides_execution_mode — fix lands in Phase D "
-        "when this code moves to kast-web."
+        "(local.api_port etc.). Same situation as "
+        "test_apply_cli_overrides_execution_mode — low-priority residual."
     )
     def test_apply_cli_overrides_nested_values(self):
         """Test applying CLI overrides for nested values."""
@@ -251,7 +247,3 @@ class TestZapConfig(unittest.TestCase):
         self.assertEqual(plugin.priority, 200)
         self.assertIsNotNone(plugin.description)
         self.assertIsNotNone(plugin.website_url)
-
-
-if __name__ == '__main__':
-    unittest.main()

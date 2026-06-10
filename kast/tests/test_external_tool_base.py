@@ -1,4 +1,4 @@
-"""Tests for the ExternalToolPlugin base (Phase B8).
+"""Tests for the ExternalToolPlugin base.
 
 These verify the contract subclasses depend on: subprocess invocation,
 output reading, failure handling, atomic processed-dict writing,
@@ -223,7 +223,7 @@ def test_post_process_subclass_extract_issues_used(tmp_path):
 
 
 def test_post_process_uses_atomic_write(tmp_path):
-    """Verify the helper goes through write_json_atomic (Phase A11 contract)."""
+    """Verify the helper goes through write_json_atomic (per the kast↔kast-web contract)."""
     plugin = _FakeJsonTool(_FakeArgs())
     raw_output = {"disposition": "success", "results": []}
     with patch("kast.plugins.external_tool.write_json_atomic") as mock_write:

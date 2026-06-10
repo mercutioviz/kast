@@ -184,7 +184,3 @@ class TestTestsslConnectionFailure(unittest.TestCase):
         import shutil
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
-
-
-if __name__ == '__main__':
-    unittest.main()

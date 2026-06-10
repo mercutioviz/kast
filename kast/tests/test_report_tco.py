@@ -1,4 +1,4 @@
-"""Tests for kast.report.tco — TCO appendix renderer (Phase C5 / F1)."""
+"""Tests for kast.report.tco — TCO appendix renderer."""
 
 from unittest.mock import patch
 

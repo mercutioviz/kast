@@ -1,4 +1,4 @@
-"""Wafw00f plugin — migrated to ExternalToolPlugin in Phase B9.
+"""Wafw00f plugin — uses ExternalToolPlugin.
 
 Most of the plugin migrates cleanly, but ``run()`` is overridden because
 wafw00f has plugin-specific behavior the base can't capture: TLS-error

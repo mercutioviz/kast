@@ -33,10 +33,10 @@ def discover_plugins(log):
                 and not inspect.isabstract(obj)
             ):
                 continue
-            # Phase B9: only include classes DEFINED in this file. Without
-            # this check, classes imported by the plugin (e.g.
-            # ExternalToolPlugin imported by whatweb_plugin and wafw00f_plugin)
-            # get discovered as duplicate "plugins."
+            # Only include classes DEFINED in this file. Without this check,
+            # classes imported by the plugin (e.g. ExternalToolPlugin imported
+            # by whatweb_plugin and wafw00f_plugin) get discovered as duplicate
+            # "plugins."
             if getattr(obj, "__module__", None) != module_name:
                 continue
             # Also skip TemplatePlugin by class name (defensive)

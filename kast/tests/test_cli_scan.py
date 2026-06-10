@@ -1,4 +1,4 @@
-"""Tests for ``kast scan`` group + ``list/show/rerun`` subcommands (Phase B2).
+"""Tests for ``kast scan`` group + ``list/show/rerun`` subcommands.
 
 Exercises the Click invocation surface. Heavy actual-scan logic is
 exercised by other integration tests; here we focus on the new

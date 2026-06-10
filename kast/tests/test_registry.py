@@ -1,7 +1,7 @@
 """Tests for PluginRegistry (kast.registry).
 
 The registry is the single source of truth for plugin discovery and
-instantiation. These tests pin down the surface area so Phase A4 can
+instantiation. These tests pin down the surface area.
 migrate the five duplicated call sites against a known contract.
 """
 
@@ -181,7 +181,7 @@ class _OldStylePlugin:
 
 
 def test_old_style_plugins_no_longer_load(logger, caplog):
-    """Phase A5 removed the TypeError fallback — old-style plugins now fail.
+    """The TypeError fallback was removed in v3 — old-style plugins now fail.
 
     All v3 plugins use ``__init__(self, cli_args, config_manager=None)``.
     A plugin that still uses the legacy single-arg signature is treated as
@@ -200,7 +200,7 @@ def test_old_style_plugins_no_longer_load(logger, caplog):
 
 
 def test_plugin_classes_expose_name_as_class_attribute():
-    """Phase A5: every plugin's ``name`` is a class attribute, readable
+    """Every plugin's ``name`` is a class attribute, readable
     without instantiation. Used by ConfigManager.collect_schemas_from_classes.
     """
     import logging
@@ -215,7 +215,7 @@ def test_plugin_classes_expose_name_as_class_attribute():
 
 
 def test_plugin_classes_expose_config_schema_as_class_attribute():
-    """Phase A5: config_schema is a class attribute on every plugin."""
+    """config_schema is a class attribute on every plugin."""
     import logging
     registry = PluginRegistry(logging.getLogger("test"))
     for cls in registry.discover():

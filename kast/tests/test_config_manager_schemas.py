@@ -1,4 +1,4 @@
-"""Tests for ConfigManager.collect_schemas_from_classes (Phase A5).
+"""Tests for ConfigManager.collect_schemas_from_classes.
 
 The new path lets ``kast --config-schema`` enumerate every plugin's schema
 without instantiating the plugins. These tests pin down the contract:

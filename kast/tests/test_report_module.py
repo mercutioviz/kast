@@ -1,4 +1,4 @@
-"""Tests for the kast.report module (Phase A7).
+"""Tests for the kast.report module.
 
 Pin down the data-shape contract of ``collect_report_data`` and the key
 guarantee A7 added: HTML and PDF renderers consume the same

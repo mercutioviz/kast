@@ -1,4 +1,4 @@
-"""Tests for ``kast doctor`` (Phase B5).
+"""Tests for ``kast doctor``.
 
 Doctor's purpose is to give an SA setting up a fresh kast install (or
 diagnosing a broken one) a single command that reports environment

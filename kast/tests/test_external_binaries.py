@@ -63,7 +63,3 @@ class TestFindPdHttpx(unittest.TestCase):
                           ["/nonexistent/httpx"]), \
              patch.dict(os.environ, {"PATH": str(empty)}, clear=False):
             self.assertIsNone(find_pd_httpx())
-
-
-if __name__ == "__main__":
-    unittest.main()

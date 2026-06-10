@@ -226,5 +226,3 @@ class TestFtapPostProcess(unittest.TestCase):
         )
 
 
-if __name__ == '__main__':
-    unittest.main()

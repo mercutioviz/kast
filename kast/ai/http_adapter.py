@@ -1,10 +1,10 @@
 """HTTP passthrough adapter — routes AI requests through the kast-web AI service.
 
-This adapter is the kast-side contract for Phase C8.  When ``--ai-endpoint URL``
-is supplied, kast forwards AI generation requests to the kast-web
-``/api/ai/generate`` endpoint instead of calling the Anthropic API directly.
-kast-web handles cost gating, API key management, and the review workflow on
-its side; kast just receives a response in the standard ``AIResponse`` shape.
+When ``--ai-endpoint URL`` is supplied, kast forwards AI generation requests to
+the kast-web ``/api/ai/generate`` endpoint instead of calling the Anthropic API
+directly. kast-web handles cost gating, API key management, and the review
+workflow on its side; kast just receives a response in the standard
+``AIResponse`` shape.
 
 Expected request protocol (POST <endpoint>/api/ai/generate):
     Body (JSON):

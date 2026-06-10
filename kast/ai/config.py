@@ -27,7 +27,7 @@ def get_ai_adapter(
 
     When ``endpoint_url`` is supplied (or ``KAST_AI_ENDPOINT`` env var is set),
     an ``HttpAdapter`` is returned and all API-key / provider logic is bypassed.
-    The HTTP adapter routes AI requests to the kast-web AI service (Phase C8).
+    The HTTP adapter routes AI requests to the kast-web AI service.
 
     Direct-API precedence (no endpoint):
     1. ``KAST_AI_API_KEY`` environment variable

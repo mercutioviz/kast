@@ -133,5 +133,3 @@ class TestFtapPlugin(unittest.TestCase):
         self.assertIn("disposition", result)
 
 
-if __name__ == '__main__':
-    unittest.main()

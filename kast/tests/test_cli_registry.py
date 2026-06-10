@@ -1,4 +1,4 @@
-"""Tests for ``kast registry`` group (Phase B4).
+"""Tests for ``kast registry`` group.
 
 Closes the audit § 5a.5 gap: the v2 ``fix_registry.py`` workflow is
 replaced by ``kast registry add`` and ``kast registry promote``. These

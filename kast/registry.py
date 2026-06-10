@@ -18,10 +18,6 @@ Replaces the v2 pattern repeated in five sites (audit § 3.1):
                 instance = plugin_cls(MinimalArgs())
         except Exception as e:
             log.error(...)
-
-Phase A4 migrates the existing call sites to PluginRegistry; Phase A5
-removes the TypeError fallback once schemas move to class attributes
-and identity is settable without going through ``__init__``.
 """
 
 from __future__ import annotations
@@ -142,11 +138,9 @@ class PluginRegistry:
         self._loaded = True
 
     def _instantiate(self, cls: type[KastPlugin]) -> KastPlugin | None:
-        """Construct a plugin instance with the registry's cli_args/config_manager.
-
-        Phase A5 unified all plugins on ``__init__(self, cli_args, config_manager=None)``,
-        so the legacy TypeError fallback is no longer needed.
-        """
+        """Construct a plugin instance with the registry's cli_args /
+        config_manager. All plugins use the canonical
+        ``__init__(self, cli_args, config_manager=None)`` signature."""
         try:
             return cls(self.cli_args, self.config_manager)
         except Exception as e:

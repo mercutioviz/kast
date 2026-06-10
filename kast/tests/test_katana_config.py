@@ -512,7 +512,3 @@ class TestKatanaConfig(unittest.TestCase):
 
         # Verify operations description includes headless mode
         self.assertIn("headless mode", operations)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -551,7 +551,3 @@ class TestDryRun(unittest.TestCase):
         self.assertIn("description", info)
         self.assertIn("operations", info)
         self.assertTrue(len(info["operations"]) > 0)
-
-
-if __name__ == "__main__":
-    unittest.main()

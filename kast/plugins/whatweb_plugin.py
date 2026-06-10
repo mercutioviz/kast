@@ -1,7 +1,7 @@
-"""WhatWeb plugin — migrated to ExternalToolPlugin in Phase B9.
+"""WhatWeb plugin — uses ExternalToolPlugin.
 
-Drops from 458 lines (v2) to ~150 lines by inheriting subprocess /
-output-reading / processed-dict assembly from ExternalToolPlugin. The
+Inherits subprocess invocation, output reading, and processed-dict assembly
+from ``ExternalToolPlugin``. The
 plugin-specific logic (config-driven command building, the
 target/HTTP-status-bucketed summary, domain-redirect recommendations)
 moves into the format hooks.

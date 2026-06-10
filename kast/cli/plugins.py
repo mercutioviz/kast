@@ -1,4 +1,4 @@
-"""``kast plugins`` subcommands (Phase B3).
+"""``kast plugins`` subcommands.
 
 Lives in its own module so per-subcommand logic doesn't accumulate in
 ``kast.cli.main``. The main module imports the ``plugins`` group and

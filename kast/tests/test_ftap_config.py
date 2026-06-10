@@ -405,7 +405,3 @@ class TestFtapConfig(unittest.TestCase):
         self.assertIn("HTTP/3", operations)
         self.assertIn("concurrency: 150", operations)
         self.assertIn("custom wordlist", operations)
-
-
-if __name__ == "__main__":
-    unittest.main()

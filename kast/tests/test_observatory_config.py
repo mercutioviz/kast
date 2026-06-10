@@ -297,7 +297,3 @@ class TestObservatoryConfig(unittest.TestCase):
         self.config_manager.cli_overrides = {}
         plugin = ObservatoryPlugin(self.cli_args, self.config_manager)
         self.assertEqual(plugin.timeout, 300)  # Default from schema
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -121,7 +121,3 @@ class TestFromConfigFiles(unittest.TestCase):
         second.write_text("global:\n  results_dir: /second\n")
         with patch.object(paths, "_CONFIG_SEARCH_PATHS", [first, second]):
             self.assertEqual(paths._from_config_files(), "/first")
-
-
-if __name__ == "__main__":
-    unittest.main()

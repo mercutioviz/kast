@@ -136,5 +136,3 @@ class TestPostProcessSplit(unittest.TestCase):
         self.assertEqual(processed["findings"]["results"], "mdn-http-observatory-scan exited with error")
 
 
-if __name__ == "__main__":
-    unittest.main()

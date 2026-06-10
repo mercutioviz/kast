@@ -418,5 +418,3 @@ class TestCheckExternalToolUpdates(unittest.TestCase):
         self.assertIn("ahead", katana.detail)
 
 
-if __name__ == "__main__":
-    unittest.main()

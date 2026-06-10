@@ -1,4 +1,4 @@
-"""TCO (Total Cost of Ownership) appendix renderer (Phase C5 / F1).
+"""TCO (Total Cost of Ownership) appendix renderer.
 
 Reads ``code_fix_timeframe`` and ``waf_deployment_timeframe`` from each
 issue's registry entry, aggregates totals, and produces the data structure

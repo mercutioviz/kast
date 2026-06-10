@@ -1,4 +1,4 @@
-"""Tests for the AI prompt eval harness (Phase C12).
+"""Tests for the AI prompt eval harness.
 
 Three layers:
 1. Unit tests for individual criterion functions — verify pass/fail logic.

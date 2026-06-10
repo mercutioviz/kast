@@ -1,6 +1,6 @@
 """Click-based CLI dispatcher for kast.
 
-Subcommand structure (Phase B):
+Subcommand structure:
 
     kast scan -t TARGET ...           Run a scan
     kast scan list                    List past scans
@@ -15,7 +15,7 @@ Subcommand structure (Phase B):
     kast config show                  Show merged config
     kast version                      Print version
 
-Phase B4/B6 add ``kast registry`` and ``kast self-update``.
+Adds ``kast registry`` and ``kast self-update``.
 
 Each subcommand group lives in its own module under ``kast/cli/``:
 - ``kast/cli/scan.py``    — ``scan`` group (default + list/show/rerun)

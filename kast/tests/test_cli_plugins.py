@@ -1,4 +1,4 @@
-"""Tests for ``kast plugins`` subcommands (Phase B3).
+"""Tests for ``kast plugins`` subcommands.
 
 Uses Click's CliRunner for in-process invocation. These tests exercise
 the kast↔kast-web JSON contract: kast-web's admin would call

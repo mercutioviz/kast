@@ -1,4 +1,4 @@
-"""ExternalToolPlugin base (Phase B8).
+"""ExternalToolPlugin base.
 
 Most kast plugins are wrappers around a CLI tool: invoke it via
 subprocess, capture output, parse, post-process. v2 plugins
@@ -46,7 +46,7 @@ The base provides ``run()`` and ``post_process()``, including:
 - Failure disposition handling in post_process (writes a minimal
   processed dict so kast-web's state machine still gets a completion
   marker)
-- Atomic write of ``<plugin>_processed.json`` (Phase A11 helper)
+- Atomic write of ``<plugin>_processed.json``
 - ``_format_command_for_report`` for the report's per-tool details
 """
 

@@ -189,7 +189,3 @@ class TestWhatWebConfig(unittest.TestCase):
         self.assertEqual(props["aggression_level"]["default"], 3)
         self.assertEqual(props["timeout"]["default"], 30)
         self.assertEqual(props["follow_redirects"]["default"], 2)
-
-
-if __name__ == "__main__":
-    unittest.main()

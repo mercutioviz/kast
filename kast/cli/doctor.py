@@ -1,4 +1,4 @@
-"""``kast doctor`` (Phase B5, ``--fix`` added in Phase E3) — env health check.
+"""``kast doctor`` — env health check.
 
 Pre-flight check meant for an SA setting up a fresh kast install (or
 diagnosing why a scan failed). Reports each check's status as one of:

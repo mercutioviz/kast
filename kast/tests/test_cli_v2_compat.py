@@ -1,4 +1,4 @@
-"""Tests for the v2-argv compatibility translator (Phase B7).
+"""Tests for the v2-argv compatibility translator.
 
 Pin down every v2 invocation pattern that kast-web and the v2 user
 surface depends on. The translator runs in ``kast.cli.main()`` before

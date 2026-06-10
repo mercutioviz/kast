@@ -1,4 +1,4 @@
-"""``kast scan`` group (Phase B2).
+"""``kast scan`` group.
 
 The default invocation ``kast scan -t TARGET ...`` runs a scan against
 TARGET (the v2-compatible flow). Subcommands manage past scans:
@@ -81,7 +81,7 @@ console = Console()
               default="anthropic", help="AI provider adapter (default: anthropic).")
 @click.option("--ai-endpoint", "ai_endpoint", default=None,
               help="Route AI requests through a kast-web AI service URL instead of calling the "
-                   "provider API directly (Phase C8). Overrides --ai-adapter and KAST_AI_API_KEY.")
+                   "provider API directly. Overrides --ai-adapter and KAST_AI_API_KEY.")
 @click.pass_context
 def scan(
     ctx: click.Context,
@@ -417,7 +417,7 @@ def _build_ai_info(enabled: bool, adapter: str, ai_summary: dict | None,
 
     Status is one of ``"success" | "error" | "disabled"``.
     When ``endpoint`` is set, the ``adapter`` field is ``"http"`` and
-    ``endpoint`` records the kast-web URL used (Phase C8).
+    ``endpoint`` records the kast-web URL used.
     """
     resolved_adapter = "http" if endpoint else adapter
     if not enabled:

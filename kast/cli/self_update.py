@@ -1,9 +1,9 @@
-"""``kast self-update`` (Phase B6) — Python wrapper around ``update.sh``.
+"""``kast self-update`` — Python wrapper around ``update.sh``.
 
 Provides a kast-native command surface for the existing v2 update
 script. The Python side is intentionally thin: it locates the bash
 script, translates Click options to script flags, and shells out
-under sudo. A full Python rewrite of the update logic is Phase E.
+under sudo.
 
 In addition to the pass-through flags, this module implements
 ``--check-only`` natively in Python by comparing the local ``VERSION``

@@ -1,8 +1,7 @@
-"""``kast registry`` group (Phase B4) — issue registry management.
+"""``kast registry`` group — issue registry management.
 
 Replaces the ad-hoc v2 ``fix_registry.py`` workflow that the audit
-flagged as the workflow gating registry currency (audit § 5a.5).
-Three subcommands:
+flagged as the workflow gating registry currency. Three subcommands:
 
 - ``kast registry list``      — list entries with optional filters
 - ``kast registry add ID ...`` — add one entry interactively or via flags
@@ -159,9 +158,9 @@ def registry_list(
               type=click.Choice(VALID_REMEDIATION_APPROACHES),
               default="combined", show_default=True)
 @click.option("--code-fix-timeframe", default="1-2 weeks", show_default=True,
-              help="Estimated time to fix in code (used by F1 TCO appendix in Phase C).")
+              help="Estimated time to fix in code (used by the TCO appendix).")
 @click.option("--waf-deployment-timeframe", default="1-2 days", show_default=True,
-              help="Estimated time to deploy WAF protection (used by F1 TCO appendix in Phase C).")
+              help="Estimated time to deploy WAF protection (used by the TCO appendix).")
 @click.option("--force", is_flag=True,
               help="Overwrite an existing entry with the same ID.")
 def registry_add(

@@ -1,6 +1,6 @@
-"""Regression test: rendering against the v3 Phase A baseline.
+"""Regression test: rendering against the v3 baseline.
 
-Pin down the structural invariants of the report so future Phase B+
+Pin down the structural invariants of the report so future
 changes can't silently break them. Compares against
 ``docs/baseline-v3.0-phase-a/`` — see that directory's README for
 how it was captured and how to refresh it.
@@ -82,7 +82,7 @@ def test_collect_data_shape_matches_baseline():
 
 
 def test_severity_counts_use_canonical_keys():
-    """Phase A6/A7: severity_counts uses Severity enum values, no legacy 'Info'."""
+    """severity_counts uses Severity enum values, no legacy 'Info'."""
     data = collect_report_data(_load_plugin_results(), target="example.com")
     counts = data["scan_metadata"]["severity_counts"]
     canonical = {s.value for s in Severity}
@@ -116,18 +116,18 @@ def test_missing_issues_is_empty_after_promotion():
 
 
 def test_rendered_html_has_no_wbr_tags(tmp_path):
-    """Phase A9: the <wbr> injection helper was removed."""
+    """The <wbr> injection helper was removed."""
     out_path = _render_to_tmp(tmp_path)
     html = out_path.read_text()
     assert "<wbr>" not in html, (
-        "Phase A9 removed add_word_break_opportunities; <wbr> tags should not "
+        "add_word_break_opportunities is gone; <wbr> tags should not "
         "appear in rendered HTML. If they're back, something reintroduced the "
         "v2 helper."
     )
 
 
 def test_rendered_html_anchor_links_resolve(tmp_path):
-    """Phase A8: every href=\"#tool-X\" resolves to a corresponding id=\"tool-X\"."""
+    """Every href=\"#tool-X\" resolves to a corresponding id=\"tool-X\"."""
     out_path = _render_to_tmp(tmp_path)
     html = out_path.read_text()
     hrefs = set(re.findall(r'href="#tool-([a-z0-9_-]+)"', html))
@@ -149,7 +149,7 @@ def test_rendered_html_has_all_plugin_sections(tmp_path):
 
 
 def test_rendered_html_severity_badges_populated(tmp_path):
-    """Phase A6: every severity bucket renders a badge with a numeric count."""
+    """Every severity bucket renders a badge with a numeric count."""
     out_path = _render_to_tmp(tmp_path)
     html = out_path.read_text()
     badges = re.findall(

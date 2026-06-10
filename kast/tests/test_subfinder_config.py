@@ -383,7 +383,3 @@ class TestSubfinderConfig(unittest.TestCase):
         self.assertEqual(props["timeout"]["default"], 30)
         self.assertEqual(props["max_time"]["default"], 10)
         self.assertEqual(props["concurrent_goroutines"]["default"], 10)
-
-
-if __name__ == "__main__":
-    unittest.main()

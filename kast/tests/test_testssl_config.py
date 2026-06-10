@@ -402,5 +402,3 @@ class TestTestsslConfig(unittest.TestCase):
         self.assertEqual(plugin.name, "testssl")
 
 
-if __name__ == '__main__':
-    unittest.main()

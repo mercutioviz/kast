@@ -162,8 +162,8 @@ def format_multiline_text(text):
 
     Long-string wrapping (URLs etc.) is handled by CSS — see the
     ``overflow-wrap: anywhere`` rules on ``.report-paragraph`` in
-    ``kast_style.css`` / ``kast_style_pdf.css``. v2's ``<wbr>``-injection
-    helper was retired in Phase A9.
+    ``kast_style.css`` / ``kast_style_pdf.css``. Do not reintroduce
+    Python-side ``<wbr>`` injection.
     """
     if not text:
         return ""

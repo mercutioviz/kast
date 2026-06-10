@@ -1,4 +1,4 @@
-"""Tests for kast.ai.http_adapter (Phase C8 kast-side hook)."""
+"""Tests for kast.ai.http_adapter (kast-side hook for the kast-web AI service)."""
 
 from __future__ import annotations
 

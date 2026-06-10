@@ -24,7 +24,7 @@ class TestZapUnifiedConfig(unittest.TestCase):
         reason="Real ZAP config search-order bug: project-level config "
         "is not loaded with highest priority (returns 'auto' instead of "
         "'project'). The ZAP cloud subsystem migrates to kast-web in v3 "
-        "Phase D; per CLAUDE.md we don't fix non-critical bugs in this "
+        "the cloud subsystem moving to kast-web; we don't fix non-critical bugs in this "
         "code in kast."
     )
     def test_config_search_order(self):
@@ -141,7 +141,3 @@ class TestZapUnifiedConfig(unittest.TestCase):
                     error_msg = str(cm.exception)
                     self.assertIn('ZAP config not found', error_msg)
                     self.assertIn('Searched:', error_msg)
-
-
-if __name__ == '__main__':
-    unittest.main()

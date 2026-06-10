@@ -232,7 +232,3 @@ class TestWafw00fConfig(unittest.TestCase):
         self.assertEqual(props["verbosity"]["default"], 3)
         self.assertEqual(props["follow_redirects"]["default"], True)
         self.assertEqual(props["timeout"]["default"], 30)
-
-
-if __name__ == "__main__":
-    unittest.main()
