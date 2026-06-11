@@ -120,12 +120,12 @@ def check_python_modules() -> list[CheckResult]:
 
 # Tool binary checks: (tool, plugin_name, install_hint)
 EXTERNAL_TOOLS = [
-    ("whatweb",    "whatweb",       "sudo apt install whatweb"),
-    ("wafw00f",    "wafw00f",       "sudo apt install wafw00f  (or: pip install wafw00f)"),
-    ("testssl",    "testssl",       "sudo apt install testssl"),
-    ("subfinder",  "subfinder",     "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"),
-    ("katana",     "katana",        "go install github.com/projectdiscovery/katana/cmd/katana@latest"),
-    ("httpx",      "related_sites", "go install github.com/projectdiscovery/httpx/cmd/httpx@latest"),
+    ("whatweb",    "whatweb",       "sudo git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && sudo ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb"),
+    ("wafw00f",    "wafw00f",       "sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install wafw00f"),
+    ("testssl",    "testssl",       "sudo git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh && sudo ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl"),
+    ("subfinder",  "subfinder",     "sudo GOBIN=/usr/local/bin go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"),
+    ("katana",     "katana",        "sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@latest"),
+    ("httpx",      "related_sites", "sudo GOBIN=/usr/local/bin go install github.com/projectdiscovery/httpx/cmd/httpx@latest"),
     ("docker",     "zap (local)",   "https://docs.docker.com/engine/install/ — needed only for ZAP local mode"),
 ]
 
@@ -189,6 +189,14 @@ _VERSION_PROBE_TIMEOUT = 5
 _UPSTREAM_TIMEOUT = 5
 _CACHE_TTL_SECONDS = 86400  # 24 hours
 
+
+def _find_npm_for_observatory() -> str | None:
+    # The observatory binary hard-codes "1.0.0" in its --version output; use
+    # `npm list` to read the real installed package version instead.
+    if shutil.which("mdn-http-observatory-scan") is None:
+        return None
+    return shutil.which("npm")
+
 # Order mirrors EXTERNAL_TOOLS so the report sections line up visually.
 UPDATE_SPECS: list[ToolUpdateSpec] = [
     ToolUpdateSpec(
@@ -198,7 +206,7 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"WhatWeb version (\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="urbanadventurer/WhatWeb",
-        update_hint="sudo apt upgrade whatweb  (or `git pull` if installed from source)",
+        update_hint="sudo git -C /opt/whatweb pull && sudo sh -c 'cd /opt/whatweb && bundle install --quiet'",
     ),
     ToolUpdateSpec(
         binary="wafw00f",
@@ -207,7 +215,7 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"WAFW00F\s*:\s*v?(\d+(?:\.\d+)+)",
         upstream_kind="pypi",
         upstream_id="wafw00f",
-        update_hint="pip install --upgrade wafw00f  (or: sudo apt upgrade wafw00f)",
+        update_hint="sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx upgrade wafw00f",
     ),
     ToolUpdateSpec(
         binary="testssl",
@@ -216,7 +224,7 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"testssl[^\d]*version\s+(\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="drwetter/testssl.sh",
-        update_hint="sudo apt upgrade testssl.sh  (or pull the latest from https://github.com/drwetter/testssl.sh)",
+        update_hint="sudo git -C /opt/testssl.sh pull",
     ),
     ToolUpdateSpec(
         binary="subfinder",
@@ -225,7 +233,7 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="projectdiscovery/subfinder",
-        update_hint="go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
+        update_hint="sudo GOBIN=/usr/local/bin go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
     ),
     ToolUpdateSpec(
         binary="katana",
@@ -234,7 +242,7 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="projectdiscovery/katana",
-        update_hint="go install github.com/projectdiscovery/katana/cmd/katana@latest",
+        update_hint="sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@latest",
     ),
     ToolUpdateSpec(
         binary="httpx",
@@ -243,17 +251,18 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="projectdiscovery/httpx",
-        update_hint="go install github.com/projectdiscovery/httpx/cmd/httpx@latest",
+        update_hint="sudo GOBIN=/usr/local/bin go install github.com/projectdiscovery/httpx/cmd/httpx@latest",
         path_resolver=find_pd_httpx,
     ),
     ToolUpdateSpec(
         binary="mdn-http-observatory-scan",
         display_name="mdn-http-observatory",
-        local_version_cmd=["mdn-http-observatory-scan", "--version"],
-        local_version_regex=r"(\d+(?:\.\d+)+)",
+        local_version_cmd=["npm", "list", "-g", "@mdn/mdn-http-observatory"],
+        local_version_regex=r"mdn-http-observatory@(\d+(?:\.\d+)+)",
         upstream_kind="npm",
         upstream_id="@mdn/mdn-http-observatory",
-        update_hint="npm install -g @mdn/mdn-http-observatory --unsafe-perm",
+        update_hint="npm install -g @mdn/mdn-http-observatory",
+        path_resolver=_find_npm_for_observatory,
     ),
 ]
 

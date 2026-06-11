@@ -51,19 +51,20 @@ console = Console()
 def _read_version() -> str:
     """Resolve the kast version.
 
-    Prefer installed-package metadata (works for pipx / pip installs); fall
-    back to the VERSION file at the project root for source-checkout dev.
+    Prefer the VERSION file at the project root — it is the single source of
+    truth for the installed build and is never stale. Fall back to
+    importlib.metadata only when the VERSION file is absent (e.g. a bare
+    pip-installed wheel with no source tree).
     """
-    from importlib.metadata import PackageNotFoundError, version
-
-    try:
-        return version("kast")
-    except PackageNotFoundError:
-        pass
-
     try:
         version_file = Path(__file__).resolve().parent.parent.parent / "VERSION"
         return version_file.read_text().strip()
+    except Exception:
+        pass
+
+    try:
+        from importlib.metadata import version
+        return version("kast")
     except Exception:
         return "unknown"
 

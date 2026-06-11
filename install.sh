@@ -39,6 +39,9 @@ CHECKPOINT_GECKO="geckodriver"
 CHECKPOINT_DOCKER="docker"
 # CHECKPOINT_TERRAFORM removed — Terraform is no longer installed by kast (Phase D moved cloud infra to kast-web)
 CHECKPOINT_OBSERVATORY="observatory"
+CHECKPOINT_WHATWEB="whatweb"
+CHECKPOINT_TESTSSL="testssl"
+CHECKPOINT_WAFW00F="wafw00f"
 CHECKPOINT_LIBPANGO="libpango"
 CHECKPOINT_FILES="file_copy"
 CHECKPOINT_VENV="python_venv"
@@ -79,7 +82,7 @@ TOOL_REQUIRED_BY["java"]="OWASP ZAP"
 TOOL_MANUAL_INSTALL["java"]="openjdk_tarball"
 
 # Node.js - Required by MDN Observatory
-TOOL_MIN_VERSIONS["nodejs"]="20.0.0"
+TOOL_MIN_VERSIONS["nodejs"]="24.0.0"
 TOOL_APT_PACKAGES["nodejs"]="nodejs"
 TOOL_CHECK_COMMANDS["nodejs"]="node --version 2>/dev/null | sed 's/v//'"
 TOOL_REQUIRED_BY["nodejs"]="MDN Observatory CLI"
@@ -189,6 +192,9 @@ checkpoint_completed() {
         "$CHECKPOINT_GECKO"
         "$CHECKPOINT_DOCKER"
         "$CHECKPOINT_OBSERVATORY"
+        "$CHECKPOINT_WHATWEB"
+        "$CHECKPOINT_TESTSSL"
+        "$CHECKPOINT_WAFW00F"
         "$CHECKPOINT_LIBPANGO"
         "$CHECKPOINT_FILES"
         "$CHECKPOINT_VENV"
@@ -957,20 +963,10 @@ install_system_packages() {
     
     # Build package lists - separate critical from optional
     local critical_packages="git gpg python3 python3-venv build-essential"
-    local tool_packages="htop nginx sslscan wafw00f"
+    # ruby/ruby-bundler: required by whatweb (installed from git, not apt)
+    # pipx: required by wafw00f installation
+    local tool_packages="htop nginx sslscan ruby ruby-dev ruby-bundler pipx"
     local optional_packages=""
-    
-    # Add distribution-specific packages
-    # Note: testssl and whatweb have different package names across distributions
-    case "$os_id" in
-        debian|kali)
-            optional_packages="testssl.sh whatweb"
-            ;;
-        ubuntu)
-            # Ubuntu may have different package names
-            optional_packages="testssl.sh whatweb"
-            ;;
-    esac
     
     # Add firefox if specified
     if [[ -n "$firefox_package" ]]; then
@@ -1092,15 +1088,15 @@ install_golang_manual() {
     log_info "Downloading Go ${go_version} (approximately 150MB)..."
     log_info "This may take several minutes on slow connections..."
     
-    # Download to /tmp
-    cd /tmp
-    
+    # Download to /tmp using absolute path to avoid changing the script's working directory
+    local go_tarball_path="/tmp/$go_tarball"
+
     # Use wget with timeout, retries, and progress display
     # --timeout=60: 60 second timeout per network operation
     # --tries=3: retry up to 3 times
     # --show-progress: display progress bar
     # --progress=bar:force: force progress bar even if output is redirected
-    if ! wget --timeout=60 --tries=3 --show-progress --progress=bar:force "$download_url" 2>&1; then
+    if ! wget --timeout=60 --tries=3 --show-progress --progress=bar:force "$download_url" -O "$go_tarball_path" 2>&1; then
         log_error "Failed to download Go from $download_url"
         log_error "This could be due to:"
         log_error "  - Network connectivity issues"
@@ -1140,14 +1136,14 @@ install_golang_manual() {
     rm -rf /usr/lib/go* 2>/dev/null || true
     
     log_info "Extracting Go tarball..."
-    if ! tar -C /usr/local -xzf "$go_tarball"; then
+    if ! tar -C /usr/local -xzf "$go_tarball_path"; then
         log_error "Failed to extract Go tarball"
-        rm -f "$go_tarball"
+        rm -f "$go_tarball_path"
         return 1
     fi
-    
+
     # Clean up tarball
-    rm -f "$go_tarball"
+    rm -f "$go_tarball_path"
     
     # Update system-wide Go path
     log_info "Updating PATH for Go..."
@@ -1238,7 +1234,7 @@ install_nodejs() {
     log_info "Installing Node.js..."
     mkdir -p /etc/apt/keyrings
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --yes --dearmor -o /etc/apt/keyrings/nodesource.gpg
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
     apt update
     apt install -y nodejs
     
@@ -1251,28 +1247,17 @@ install_go_tools() {
         log_info "Go tools already installed, skipping..."
         return 0
     fi
-    
+
     log_info "Installing ProjectDiscovery tools..."
-    
-    # Create Go bin directory with proper ownership
-    mkdir -p "$ORIG_HOME/go/bin"
-    chown -R "$ORIG_USER:$ORIG_USER" "$ORIG_HOME/go"
-    
-    # CRITICAL: Dynamically locate Go binary
-    # Try multiple sources in order of preference:
-    # 1. Stored path from prerequisite validation (if Go was already installed)
-    # 2. Current PATH (dynamic lookup)
-    # 3. Manual install location (/usr/local/go/bin/go)
+
+    # Locate Go binary (run as root; GOBIN=/usr/local/bin puts binaries there directly)
     local go_binary=""
-    local gopath="$ORIG_HOME/go"
-    
-    # First: Check if we stored the path during prerequisite validation
+
     if [[ -n "${TOOL_BINARY_PATHS[golang]}" ]]; then
         go_binary="${TOOL_BINARY_PATHS[golang]}"
         log_info "Using Go binary from stored path: $go_binary"
     fi
-    
-    # Second: Try to find Go in current PATH
+
     if [[ -z "$go_binary" ]] || [[ ! -x "$go_binary" ]]; then
         local path_go=$(command -v go 2>/dev/null)
         if [[ -n "$path_go" ]] && [[ -x "$path_go" ]]; then
@@ -1280,58 +1265,47 @@ install_go_tools() {
             log_info "Found Go binary in PATH: $go_binary"
         fi
     fi
-    
-    # Third: Check manual install location
+
     if [[ -z "$go_binary" ]] || [[ ! -x "$go_binary" ]]; then
         if [[ -x "/usr/local/go/bin/go" ]]; then
             go_binary="/usr/local/go/bin/go"
             log_info "Found Go binary at manual install location: $go_binary"
         fi
     fi
-    
-    # Verify we found a working Go binary
+
     if [[ -z "$go_binary" ]] || [[ ! -x "$go_binary" ]]; then
         log_error "Go binary not found"
         log_error "Searched locations:"
         log_error "  - Stored path: ${TOOL_BINARY_PATHS[golang]:-<not set>}"
         log_error "  - PATH lookup: $(command -v go 2>/dev/null || echo '<not found>')"
         log_error "  - Manual install: /usr/local/go/bin/go"
-        log_error ""
         log_error "Go must be installed before installing Go tools"
         log_error "Installation strategy was: ${INSTALL_STRATEGY[golang]}"
         return 1
     fi
-    
-    # Verify the Go binary actually works
+
     local go_version=$("$go_binary" version 2>/dev/null | awk '{print $3}' | sed 's/go//')
     if [[ -z "$go_version" ]]; then
         log_error "Go binary at $go_binary exists but does not work"
-        log_error "Cannot determine Go version"
         return 1
     fi
-    
+
     log_success "Using Go $go_version at: $go_binary"
-    
+
     # Install katana (requires CGO for go-tree-sitter dependency)
-    if [[ ! -f "$ORIG_HOME/go/bin/katana" ]] || [[ ! -f "/usr/local/bin/katana" ]]; then
+    if [[ ! -f "/usr/local/bin/katana" ]]; then
         log_info "Installing katana..."
-        
-        # Verify gcc is available (required for CGO)
+
         if ! command -v gcc &>/dev/null; then
             log_error "gcc not found - required for katana (CGO dependency)"
             log_error "Ensure build-essential package is installed"
             return 1
         fi
-        
+
         log_info "Building katana with CGO enabled (required for go-tree-sitter)..."
-        sudo -u "$ORIG_USER" bash -c "
-            export CGO_ENABLED=1
-            export GOPATH='$gopath'
-            export GOBIN='$gopath/bin'
-            '$go_binary' install github.com/projectdiscovery/katana/cmd/katana@latest
-        "
-        if [[ -f "$ORIG_HOME/go/bin/katana" ]]; then
-            cp -f "$ORIG_HOME/go/bin/katana" /usr/local/bin/katana
+        CGO_ENABLED=1 GOBIN=/usr/local/bin "$go_binary" install \
+            github.com/projectdiscovery/katana/cmd/katana@latest
+        if [[ -f "/usr/local/bin/katana" ]]; then
             log_success "Katana installed successfully"
         else
             log_error "Katana installation failed"
@@ -1339,17 +1313,13 @@ install_go_tools() {
     else
         log_info "Katana already installed"
     fi
-    
+
     # Install subfinder
-    if [[ ! -f "$ORIG_HOME/go/bin/subfinder" ]] || [[ ! -f "/usr/local/bin/subfinder" ]]; then
+    if [[ ! -f "/usr/local/bin/subfinder" ]]; then
         log_info "Installing subfinder..."
-        sudo -u "$ORIG_USER" bash -c "
-            export GOPATH='$gopath'
-            export GOBIN='$gopath/bin'
-            '$go_binary' install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
-        "
-        if [[ -f "$ORIG_HOME/go/bin/subfinder" ]]; then
-            cp -f "$ORIG_HOME/go/bin/subfinder" /usr/local/bin/subfinder
+        GOBIN=/usr/local/bin "$go_binary" install -v \
+            github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+        if [[ -f "/usr/local/bin/subfinder" ]]; then
             log_success "Subfinder installed successfully"
         else
             log_error "Subfinder installation failed"
@@ -1357,17 +1327,13 @@ install_go_tools() {
     else
         log_info "Subfinder already installed"
     fi
-    
+
     # Install httpx
-    if [[ ! -f "$ORIG_HOME/go/bin/httpx" ]] || [[ ! -f "/usr/local/bin/httpx" ]]; then
+    if [[ ! -f "/usr/local/bin/httpx" ]]; then
         log_info "Installing httpx..."
-        sudo -u "$ORIG_USER" bash -c "
-            export GOPATH='$gopath'
-            export GOBIN='$gopath/bin'
-            '$go_binary' install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
-        "
-        if [[ -f "$ORIG_HOME/go/bin/httpx" ]]; then
-            cp -f "$ORIG_HOME/go/bin/httpx" /usr/local/bin/httpx
+        GOBIN=/usr/local/bin "$go_binary" install -v \
+            github.com/projectdiscovery/httpx/cmd/httpx@latest
+        if [[ -f "/usr/local/bin/httpx" ]]; then
             log_success "httpx installed successfully"
         else
             log_error "httpx installation failed"
@@ -1375,19 +1341,13 @@ install_go_tools() {
     else
         log_info "httpx already installed"
     fi
-    
+
     # Install amass (OWASP Amass - organization domain discovery)
-    if [[ ! -f "$ORIG_HOME/go/bin/amass" ]] || [[ ! -f "/usr/local/bin/amass" ]]; then
+    if [[ ! -f "/usr/local/bin/amass" ]]; then
         log_info "Installing amass (OWASP Amass)..."
-        log_info "Building amass with CGO disabled (per OWASP Amass documentation)..."
-        sudo -u "$ORIG_USER" bash -c "
-            export CGO_ENABLED=0
-            export GOPATH='$gopath'
-            export GOBIN='$gopath/bin'
-            '$go_binary' install -v github.com/owasp-amass/amass/v5/cmd/amass@main
-        "
-        if [[ -f "$ORIG_HOME/go/bin/amass" ]]; then
-            cp -f "$ORIG_HOME/go/bin/amass" /usr/local/bin/amass
+        CGO_ENABLED=0 GOBIN=/usr/local/bin "$go_binary" install -v \
+            github.com/owasp-amass/amass/v5/cmd/amass@main
+        if [[ -f "/usr/local/bin/amass" ]]; then
             log_success "Amass installed successfully"
         else
             log_error "Amass installation failed"
@@ -1395,7 +1355,7 @@ install_go_tools() {
     else
         log_info "Amass already installed"
     fi
-    
+
     save_checkpoint "$CHECKPOINT_GO_TOOLS"
     log_success "Go tools installed"
 }
@@ -1565,6 +1525,118 @@ install_observatory() {
     log_success "Observatory installed"
 }
 
+install_whatweb() {
+    # Check for the git-based installation specifically — a symlink to /opt/whatweb.
+    # checkpoint_completed alone is not reliable here because an existing install
+    # completed before this checkpoint existed will always satisfy it.
+    if [[ -L "/usr/local/bin/whatweb" ]] && [[ -d "/opt/whatweb/.git" ]]; then
+        log_info "WhatWeb already installed from git, skipping..."
+        return 0
+    fi
+
+    log_info "Installing WhatWeb from git..."
+
+    if [[ -d "/opt/whatweb/.git" ]]; then
+        log_info "Updating existing WhatWeb clone..."
+        git -C /opt/whatweb pull --ff-only
+    else
+        log_info "Cloning WhatWeb repository..."
+        git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb
+    fi
+
+    if [[ ! -d "/opt/whatweb" ]]; then
+        log_error "WhatWeb clone failed"
+        return 1
+    fi
+
+    chmod +x /opt/whatweb/whatweb
+
+    log_info "Installing WhatWeb gem dependencies..."
+    ( cd /opt/whatweb && bundle install --quiet )
+    if [[ $? -ne 0 ]]; then
+        log_warning "bundle install failed — WhatWeb may work with reduced functionality"
+    fi
+
+    ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb
+
+    if command -v whatweb &>/dev/null; then
+        log_success "WhatWeb installed successfully"
+    else
+        log_error "WhatWeb installation failed (binary not found in PATH)"
+        return 1
+    fi
+
+    save_checkpoint "$CHECKPOINT_WHATWEB"
+    log_success "WhatWeb installed"
+}
+
+install_testssl() {
+    if [[ -L "/usr/local/bin/testssl" ]] && [[ -d "/opt/testssl.sh/.git" ]]; then
+        log_info "testssl.sh already installed from git, skipping..."
+        return 0
+    fi
+
+    log_info "Installing testssl.sh from git..."
+
+    if [[ -d "/opt/testssl.sh/.git" ]]; then
+        log_info "Updating existing testssl.sh clone..."
+        git -C /opt/testssl.sh pull --ff-only
+    else
+        log_info "Cloning testssl.sh repository..."
+        git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh
+    fi
+
+    if [[ ! -d "/opt/testssl.sh" ]]; then
+        log_error "testssl.sh clone failed"
+        return 1
+    fi
+
+    chmod +x /opt/testssl.sh/testssl.sh
+    ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl
+
+    if command -v testssl &>/dev/null; then
+        log_success "testssl.sh installed successfully"
+    else
+        log_error "testssl.sh installation failed (binary not found in PATH)"
+        return 1
+    fi
+
+    save_checkpoint "$CHECKPOINT_TESTSSL"
+    log_success "testssl.sh installed"
+}
+
+install_wafw00f() {
+    if [[ -d "/opt/pipx/venvs/wafw00f" ]]; then
+        log_info "wafw00f already installed via pipx, skipping..."
+        return 0
+    fi
+
+    log_info "Installing wafw00f via pipx..."
+
+    if ! command -v pipx &>/dev/null; then
+        log_error "pipx not found — ensure it was installed in the system packages step"
+        return 1
+    fi
+
+    if PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install wafw00f; then
+        log_success "wafw00f installed successfully"
+    else
+        # Already installed — try upgrade instead
+        log_info "pipx install returned non-zero; attempting upgrade..."
+        PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx upgrade wafw00f || true
+    fi
+
+    if command -v wafw00f &>/dev/null; then
+        log_success "wafw00f available at $(command -v wafw00f)"
+    else
+        log_error "wafw00f installation failed (binary not found in PATH)"
+        return 1
+    fi
+
+    save_checkpoint "$CHECKPOINT_WAFW00F"
+    log_success "wafw00f installed"
+}
+
 install_libpango() {
     if checkpoint_completed "$CHECKPOINT_LIBPANGO"; then
         log_info "Libpango already installed, skipping..."
@@ -1682,7 +1754,9 @@ copy_project_files() {
     echo "Skipping $(basename "$0")"
     echo "Skipping .git"
 
-    rsync -av --exclude="$(basename "$0")" --exclude=".git" --exclude="*.backup.*" ./ "$INSTALL_DIR/"
+    rsync -av --exclude="$(basename "$0")" --exclude=".git" --exclude="*.backup.*" \
+        --exclude="*.egg-info" --exclude="__pycache__" --exclude="*.pyc" \
+        ./ "$INSTALL_DIR/"
 
     remove_deprecated_plugins
 
@@ -1747,16 +1821,17 @@ install_ftap() {
     fi
     
     log_info "Installing custom FTAP..."
-    cd "$ORIG_HOME"
-    
-    if [[ -d "$ORIG_HOME/ftap" ]]; then
-        log_warning "FTAP directory already exists, updating..."
-        cd ftap
-        sudo -u "$ORIG_USER" git pull
-    else
-        sudo -u "$ORIG_USER" git clone https://github.com/mercutioviz/ftap
-        chown -R "$ORIG_USER:$ORIG_USER" ftap
-    fi
+    (
+        cd "$ORIG_HOME"
+        if [[ -d "$ORIG_HOME/ftap" ]]; then
+            log_warning "FTAP directory already exists, updating..."
+            cd ftap
+            sudo -u "$ORIG_USER" git pull
+        else
+            sudo -u "$ORIG_USER" git clone https://github.com/mercutioviz/ftap
+            chown -R "$ORIG_USER:$ORIG_USER" ftap
+        fi
+    )
     
     save_checkpoint "$CHECKPOINT_FTAP"
     log_success "FTAP installed"
@@ -1991,7 +2066,40 @@ check_and_install_tools() {
     if install_go_tools; then
         ((tools_installed++))
     fi
-    
+
+    # Install WhatWeb from git
+    if [[ ! -f "/usr/local/bin/whatweb" ]]; then
+        log_info "Installing WhatWeb..."
+        if install_whatweb; then
+            ((tools_installed++))
+        fi
+    else
+        log_info "✓ WhatWeb already installed"
+        ((tools_skipped++))
+    fi
+
+    # Install testssl.sh from git
+    if [[ ! -f "/usr/local/bin/testssl" ]]; then
+        log_info "Installing testssl.sh..."
+        if install_testssl; then
+            ((tools_installed++))
+        fi
+    else
+        log_info "✓ testssl.sh already installed"
+        ((tools_skipped++))
+    fi
+
+    # Install wafw00f via pipx
+    if ! command -v wafw00f &>/dev/null; then
+        log_info "Installing wafw00f..."
+        if install_wafw00f; then
+            ((tools_installed++))
+        fi
+    else
+        log_info "✓ wafw00f already installed"
+        ((tools_skipped++))
+    fi
+
     # Check and install Node.js if needed
     if [[ "${INSTALL_STRATEGY[nodejs]}" == "USE_MANUAL" ]]; then
         log_info "Installing Node.js..."
@@ -2007,9 +2115,9 @@ check_and_install_tools() {
             ((tools_installed++))
         fi
     fi
-    
+
     # Install Observatory (requires Node.js)
-    if ! command -v observatory &>/dev/null; then
+    if ! command -v mdn-http-observatory-scan &>/dev/null; then
         log_info "Installing Observatory..."
         if install_observatory; then
             ((tools_installed++))
@@ -2449,6 +2557,9 @@ main() {
     
     install_nodejs
     install_go_tools
+    install_whatweb
+    install_testssl
+    install_wafw00f
     install_geckodriver
     install_docker
     install_observatory
