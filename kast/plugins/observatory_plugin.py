@@ -300,14 +300,13 @@ class ObservatoryPlugin(KastPlugin):
             summary = self._generate_summary(findings)
             self.debug(f"{self.name} summary: {summary}")
 
-            executive_summary = (
-                "-= Observatory grade and score summary =-\n"
-                f"{summary}"
-            )
+            executive_summary = summary
             self.debug(f"{self.name} executive_summary: {executive_summary}")
 
             issues = self._find_issues(findings)
             self.debug(f"{self.name} issues: {issues}")
+
+            details = self._generate_details(findings)
 
         # Calculate findings_count - count of failed tests (security issues)
         findings_count = len(issues) if isinstance(issues, list) else 0
@@ -385,6 +384,23 @@ class ObservatoryPlugin(KastPlugin):
         )
         self.debug(f"Generated summary: {summary_text}")
         return summary_text
+
+    def _generate_details(self, findings):
+        """Describe each failing Observatory test."""
+        failed = findings.get("results", {}).get("tests", {}).get("failed", {})
+        if not failed:
+            return ""
+        lines = ["Failed tests:"]
+        for test_name, data in failed.items():
+            if not isinstance(data, dict):
+                continue
+            result = data.get("result", "")
+            score_modifier = data.get("scoreModifier", 0)
+            desc = data.get("recommendation") or data.get("description") or result
+            lines.append(f"  {test_name}: {result} (score modifier: {score_modifier})")
+            if desc and desc != result:
+                lines.append(f"    {desc}")
+        return "\n".join(lines)
 
     def get_dry_run_info(self, target, output_dir):
         """

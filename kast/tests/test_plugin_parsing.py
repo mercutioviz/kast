@@ -155,6 +155,23 @@ class TestWhatWebParsing(unittest.TestCase):
                 "(check _EOL_TECHNOLOGIES key is 'JQuery' not 'jQuery')"
             )
 
+    def test_summary_is_string(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._process(tmpdir)
+            self.assertIsInstance(
+                result.get("summary"), str,
+                "summary must be a string, not a list"
+            )
+
+    def test_executive_summary_mentions_eol(self):
+        # Fixture has jQuery 1.8.2 — executive_summary should describe the EOL detection.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._process(tmpdir)
+            exec_summary = result.get("executive_summary", "")
+            self.assertIsInstance(exec_summary, str)
+            self.assertIn("End-of-life", exec_summary,
+                          "executive_summary should mention EOL technologies when detected")
+
 
 class TestTestsslParsing(unittest.TestCase):
     """testssl: protocols parsed, cert fields extracted, cert-expiring-soon emitted."""
@@ -280,6 +297,21 @@ class TestObservatoryParsing(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = self._process(tmpdir)
             self.assertGreaterEqual(result.get("findings_count", 0), 4)
+
+    def test_details_populated(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._process(tmpdir)
+            details = result.get("details", "")
+            self.assertIsInstance(details, str)
+            self.assertGreater(len(details), 0, "details should not be empty when tests fail")
+            self.assertIn("Failed tests", details)
+
+    def test_executive_summary_no_stray_prefix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            result = self._process(tmpdir)
+            exec_summary = result.get("executive_summary", "")
+            self.assertNotIn("=-", exec_summary,
+                              "executive_summary must not contain the '=-' stray prefix")
 
 
 if __name__ == "__main__":

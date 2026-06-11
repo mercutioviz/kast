@@ -111,23 +111,14 @@ class WhatWebPlugin(ExternalToolPlugin):
         }
 
     def count_findings(self, findings) -> int:
-        """Count unique technologies detected across all WhatWeb result entries."""
-        results = self._results_list(findings)
-        technologies: set[str] = set()
-        for entry in results:
-            technologies.update(entry.get("plugins", {}).keys())
-        return len(technologies)
+        """Count URL entries analyzed by WhatWeb."""
+        return len(self._results_list(findings))
 
     def format_summary(self, findings):
-        """Bucket entries by normalized target URL and list detected techs.
-
-        Produces the JSON-array summary that v2 generated. Each item is a
-        single-key dict where the key is "<target> - HTTP <status>" and the
-        value is a semicolon-delimited list of detected technologies.
-        """
+        """One line per URL showing HTTP status and detected technologies."""
         results = self._results_list(findings)
         if not results:
-            return [{"No findings": f"No findings were produced by {self.name}."}]
+            return f"No findings were produced by {self.name}."
 
         buckets: dict[str, list] = defaultdict(list)
         for entry in results:
@@ -136,7 +127,7 @@ class WhatWebPlugin(ExternalToolPlugin):
             normalized = urlunparse(parsed._replace(path=parsed.path.rstrip("/")))
             buckets[normalized].append(entry)
 
-        summary_list = []
+        lines = []
         for target, entries in buckets.items():
             for idx, entry in enumerate(entries, start=1):
                 status = entry.get("http_status", "N/A")
@@ -152,13 +143,20 @@ class WhatWebPlugin(ExternalToolPlugin):
                         tech_list.append(plugin_name)
                 techs = "; ".join(tech_list) if tech_list else "no detectable technologies"
                 label = target if len(entries) == 1 else f"{target} (#{idx})"
-                summary_list.append({f"{label} - HTTP {status}": techs})
-        return summary_list
+                lines.append(f"{label} — HTTP {status}: {techs}")
+        return "\n".join(lines)
 
     def format_executive_summary(self, findings, issues):
-        """Recommend follow-up scans for any cross-domain redirect targets."""
+        """Summarize EOL technology detections; append cross-domain redirect recommendations."""
+        eol_detections = self._collect_eol_detections(findings)
         recommendations = self._detect_domain_redirects(findings)
-        return "\n".join(recommendations) if recommendations else ""
+
+        parts = []
+        if eol_detections:
+            eol_list = "; ".join(f"{tech} {ver}" for tech, ver in eol_detections)
+            parts.append(f"End-of-life technologies detected: {eol_list}")
+        parts.extend(recommendations)
+        return "\n".join(parts)
 
     def get_dry_run_info(self, target, output_dir):
         info = super().get_dry_run_info(target, output_dir)
@@ -170,8 +168,13 @@ class WhatWebPlugin(ExternalToolPlugin):
 
     def extract_issues(self, findings) -> list[str]:
         """Emit whatweb-eol-technology when a detected technology version is EOL."""
-        results = self._results_list(findings)
-        for entry in results:
+        return ["whatweb-eol-technology"] if self._collect_eol_detections(findings) else []
+
+    def _collect_eol_detections(self, findings) -> list[tuple[str, str]]:
+        """Return unique (tech_name, version_str) pairs for each EOL detection found."""
+        detections = []
+        seen: set[tuple[str, str]] = set()
+        for entry in self._results_list(findings):
             plugins = entry.get("plugins") or {}
             for plugin_name, data in plugins.items():
                 if not isinstance(data, dict):
@@ -185,12 +188,15 @@ class WhatWebPlugin(ExternalToolPlugin):
                 for version_str in versions:
                     parsed = self._parse_version(str(version_str))
                     if parsed and parsed < boundary:
-                        self.debug(
-                            f"EOL technology: {plugin_name} {version_str} "
-                            f"(safe boundary: {boundary[0]}.{boundary[1]})"
-                        )
-                        return ["whatweb-eol-technology"]
-        return []
+                        key = (plugin_name, str(version_str))
+                        if key not in seen:
+                            seen.add(key)
+                            detections.append(key)
+                            self.debug(
+                                f"EOL: {plugin_name} {version_str} "
+                                f"(safe boundary: {boundary[0]}.{boundary[1]})"
+                            )
+        return detections
 
     # -- WhatWeb-specific helpers ------------------------------------------
 

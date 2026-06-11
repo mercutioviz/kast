@@ -755,7 +755,7 @@ class RelatedSitesPlugin(KastPlugin):
                 tech_summary = ", ".join([f"{name} ({count})" for name, count in top_techs])
                 summary_points.append(f"Most common technologies: {tech_summary}")
 
-        return summary_points
+        return "\n".join(summary_points)
 
     def _generate_details(self, findings):
         """Generate concise details summary."""
