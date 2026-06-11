@@ -78,8 +78,13 @@ class OrgDiscoveryPlugin(KastPlugin):
         "amass": 0.5,
         "shodan": 0.45,
     }
-    _CA_SKIP = {"let's encrypt", "digicert inc", "sectigo limited", "globalsign", "comodo ca limited",
-                "google trust services llc", "amazon", "microsoft corporation", "cloudflare, inc."}
+    # Substring patterns — if any matches o.lower(), the org is a CA and skipped.
+    # Substring matching handles "DigiCert" vs "DigiCert Inc" vs "DigiCert, Inc." etc.
+    _CA_SKIP_SUBSTRINGS = {
+        "let's encrypt", "isrg", "digicert", "sectigo", "comodo", "globalsign",
+        "google trust services", "amazon", "microsoft", "cloudflare", "entrust",
+        "godaddy", "thawte", "geotrust", "rapidssl", "trustwave", "network solutions",
+    }
 
     name = "org_discovery"
     display_name = "Organization Domain Discovery"
@@ -146,9 +151,9 @@ class OrgDiscoveryPlugin(KastPlugin):
             try:
                 resp = requests.get(url, timeout=self.crtsh_timeout,
                                     headers={"User-Agent": "KAST Security Scanner"})
-                if resp.status_code == 503 and attempt < max_retries:
+                if resp.status_code in (502, 503) and attempt < max_retries:
                     delay = base_delay * (2 ** attempt)
-                    self.debug(f"crt.sh returned 503, retrying in {delay:.0f}s "
+                    self.debug(f"crt.sh returned {resp.status_code}, retrying in {delay:.0f}s "
                                f"(attempt {attempt + 1}/{max_retries})")
                     time.sleep(delay)
                     continue
@@ -182,7 +187,7 @@ class OrgDiscoveryPlugin(KastPlugin):
             m = re.search(r"O=([^,/]+)", c.get("issuer_name", ""))
             if m:
                 o = m.group(1).strip().strip('"')
-                if o.lower() not in self._CA_SKIP:
+                if not any(s in o.lower() for s in self._CA_SKIP_SUBSTRINGS):
                     counts[o] = counts.get(o, 0) + 1
         if counts:
             best = max(counts, key=counts.get)
@@ -291,8 +296,6 @@ class OrgDiscoveryPlugin(KastPlugin):
             "-json", str(json_file),
             "-timeout", str(timeout_min),
         ]
-        if org_name:
-            cmd.extend(["-org", org_name])
         if self.amass_extra_args:
             cmd.extend(self.amass_extra_args.split())
 
