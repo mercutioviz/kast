@@ -1,0 +1,30 @@
+{
+  "target": "https://bank.darklab.cudalabx.net",
+  "domain": "bank.darklab.cudalabx.net",
+  "paths_tested": [
+    "/",
+    "/api/",
+    "/api/v1/",
+    "/graphql",
+    "/rest/",
+    "/v1/"
+  ],
+  "cors_findings": [
+    {
+      "url": "https://bank.darklab.cudalabx.net/",
+      "issue_type": "cors-wildcard-origin",
+      "origin_sent": "https://evil-attacker.example.com",
+      "acao_received": "*",
+      "credentials": false
+    },
+    {
+      "url": "https://bank.darklab.cudalabx.net/api/",
+      "issue_type": "cors-wildcard-origin",
+      "origin_sent": "https://evil-attacker.example.com",
+      "acao_received": "*",
+      "credentials": false
+    }
+  ],
+  "bypass_findings": [],
+  "jsonp_findings": []
+}

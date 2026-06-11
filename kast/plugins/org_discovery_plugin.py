@@ -181,7 +181,7 @@ class OrgDiscoveryPlugin(KastPlugin):
         for c in certs:
             m = re.search(r"O=([^,/]+)", c.get("issuer_name", ""))
             if m:
-                o = m.group(1).strip()
+                o = m.group(1).strip().strip('"')
                 if o.lower() not in self._CA_SKIP:
                     counts[o] = counts.get(o, 0) + 1
         if counts:

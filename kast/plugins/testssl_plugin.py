@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 from datetime import UTC, datetime
+from pathlib import Path
 from pprint import pformat
 
 from kast.core.atomic import write_json_atomic
@@ -137,7 +138,7 @@ class TestsslPlugin(KastPlugin):
 
         # Add connection timeout if configured
         if self.connect_timeout:
-            cmd.extend(["--connect-timeout", str(self.connect_timeout)])
+            cmd.extend(["--socket-timeout", str(self.connect_timeout)])
 
         # Add warnings batch mode flag
         if self.warnings_batch_mode:
@@ -228,6 +229,31 @@ class TestsslPlugin(KastPlugin):
         Normalize output, extract issues, and build executive_summary.
         Analyzes vulnerabilities and TLS 1.2+ cipher test results.
         """
+        # If run() reported a hard failure, write an honest error summary rather
+        # than falling through to the normal parse path which would produce a
+        # misleading "no issues found" result.
+        if isinstance(raw_output, dict) and raw_output.get("disposition") == "fail":
+            error_msg = raw_output.get("results", "testssl execution failed")
+            if isinstance(error_msg, dict):
+                error_msg = error_msg.get("raw_data", str(error_msg))
+            timestamp = raw_output.get("timestamp", "")
+            processed = {
+                "plugin-name": self.name,
+                "plugin-display-name": self.display_name,
+                "plugin-website-url": self.website_url,
+                "disposition": "fail",
+                "timestamp": timestamp,
+                "findings_count": 0,
+                "issues": [],
+                "summary": f"testssl scan failed: {str(error_msg)[:200]}",
+                "details": "",
+                "executive_summary": "TLS scan could not be completed.",
+            }
+            write_json_atomic(
+                Path(output_dir) / f"{self.name}_processed.json", processed
+            )
+            return processed
+
         # Load findings from various input types
         if isinstance(raw_output, str) and os.path.isfile(raw_output):
             with open(raw_output) as f:
@@ -620,7 +646,7 @@ class TestsslPlugin(KastPlugin):
 
         # Add connection timeout if configured
         if self.connect_timeout:
-            cmd.extend(["--connect-timeout", str(self.connect_timeout)])
+            cmd.extend(["--socket-timeout", str(self.connect_timeout)])
 
         # Add warnings batch mode flag
         if self.warnings_batch_mode:

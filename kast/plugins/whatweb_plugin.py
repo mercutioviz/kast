@@ -21,7 +21,7 @@ class WhatWebPlugin(ExternalToolPlugin):
     # (safe_major, safe_minor): detected version < boundary → EOL
     _EOL_TECHNOLOGIES: dict = {
         "PHP": (8, 0),
-        "jQuery": (3, 0),
+        "JQuery": (3, 0),
         "jQuery UI": (1, 13),
         "Bootstrap": (4, 0),
         "AngularJS": (2, 0),

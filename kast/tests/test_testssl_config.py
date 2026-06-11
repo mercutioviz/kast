@@ -234,7 +234,7 @@ class TestTestsslConfig(unittest.TestCase):
         self.assertNotIn("-E", command, "Should not have -E flag when ciphers disabled")
 
         # Verify connect timeout is present
-        self.assertIn("--connect-timeout", command)
+        self.assertIn("--socket-timeout", command)
         self.assertIn("20", command)
 
         # Verify warnings flag is NOT present when disabled

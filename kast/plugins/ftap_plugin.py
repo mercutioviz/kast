@@ -207,11 +207,17 @@ class FtapPlugin(KastPlugin):
         self.debug("Setup completed.")
 
     def is_available(self):
-        """
-        Check if required tool is installed and available in PATH.
-        """
-        # Example: Check if tool is available
-        return shutil.which("ftap") is not None
+        """Check ftap is installed and its Python dependencies load correctly."""
+        if shutil.which("ftap") is None:
+            return False
+        try:
+            result = subprocess.run(
+                ["ftap", "--version"],
+                capture_output=True, timeout=5
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
 
     def run(self, target, output_dir, report_only):
         """

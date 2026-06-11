@@ -686,6 +686,122 @@ def check_plugin_loading() -> list[CheckResult]:
     return results
 
 
+def check_plugin_commands() -> list[CheckResult]:
+    """For each plugin that implements get_dry_run_info(), build its command
+    and verify every --flag appears in that binary's --help output.
+
+    Catches flag renames/removals (e.g. --connect-timeout → --socket-timeout)
+    at doctor time rather than in production scans.
+    """
+    from kast.cli._shared import make_args_namespace
+    from kast.registry import PluginRegistry
+
+    section = "Plugin Command Syntax"
+    results: list[CheckResult] = []
+
+    log = logging.getLogger("kast.doctor")
+    log.addHandler(logging.NullHandler())
+
+    args = make_args_namespace(set=[])
+    registry = PluginRegistry(log, cli_args=args)
+    instances = registry.all_instances()
+
+    _help_cache: dict[str, str] = {}
+
+    for plugin in instances:
+        if not hasattr(plugin, "get_dry_run_info"):
+            continue
+
+        # Skip plugins whose tool isn't installed or whose runtime is broken.
+        if hasattr(plugin, "is_available") and not plugin.is_available():
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=INFO,
+                detail="tool not available — skipping flag check",
+            ))
+            continue
+
+        # Build the command the plugin would use against a dummy target.
+        try:
+            dry = plugin.get_dry_run_info("example.com", "/tmp")
+            commands = dry.get("commands", [])
+            cmd_str = commands[0] if commands else ""
+        except Exception as e:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=WARN,
+                detail=f"get_dry_run_info raised: {e}",
+            ))
+            continue
+
+        if not cmd_str:
+            continue
+
+        # Infer the binary from the first token of the command string.
+        binary = cmd_str.split()[0]
+        binary_path = shutil.which(binary)
+        if not binary_path:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=INFO,
+                detail=f"{binary} not installed — skipping flag check",
+            ))
+            continue
+
+        # Extract long flags (--flag) from the command string.
+        long_flags = re.findall(r"--[a-zA-Z][a-zA-Z0-9_-]+", cmd_str)
+        if not long_flags:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=OK,
+                detail="no long flags to validate",
+            ))
+            continue
+
+        # Fetch --help output once per binary.
+        if binary_path not in _help_cache:
+            try:
+                proc = subprocess.run(
+                    [binary_path, "--help"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                _help_cache[binary_path] = proc.stdout + proc.stderr
+            except Exception as e:
+                _help_cache[binary_path] = ""
+                results.append(CheckResult(
+                    section=section,
+                    name=plugin.display_name,
+                    status=WARN,
+                    detail=f"{binary} --help failed: {e}",
+                ))
+                continue
+
+        help_text = _help_cache[binary_path]
+        bad_flags = [f for f in long_flags if f not in help_text]
+
+        if bad_flags:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=WARN,
+                detail=f"unrecognized flag(s): {', '.join(bad_flags)}",
+                hint=f"Check `{binary} --help` and update build_command() in the plugin",
+            ))
+        else:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=OK,
+                detail=f"all flags recognized ({len(long_flags)} checked)",
+            ))
+
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -864,11 +980,13 @@ def _print_manual_remediation_checklist(results: list[CheckResult]) -> None:
               help="Compare installed external tool versions to upstream (network; cached 24h).")
 @click.option("--no-cache", "no_cache", is_flag=True,
               help="Force a fresh upstream fetch for --check-updates (ignores 24h cache).")
+@click.option("--check-syntax", "check_syntax", is_flag=True,
+              help="Validate plugin --flags against each tool's --help output.")
 @click.option("--results-dir", "results_dir", type=click.Path(),
               help="Override the results dir checked by --fix and the perms check. "
                    "Precedence: this flag > $KAST_RESULTS_DIR > global.results_dir in config > ~/kast_results.")
 def doctor(json_output: bool, fix: bool, check_updates: bool, no_cache: bool,
-           results_dir: str | None) -> None:
+           check_syntax: bool, results_dir: str | None) -> None:
     """Run environment health checks (Python, tools, perms, plugins)."""
     resolved_results_dir = resolve_results_dir(results_dir)
     results = run_all_checks(resolved_results_dir)
@@ -881,6 +999,9 @@ def doctor(json_output: bool, fix: bool, check_updates: bool, no_cache: bool,
 
     if check_updates:
         results.extend(check_external_tool_updates(use_cache=not no_cache))
+
+    if check_syntax:
+        results.extend(check_plugin_commands())
 
     if json_output:
         payload = {
