@@ -93,6 +93,7 @@ class SubfinderPlugin(KastPlugin):
     name = "subfinder"
     description = "Subdomain finder."
     display_name = "Subfinder"
+    tested_tool_version = "2.14.0"
     website_url = "https://github.com/projectdiscovery/subfinder"
     scan_type = "passive"  # or "active"
     output_type = "file"  # or "stdout"

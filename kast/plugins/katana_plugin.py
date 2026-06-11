@@ -164,6 +164,7 @@ class KatanaPlugin(KastPlugin):
     name = "katana"
     description = "Site crawler and URL finder."
     display_name = "Katana"
+    tested_tool_version = "1.6.1"
     website_url = "https://github.com/projectdiscovery/katana"
     scan_type = "passive"  # or "active"
     output_type = "file"  # or "stdout"

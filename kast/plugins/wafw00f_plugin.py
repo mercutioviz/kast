@@ -23,6 +23,7 @@ class Wafw00fPlugin(ExternalToolPlugin):
 
     name = "wafw00f"
     display_name = "Wafw00f"
+    tested_tool_version = "2.4.2"
     description = "Detects and identifies Web Application Firewalls (WAFs) on the target."
     website_url = "https://github.com/EnableSecurity/wafw00f"
     scan_type = "passive"

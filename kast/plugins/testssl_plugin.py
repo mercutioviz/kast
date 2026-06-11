@@ -70,6 +70,7 @@ class TestsslPlugin(KastPlugin):
 
     name = "testssl"
     display_name = "Test SSL"
+    tested_tool_version = "3.3"
     description = "Tests SSL and TLS posture"
     website_url = "https://testssl.sh/"
     scan_type = "passive"

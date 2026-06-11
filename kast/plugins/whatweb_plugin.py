@@ -35,6 +35,7 @@ class WhatWebPlugin(ExternalToolPlugin):
 
     name = "whatweb"
     display_name = "WhatWeb"
+    tested_tool_version = "0.6.4"
     description = "Identifies technologies used by a website."
     website_url = "https://github.com/urbanadventurer/whatweb"
     scan_type = "passive"

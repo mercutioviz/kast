@@ -686,6 +686,85 @@ def check_plugin_loading() -> list[CheckResult]:
     return results
 
 
+def check_tested_versions() -> list[CheckResult]:
+    """Compare each plugin's tested_tool_version annotation to the installed version.
+
+    Emits WARN when installed ≠ tested-against, signalling drift that warrants
+    a review. Does not enforce compatibility — --check-syntax is the actual gate.
+    """
+    from kast.cli._shared import make_args_namespace
+    from kast.registry import PluginRegistry
+
+    section = "Tool Version Drift"
+    log = logging.getLogger("kast.doctor")
+    log.addHandler(logging.NullHandler())
+
+    args = make_args_namespace(set=[])
+    registry = PluginRegistry(log, cli_args=args)
+    instances = registry.all_instances()
+
+    spec_by_binary: dict[str, ToolUpdateSpec] = {s.binary: s for s in UPDATE_SPECS}
+
+    results: list[CheckResult] = []
+    for plugin in instances:
+        tested = getattr(plugin, "tested_tool_version", None)
+        if not tested:
+            continue
+
+        # Prefer the explicit tool_binary attribute (ExternalToolPlugin subclasses),
+        # fall back to the first token of the dry-run command string.
+        binary: str | None = getattr(plugin, "tool_binary", None)
+        if not binary and hasattr(plugin, "get_dry_run_info"):
+            try:
+                dry = plugin.get_dry_run_info("example.com", "/tmp")
+                cmds = dry.get("commands", [])
+                if cmds:
+                    binary = cmds[0].split()[0]
+            except Exception:
+                pass
+
+        if not binary:
+            continue
+
+        spec = spec_by_binary.get(binary)
+        if spec is None:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=INFO,
+                detail=f"tested against {tested} — no version spec registered for '{binary}'",
+            ))
+            continue
+
+        installed = _local_version(spec)
+        if installed is None:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=INFO,
+                detail=f"tested against {tested} — could not determine installed version",
+            ))
+            continue
+
+        if installed == tested:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=OK,
+                detail=f"{installed} (matches tested-against)",
+            ))
+        else:
+            results.append(CheckResult(
+                section=section,
+                name=plugin.display_name,
+                status=WARN,
+                detail=f"installed {installed} ≠ tested-against {tested}",
+                hint="Run `kast doctor --check-syntax` to verify flag compatibility",
+            ))
+
+    return results
+
+
 def check_plugin_commands() -> list[CheckResult]:
     """For each plugin that implements get_dry_run_info(), build its command
     and verify every --flag appears in that binary's --help output.
@@ -817,6 +896,7 @@ CHECKS: list[Callable[[], CheckResult | list[CheckResult]]] = [
     check_config_files,
     check_issue_registry,
     check_plugin_loading,
+    check_tested_versions,
 ]
 
 

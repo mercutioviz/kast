@@ -94,6 +94,7 @@ class ObservatoryPlugin(KastPlugin):
 
     name = "mozilla_observatory"
     display_name = "Mozilla Observatory"
+    tested_tool_version = "1.6.2"
     description = "Runs Mozilla Observatory to analyze web application security."
     website_url = "https://developer.mozilla.org/en-US/blog/mdn-http-observatory-launch/"
     scan_type = "passive"
