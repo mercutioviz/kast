@@ -326,12 +326,15 @@ class FtapPlugin(KastPlugin):
                         timestamp=timestamp
                     )
 
-            # Load results from output file
+            # ftap doesn't write the output file when it finds 0 results; it just
+            # logs "No results to export" and exits 0. The progress-marker we
+            # created above is left at 0 bytes. Treat that as empty findings.
             with open(output_file) as f:
-                if self.export_format == "json":
-                    results = json.load(f)
-                else:
-                    results = f.read()
+                content = f.read().strip()
+            if self.export_format == "json":
+                results = json.loads(content) if content else {}
+            else:
+                results = content
 
             # Run sensitive path and login portal probing alongside the admin panel scan
             self._probe_sensitive_paths(target, output_dir)
