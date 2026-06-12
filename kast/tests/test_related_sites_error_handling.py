@@ -131,7 +131,7 @@ class TestRelatedSitesErrorHandling(unittest.TestCase):
         self.assertEqual(processed["findings_count"], 1)  # 1 live host
         self.assertIsInstance(processed["findings"], dict)
         self.assertIn("Discovered 3 subdomain", processed["summary"])
-        self.assertIsInstance(processed["executive_summary"], list)
+        self.assertIsInstance(processed["executive_summary"], str)
         self.assertGreater(len(processed["executive_summary"]), 0)
 
     def test_post_process_handles_various_error_messages(self):

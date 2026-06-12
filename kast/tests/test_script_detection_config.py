@@ -56,7 +56,7 @@ class TestScriptDetectionConfig(unittest.TestCase):
 
         # Verify defaults
         self.assertEqual(plugin.request_timeout, 30)
-        self.assertEqual(plugin.user_agent, "KAST-Security-Scanner/1.0")
+        self.assertEqual(plugin.user_agent, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         self.assertEqual(plugin.verify_ssl, True)
         self.assertEqual(plugin.follow_redirects, True)
         self.assertEqual(plugin.max_redirects, 10)
@@ -302,7 +302,7 @@ class TestScriptDetectionConfig(unittest.TestCase):
         # Verify defaults are in schema
         props = sd_schema["properties"]
         self.assertEqual(props["request_timeout"]["default"], 30)
-        self.assertEqual(props["user_agent"]["default"], "KAST-Security-Scanner/1.0")
+        self.assertEqual(props["user_agent"]["default"], "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         self.assertEqual(props["verify_ssl"]["default"], True)
         self.assertEqual(props["follow_redirects"]["default"], True)
         self.assertEqual(props["max_redirects"]["default"], 10)

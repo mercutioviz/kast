@@ -44,7 +44,7 @@ class ScriptDetectionPlugin(KastPlugin):
             },
             "user_agent": {
                 "type": "string",
-                "default": "KAST-Security-Scanner/1.0",
+                "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                 "description": "User-Agent string for HTTP requests"
             },
             "verify_ssl": {
@@ -105,7 +105,7 @@ class ScriptDetectionPlugin(KastPlugin):
         """Load configuration with defaults from schema."""
         # Get config values (defaults from schema if not set)
         self.request_timeout = self.get_config('request_timeout', 30)
-        self.user_agent = self.get_config('user_agent', 'KAST-Security-Scanner/1.0')
+        self.user_agent = self.get_config('user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36')
         self.verify_ssl = self.get_config('verify_ssl', True)
         self.follow_redirects = self.get_config('follow_redirects', True)
         self.max_redirects = self.get_config('max_redirects', 10)
@@ -373,6 +373,7 @@ class ScriptDetectionPlugin(KastPlugin):
                 "plugin-website-url": self.website_url,
                 "timestamp": raw_output.get('timestamp'),
                 "findings": raw_output,
+                "findings_count": 0,
                 "summary": f"Script detection failed: {raw_output.get('results')}",
                 "details": "",
                 "issues": [],

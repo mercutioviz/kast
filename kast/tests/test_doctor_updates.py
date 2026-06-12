@@ -170,8 +170,18 @@ class TestLocalVersion(unittest.TestCase):
         self.assertEqual(captured_cmd[1], "-version")
 
     def test_observatory(self):
-        with patch("kast.cli.doctor.shutil.which", return_value="/usr/bin/mdn-http-observatory-scan"), \
-             patch("kast.cli.doctor.subprocess.run", return_value=_make_proc(stdout=OUTPUT_OBSERVATORY)):
+        # Observatory uses `npm list -g` for version; path_resolver returns npm path.
+        NPM_OUTPUT = "/usr/local/lib\n└── @mdn/mdn-http-observatory@1.0.0\n"
+
+        def fake_which(binary):
+            if binary == "mdn-http-observatory-scan":
+                return "/usr/local/bin/mdn-http-observatory-scan"
+            if binary == "npm":
+                return "/usr/bin/npm"
+            return None
+
+        with patch("kast.cli.doctor.shutil.which", side_effect=fake_which), \
+             patch("kast.cli.doctor.subprocess.run", return_value=_make_proc(stdout=NPM_OUTPUT)):
             self.assertEqual(_local_version(_spec_by_binary("mdn-http-observatory-scan")), "1.0.0")
 
     def test_returns_none_when_binary_missing(self):
@@ -216,9 +226,9 @@ class TestResolveBinary(unittest.TestCase):
         self.assertIs(spec.path_resolver, find_pd_httpx)
 
     def test_no_other_spec_has_a_resolver(self):
-        # Only httpx needs the workaround today; flag if we add more silently.
+        # httpx (venv shadow) and mdn-http-observatory-scan (npm version probe) have resolvers.
         with_resolver = [s.binary for s in UPDATE_SPECS if s.path_resolver is not None]
-        self.assertEqual(with_resolver, ["httpx"])
+        self.assertEqual(with_resolver, ["httpx", "mdn-http-observatory-scan"])
 
 
 # ----- upstream fetchers -----
