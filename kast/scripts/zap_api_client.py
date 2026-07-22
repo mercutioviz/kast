@@ -30,6 +30,9 @@ class ZAPAPIClient:
         self.timeout = timeout
         self.debug = debug_callback or (lambda x: None)
         self.session = requests.Session()
+        # ZAP 2.14+ (ExtensionNetwork) serves its API at http://zap/ through the proxy
+        # rather than directly at the proxy port. Route all requests through ZAP.
+        self.session.proxies = {'http': self.api_url, 'https': self.api_url}
 
         # Add API key to all requests if provided
         if self.api_key:
@@ -46,10 +49,10 @@ class ZAPAPIClient:
         :param files: Files to upload
         :return: Response JSON or None
         """
-        url = f"{self.api_url}{endpoint}"
+        url = f"http://zap{endpoint}"
 
         try:
-            self.debug(f"ZAP API request: {method} {url}")
+            self.debug(f"ZAP API request: {method} {self.api_url}{endpoint}")
 
             # Prepare headers
             headers = {}

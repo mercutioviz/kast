@@ -888,32 +888,29 @@ class ZapPlugin(KastPlugin):
         provider_mode = findings.get('provider_mode', 'unknown')
         instance_info = findings.get('instance_info', {})
 
-        # Extract alerts from nested site structure
-        # ZAP report structure: findings['site'] is an array of site objects,
-        # each containing an 'alerts' array
+        # Extract alerts. Two formats are in use:
+        # - Old ZAP XML/file-report format: findings['site'] list, each with nested 'alerts'
+        # - New API format (core/view/alerts): findings['alerts'] flat list
         all_alerts = []
         sites = findings.get('site', [])
 
-        # Handle both array and single site formats
         if not isinstance(sites, list):
             sites = [sites] if sites else []
 
-        site_breakdown = []  # Track per-site statistics
+        site_breakdown = []
 
         for site in sites:
             site_name = site.get('@name', 'Unknown')
             site_alerts = site.get('alerts', [])
-
-            # Handle both array and single alert formats
             if not isinstance(site_alerts, list):
                 site_alerts = [site_alerts] if site_alerts else []
-
             if site_alerts:
-                site_breakdown.append({
-                    'name': site_name,
-                    'alert_count': len(site_alerts)
-                })
+                site_breakdown.append({'name': site_name, 'alert_count': len(site_alerts)})
                 all_alerts.extend(site_alerts)
+
+        if not all_alerts:
+            # Flat API format: findings['alerts'] is already a list of alert dicts
+            all_alerts = findings.get('alerts', [])
 
         self.debug(f"Extracted {len(all_alerts)} alerts from {len(sites)} site(s)")
 
@@ -933,8 +930,12 @@ class ZapPlugin(KastPlugin):
         code_fix_count = 0
 
         for alert in all_alerts:
-            riskcode = alert.get('riskcode', '0')
-            risk = risk_map.get(str(riskcode), alert.get('risk', 'Informational'))
+            # API format has 'risk' as text; file-report format has 'riskcode' as numeric string
+            riskcode = alert.get('riskcode')
+            if riskcode is not None:
+                risk = risk_map.get(str(riskcode), 'Informational')
+            else:
+                risk = alert.get('risk', 'Informational')
             risk_counts[risk] = risk_counts.get(risk, 0) + 1
 
             alert_name = alert.get('alert', alert.get('name', 'Unknown'))
@@ -945,7 +946,8 @@ class ZapPlugin(KastPlugin):
             issues.append(f"{alert_name} [{risk}]")
 
             # Map to a named kast issue if this rule has a registry entry
-            plugin_id = str(alert.get('pluginid', ''))
+            # API format uses 'pluginId' (camelCase); file-report format uses 'pluginid'
+            plugin_id = str(alert.get('pluginId', alert.get('pluginid', '')))
             kast_issue_id = _ZAP_PLUGINID_TO_KAST_ISSUE.get(plugin_id)
             if kast_issue_id and kast_issue_id not in kast_issues:
                 kast_issues.append(kast_issue_id)
