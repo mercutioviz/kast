@@ -78,18 +78,21 @@ def _key_reader(
 # ZAP API helpers
 # ---------------------------------------------------------------------------
 
-def build_url(base_url: str, path: str, apikey: str, params: dict | None = None) -> str:
+def build_url(path: str, apikey: str, params: dict | None = None) -> str:
+    # ZAP 2.14+ (ExtensionNetwork): API is at http://zap/ via the proxy, not at the proxy port directly.
     query = {"apikey": apikey}
     if params:
         query.update(params)
-    return f"{base_url.rstrip('/')}{path}?{urllib.parse.urlencode(query)}"
+    return f"http://zap{path}?{urllib.parse.urlencode(query)}"
 
 
 def fetch_json(base_url: str, path: str, apikey: str, params: dict | None = None):
-    url = build_url(base_url, path, apikey, params)
+    url = build_url(path, apikey, params)
+    proxy = urllib.request.ProxyHandler({"http": base_url, "https": base_url})
+    opener = urllib.request.build_opener(proxy)
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with opener.open(req, timeout=10) as resp:
             return json.load(resp)
     except urllib.error.HTTPError as e:
         try:
