@@ -146,7 +146,8 @@ class LocalZapProvider(ZapInstanceProvider):
             '-config', 'api.addrs.addr.name=.*',
             '-config', 'api.addrs.addr.regex=true',
             '-config', 'api.filexfer=true',
-            '-config', 'network.localServers.mainProxy.address=0.0.0.0'
+            '-config', 'network.localServers.mainProxy.address=0.0.0.0',
+            '-config', 'autoupdate.checkOnStart=false'
         ]
 
         try:

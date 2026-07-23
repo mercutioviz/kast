@@ -310,6 +310,8 @@ class ZAPAPIClient:
         start_time = time.time()
         last_info_count = 0
         scan_start_time = None
+        stalled_cycles = 0
+        last_ascan_pct = None
 
         while time.time() - start_time < timeout:
             progress = self.get_plan_progress(plan_id)
@@ -365,6 +367,38 @@ class ZAPAPIClient:
                 for msg in info[last_info_count:]:
                     self.debug(f"  Progress: {msg}")
                 last_info_count = len(info)
+                stalled_cycles = 0
+            else:
+                # Info list didn't grow — check for a silently crashed automation thread.
+                # If the last message ends with "started", a job began but never finished.
+                last_msg = info[-1] if info else ""
+                if last_msg.endswith("started"):
+                    # Confirm the active scanner isn't legitimately running before counting
+                    # this as a stall — activeScan adds no info entries mid-run, so an
+                    # unchanging info list is normal while ascan is in progress.
+                    ascan_pct = None
+                    try:
+                        ascan_resp = self._make_request('/JSON/ascan/view/status/')
+                        ascan_pct = int(ascan_resp.get('status', 100))
+                    except Exception:
+                        pass
+
+                    if ascan_pct is not None and ascan_pct < 100:
+                        # Active scanner is still in progress — not a stall, reset counter.
+                        stalled_cycles = 0
+                    else:
+                        # ascan is done (100%) or unavailable — a stall is plausible.
+                        stalled_cycles += 1
+                        if stalled_cycles >= 2:
+                            self.debug(
+                                f"Warning: Plan {plan_id} appears stalled — info list unchanged for "
+                                f"{stalled_cycles} consecutive cycles and last message is '{last_msg}'. "
+                                "Automation thread may have crashed silently (e.g. add-on hot-swap). "
+                                "Aborting wait."
+                            )
+                            return False, progress
+
+                    last_ascan_pct = ascan_pct
 
             # Check for warnings
             warnings = progress.get('warn', [])
