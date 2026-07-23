@@ -186,6 +186,18 @@ class ZapPlugin(KastPlugin):
                     }
                 }
             },
+            "spider_type": {
+                "type": "string",
+                "enum": ["traditional", "ajax", "client"],
+                "default": "traditional",
+                "description": (
+                    "Spider type injected into the automation plan at runtime. "
+                    "'traditional': fast HTTP spider, no JS; "
+                    "'ajax': Firefox/Selenium-based, JS-aware; "
+                    "'client': Playwright-based, JS-aware. "
+                    "Falls back to the best available type if the requested one is absent."
+                )
+            },
             "zap_config": {
                 "type": "object",
                 "title": "Common ZAP Settings",
@@ -235,6 +247,12 @@ class ZapPlugin(KastPlugin):
         self.zap_client = None
         self.config = None
         self.instance_info = None
+
+        # Spider selection — set during run(), read by post_process()
+        self._spider_requested = 'traditional'
+        self._spider_used = 'traditional'
+        self._spider_available: set = {'traditional'}
+        self._spider_warning: str | None = None
 
     def setup(self, target, output_dir):
         """Setup before run"""
@@ -373,6 +391,7 @@ class ZapPlugin(KastPlugin):
         # Format: 'nested.key.path' maps to config['nested']['key']['path']
         overrideable_params = [
             'execution_mode',
+            'spider_type',
             'auto_discovery.prefer_local',
             'auto_discovery.check_env_vars',
             'local.docker_image',
@@ -588,6 +607,116 @@ class ZapPlugin(KastPlugin):
             self.debug(f"Error loading automation plan: {e}")
             return None
 
+    def _probe_spider_availability(self) -> set:
+        """
+        Query the live ZAP instance to discover which spider types are available.
+        Traditional spider is always assumed present. Ajax and Client spiders are
+        probed by calling their status endpoints; a 200 response means the add-on
+        is loaded.
+        """
+        available = {'traditional'}
+        probes = {
+            'ajax':   '/JSON/ajaxSpider/view/status/',
+            'client': '/JSON/clientSpider/view/status/',
+        }
+        for spider_type, endpoint in probes.items():
+            try:
+                result = self.zap_client._make_request(endpoint)
+                if isinstance(result, dict) and '_error' not in result:
+                    available.add(spider_type)
+            except Exception:
+                pass
+        self.debug(f"Spider availability: {sorted(available)}")
+        return available
+
+    def _resolve_spider_type(self, requested: str, available: set) -> tuple:
+        """
+        Return (resolved_type, warning_message_or_None).
+        Falls back along client → ajax → traditional if the requested type is absent.
+        """
+        if requested in available:
+            return requested, None
+        fallback_chain = [t for t in ('client', 'ajax', 'traditional')
+                          if t != requested and t in available]
+        if fallback_chain:
+            fallback = fallback_chain[0]
+            warning = (
+                f"Requested spider type '{requested}' is not available in this ZAP instance "
+                f"(available: {sorted(available)}). Falling back to '{fallback}'."
+            )
+            return fallback, warning
+        return 'traditional', (
+            f"Requested spider type '{requested}' is not available. Using traditional spider."
+        )
+
+    def _inject_spider_type(self, plan_content: str, spider_type: str) -> str:
+        """
+        Replace the 'spider' job in the automation plan YAML with the resolved
+        spider type. Preserves maxDuration and maxDepth from the original job so
+        profile timing/depth settings carry through.
+        Returns plan_content unchanged if spider_type is 'traditional' or if no
+        'spider' job is found.
+        """
+        if spider_type == 'traditional':
+            return plan_content
+        try:
+            plan = yaml.safe_load(plan_content)
+            jobs = plan.get('jobs', [])
+            new_jobs = []
+            replaced = False
+            for job in jobs:
+                if job.get('type') == 'spider':
+                    orig = job.get('parameters', {})
+                    max_dur = orig.get('maxDuration', 5)
+                    max_depth = orig.get('maxDepth', 5)
+                    context = orig.get('context')
+
+                    if spider_type == 'ajax':
+                        new_job = {
+                            'type': 'ajaxSpider',
+                            'parameters': {
+                                'browserId': 'firefox-headless',
+                                'maxDuration': max_dur,
+                                'maxCrawlDepth': max_depth,
+                                'maxCrawlStates': 0,
+                                'clickDefaultElems': True,
+                                'clickElemsOnce': True,
+                                'randomInputs': True,
+                            },
+                        }
+                    else:  # client
+                        new_job = {
+                            'type': 'spiderClient',
+                            'parameters': {
+                                'maxDuration': max_dur,
+                            },
+                        }
+
+                    if context:
+                        new_job['parameters']['context'] = context
+
+                    new_jobs.append(new_job)
+                    replaced = True
+                    self.debug(
+                        f"Injected {spider_type} spider "
+                        f"(maxDuration={max_dur}, maxDepth/Crawl={max_depth})"
+                    )
+                else:
+                    new_jobs.append(job)
+
+            if not replaced:
+                self.debug(
+                    f"Warning: No 'spider' job found in plan to replace with '{spider_type}'"
+                )
+                return plan_content
+
+            plan['jobs'] = new_jobs
+            return yaml.dump(plan, default_flow_style=False, allow_unicode=True)
+
+        except Exception as e:
+            self.debug(f"Warning: Spider injection failed ({e}). Using plan as-is.")
+            return plan_content
+
     def run(self, target, output_dir, report_only):
         """Run ZAP scan using appropriate provider"""
         self.setup(target, output_dir)
@@ -694,6 +823,20 @@ class ZapPlugin(KastPlugin):
 
             self.debug(f"ZAP instance ready: {self.instance_info}")
 
+            # Probe spider availability and resolve requested type
+            self._spider_requested = self.config.get('spider_type', 'traditional')
+            self._spider_available = self._probe_spider_availability()
+            self._spider_used, self._spider_warning = self._resolve_spider_type(
+                self._spider_requested, self._spider_available
+            )
+            if self._spider_warning:
+                self.debug(f"WARNING: {self._spider_warning}")
+            self.debug(
+                f"Spider: requested='{self._spider_requested}', "
+                f"used='{self._spider_used}', "
+                f"available={sorted(self._spider_available)}"
+            )
+
             # Determine if using automation framework based on mode config
             mode_config = self.config.get(provider_mode, {})
             use_automation = mode_config.get('use_automation_framework', True)
@@ -710,6 +853,9 @@ class ZapPlugin(KastPlugin):
                     self.debug(f"ERROR: {error_msg}")
                     self._cleanup_on_failure()
                     return self.get_result_dict("fail", error_msg, timestamp)
+
+                # Inject resolved spider type into the plan
+                automation_plan = self._inject_spider_type(automation_plan, self._spider_used)
 
                 # Substitute target URL in the plan
                 plan_with_target = automation_plan.replace('${TARGET_URL}', target)
@@ -792,9 +938,13 @@ class ZapPlugin(KastPlugin):
             with open(local_report) as f:
                 results = json.load(f)
 
-            # Add provider info to results
+            # Add provider and spider info to results
             results['provider_mode'] = provider_mode
             results['instance_info'] = self.instance_info
+            results['spider_type_requested'] = self._spider_requested
+            results['spider_type_used'] = self._spider_used
+            results['spider_type_available'] = sorted(self._spider_available)
+            results['spider_warning'] = self._spider_warning
 
             # Cleanup
             self.debug("Cleaning up...")
@@ -888,6 +1038,13 @@ class ZapPlugin(KastPlugin):
         provider_mode = findings.get('provider_mode', 'unknown')
         instance_info = findings.get('instance_info', {})
 
+        # Spider resolution — prefer values stored in findings (from run()); fall back to
+        # instance variables for the case where run() completed on this same instance.
+        spider_requested = findings.get('spider_type_requested', self._spider_requested)
+        spider_used = findings.get('spider_type_used', self._spider_used)
+        spider_available = findings.get('spider_type_available', sorted(self._spider_available))
+        spider_warning = findings.get('spider_warning', self._spider_warning)
+
         # Extract alerts. Two formats are in use:
         # - Old ZAP XML/file-report format: findings['site'] list, each with nested 'alerts'
         # - New API format (core/view/alerts): findings['alerts'] flat list
@@ -956,24 +1113,40 @@ class ZapPlugin(KastPlugin):
         findings_count = total = sum(risk_counts.values())
 
         # Build summary
+        spider_label = spider_used
+        if spider_requested != spider_used:
+            spider_label = f"{spider_used} (requested: {spider_requested})"
+
         if total == 0:
-            summary = "No vulnerabilities detected"
-            executive_summary = f"ZAP scan completed using {provider_mode} mode. No security issues found."
+            summary = f"No vulnerabilities detected (spider: {spider_label})"
+            executive_summary = (
+                f"ZAP scan completed using {provider_mode} mode with {spider_used} spider. "
+                "No security issues found."
+            )
         else:
             summary = (
                 f"Found {total} issues: {risk_counts['High']} High, "
                 f"{risk_counts['Medium']} Medium, {risk_counts['Low']} Low — "
-                f"{waf_addressable_count} WAF-addressable, {code_fix_count} require code fix"
+                f"{waf_addressable_count} WAF-addressable, {code_fix_count} require code fix "
+                f"(spider: {spider_label})"
             )
             executive_summary = (
-                f"ZAP scan ({provider_mode} mode) identified {total} security findings. "
+                f"ZAP scan ({provider_mode} mode, {spider_used} spider) identified {total} security findings. "
                 f"{waf_addressable_count} of {total} are directly addressable by a WAF."
             )
+            if spider_warning:
+                executive_summary += f" Note: {spider_warning}"
 
         self.debug(f"{self.name} findings_count: {findings_count}")
 
         # Build details with per-site breakdown
         details = f"Execution Mode: {provider_mode}\n"
+        details += f"Spider Type: {spider_used}"
+        if spider_requested != spider_used:
+            details += f" (requested: {spider_requested})"
+        details += "\n"
+        if spider_warning:
+            details += f"Spider Warning: {spider_warning}\n"
         details += f"Total Alerts: {total}\n"
         details += f"Sites Scanned: {len(sites)}\n\n"
 
@@ -1007,6 +1180,9 @@ class ZapPlugin(KastPlugin):
             "waf_addressable_count": waf_addressable_count,
             "code_fix_count": code_fix_count,
             "zap_kast_issues": kast_issues,  # registry IDs for TCO + WAF framing
+            "spider_type_requested": spider_requested,
+            "spider_type_used": spider_used,
+            "spider_type_available": spider_available,
         }
 
         processed_path = os.path.join(output_dir, f"{self.name}_processed.json")

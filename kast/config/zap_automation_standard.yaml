@@ -1,6 +1,7 @@
 # OWASP ZAP Automation Framework Plan - STANDARD Profile
-# Balanced scan for regular development security testing
-# Estimated duration: ~45 minutes
+# Balanced scan for regular security assessments.
+# Spider type is injected at runtime via --set zap.spider_type=traditional|ajax|client
+# Estimated duration: ~45-60 minutes
 
 env:
   contexts:
@@ -18,50 +19,51 @@ env:
     progressToStdout: true
 
 jobs:
-  # Standard spider scan
-  - type: "spiderClient"
+  # Spider — depth and duration doubled vs quick; type injected at runtime
+  - type: "spider"
     parameters:
-      maxDuration: 10  # 10 minutes
-      maxDepth: 5      # Medium depth
+      context: "target-context"
+      maxDuration: 10
+      maxDepth: 10
       maxChildren: 0
       acceptCookies: true
       handleODataParametersVisited: false
       parseComments: true
-      parseGit: true
+      parseGit: false
       parseRobotsTxt: true
       parseSitemapXml: true
-      parseSVNEntries: true
+      parseSVNEntries: false
       postForm: true
       processForm: true
       requestWaitTime: 200
       sendRefererHeader: true
-      threadCount: 2
+      threadCount: 4
 
-  # Passive scan
+  # Passive scan configuration — more alerts per rule than quick
   - type: "passiveScan-config"
     parameters:
       maxAlertsPerRule: 10
       scanOnlyInScope: true
       enableTags: false
 
+  # Wait for passive scan to complete
   - type: "passiveScan-wait"
     parameters:
       maxDuration: 10
 
-  # Standard active scan
+  # Active scan — longer per-rule and total budget, query params enabled
   - type: "activeScan"
     parameters:
       context: "target-context"
       policy: "Default Policy"
-      maxRuleDurationInMins: 5
-      maxScanDurationInMins: 30  # 30 minutes
-      addQueryParam: false
-      defaultPolicy: ""
+      maxRuleDurationInMins: 10
+      maxScanDurationInMins: 45
+      addQueryParam: true
       delayInMs: 0
       handleAntiCSRFTokens: true
       injectPluginIdInHeader: false
       scanHeadersAllRequests: true
-      threadPerHost: 2
+      threadPerHost: 4
 
   # Generate report
   - type: "report"
@@ -70,5 +72,5 @@ jobs:
       reportDir: "/tmp"
       reportFile: "zap_report.json"
       reportTitle: "KAST ZAP Standard Scan"
-      reportDescription: "Balanced security scan for development testing"
+      reportDescription: "Standard security assessment scan"
       displayReport: false
