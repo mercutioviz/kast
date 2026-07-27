@@ -143,7 +143,7 @@ class ZAPAPIClient:
             self._make_request(
                 '/JSON/core/action/newSession/',
                 method='POST',
-                params={'overwrite': 'true'},
+                data={'overwrite': 'true'},
             )
             self.debug("ZAP session reset — previous scan data cleared")
             return True
