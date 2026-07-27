@@ -123,6 +123,7 @@ class LocalZapProvider(ZapInstanceProvider):
         api_port = local_config.get('api_port', 8080)
         api_key = local_config.get('api_key', 'kast-local')
         self.container_name = local_config.get('container_name', 'kast-zap-local')
+        memory_limit = local_config.get('memory_limit', '')
 
         # Create temporary directories for ZAP
         self.temp_config_dir = Path(output_dir) / 'zap_config'
@@ -140,6 +141,11 @@ class LocalZapProvider(ZapInstanceProvider):
             '-p', f'{api_port}:8080',
             '-v', f'{self.temp_config_dir}:/zap/config',
             '-v', f'{reports_dir}:/zap/reports',
+        ]
+        if memory_limit:
+            cmd += ['--memory', memory_limit]
+            self.debug(f"ZAP container memory limit: {memory_limit}")
+        cmd += [
             docker_image,
             'zap.sh', '-daemon', '-port', '8080',
             '-config', f'api.key={api_key}',

@@ -150,6 +150,11 @@ class ZapPlugin(KastPlugin):
                         "type": "boolean",
                         "default": True,
                         "description": "Use ZAP automation framework vs direct API"
+                    },
+                    "memory_limit": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Docker memory limit for the ZAP container (e.g. '2g', '512m'). Empty string = no limit."
                     }
                 }
             },
@@ -400,6 +405,7 @@ class ZapPlugin(KastPlugin):
             'local.container_name',
             'local.cleanup_on_completion',
             'local.use_automation_framework',
+            'local.memory_limit',
             'remote.api_url',
             'remote.api_key',
             'remote.timeout_seconds',
