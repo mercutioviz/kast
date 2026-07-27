@@ -679,7 +679,7 @@ class ZapPlugin(KastPlugin):
 
                     if spider_type == 'ajax':
                         new_job = {
-                            'type': 'ajaxSpider',
+                            'type': 'spiderAjax',
                             'parameters': {
                                 'browserId': 'firefox-headless',
                                 'maxDuration': max_dur,
