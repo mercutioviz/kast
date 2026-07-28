@@ -373,21 +373,28 @@ class ZAPAPIClient:
                 # If the last message ends with "started", a job began but never finished.
                 last_msg = info[-1] if info else ""
                 if last_msg.endswith("started"):
-                    # Confirm the active scanner isn't legitimately running before counting
-                    # this as a stall — activeScan adds no info entries mid-run, so an
-                    # unchanging info list is normal while ascan is in progress.
+                    # Confirm no long-running scan job is still active before counting
+                    # as a stall. Both spiderAjax and activeScan run silently without
+                    # adding info entries mid-run, so an unchanging info list is normal
+                    # while either is in progress.
                     ascan_pct = None
+                    ajax_running = False
                     try:
                         ascan_resp = self._make_request('/JSON/ascan/view/status/')
                         ascan_pct = int(ascan_resp.get('status', 100))
                     except Exception:
                         pass
+                    try:
+                        ajax_resp = self._make_request('/JSON/ajaxSpider/view/status/')
+                        ajax_running = ajax_resp.get('status', 'stopped') == 'running'
+                    except Exception:
+                        pass
 
-                    if ascan_pct is not None and ascan_pct < 100:
-                        # Active scanner is still in progress — not a stall, reset counter.
+                    if (ascan_pct is not None and ascan_pct < 100) or ajax_running:
+                        # A long-running scan job is legitimately in progress — not a stall.
                         stalled_cycles = 0
                     else:
-                        # ascan is done (100%) or unavailable — a stall is plausible.
+                        # No active scan running — a stall is plausible.
                         stalled_cycles += 1
                         if stalled_cycles >= 2:
                             self.debug(
