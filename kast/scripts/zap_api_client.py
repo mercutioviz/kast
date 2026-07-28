@@ -373,39 +373,39 @@ class ZAPAPIClient:
                 # If the last message ends with "started", a job began but never finished.
                 last_msg = info[-1] if info else ""
                 if last_msg.endswith("started"):
-                    # Confirm no long-running scan job is still active before counting
-                    # as a stall. Both spiderAjax and activeScan run silently without
-                    # adding info entries mid-run, so an unchanging info list is normal
-                    # while either is in progress.
-                    ascan_pct = None
-                    ajax_running = False
-                    try:
-                        ascan_resp = self._make_request('/JSON/ascan/view/status/')
-                        ascan_pct = int(ascan_resp.get('status', 100))
-                    except Exception:
-                        pass
-                    try:
-                        ajax_resp = self._make_request('/JSON/ajaxSpider/view/status/')
-                        ajax_running = ajax_resp.get('status', 'stopped') == 'running'
-                    except Exception:
-                        pass
-
-                    if (ascan_pct is not None and ascan_pct < 100) or ajax_running:
-                        # A long-running scan job is legitimately in progress — not a stall.
+                    if "spiderAjax" in last_msg:
+                        # spiderAjax invoked via an automation plan uses an internal
+                        # ZAP code path (SpiderThread/DummyPlugin) that never updates
+                        # ajaxSpider/view/status/. That endpoint returns 'stopped'
+                        # throughout the entire crawl, making it useless as a liveness
+                        # signal here. Stall detection for this job would always false-fire;
+                        # rely on the caller-supplied timeout to catch genuine crashes.
                         stalled_cycles = 0
                     else:
-                        # No active scan running — a stall is plausible.
-                        stalled_cycles += 1
-                        if stalled_cycles >= 2:
-                            self.debug(
-                                f"Warning: Plan {plan_id} appears stalled — info list unchanged for "
-                                f"{stalled_cycles} consecutive cycles and last message is '{last_msg}'. "
-                                "Automation thread may have crashed silently (e.g. add-on hot-swap). "
-                                "Aborting wait."
-                            )
-                            return False, progress
+                        # For all other silent jobs (e.g. activeScan), check whether the
+                        # active scanner is still making progress before counting a stall.
+                        ascan_pct = None
+                        try:
+                            ascan_resp = self._make_request('/JSON/ascan/view/status/')
+                            ascan_pct = int(ascan_resp.get('status', 100))
+                        except Exception:
+                            pass
 
-                    last_ascan_pct = ascan_pct
+                        if ascan_pct is not None and ascan_pct < 100:
+                            stalled_cycles = 0
+                        else:
+                            stalled_cycles += 1
+                            if stalled_cycles >= 2:
+                                self.debug(
+                                    f"Warning: Plan {plan_id} appears stalled — info list unchanged for "
+                                    f"{stalled_cycles} consecutive cycles and last message is '{last_msg}'. "
+                                    "Automation thread may have crashed silently (e.g. add-on hot-swap). "
+                                    "Aborting wait."
+                                )
+                                self._try_cancel_plan(plan_id)
+                                return False, progress
+
+                        last_ascan_pct = ascan_pct
 
             # Check for warnings
             warnings = progress.get('warn', [])
@@ -419,6 +419,30 @@ class ZAPAPIClient:
 
         self.debug(f"Timeout waiting for plan {plan_id} completion")
         return False, None
+
+    def _try_cancel_plan(self, plan_id):
+        """Best-effort cleanup after stall detection. Tries to stop any running
+        active scan, then attempts automation/action/endPlan if available.
+        Logs a warning if ZAP has no cancel API so the operator knows the plan
+        is still running server-side."""
+        try:
+            self._make_request('/JSON/ascan/action/stop/', method='POST', data={})
+            self.debug("Sent ascan stop request after stall detection")
+        except Exception:
+            pass
+        try:
+            self._make_request(
+                '/JSON/automation/action/endPlan/',
+                method='POST',
+                data={'planId': str(plan_id)},
+            )
+            self.debug(f"Sent endPlan request for plan {plan_id}")
+        except Exception:
+            self.debug(
+                f"WARNING: No endPlan API available — plan {plan_id} may still be running "
+                "on the ZAP server. A newSession call or container restart is recommended "
+                "before the next scan."
+            )
 
     def get_json_report(self):
         """
