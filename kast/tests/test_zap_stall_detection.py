@@ -123,6 +123,31 @@ class TestStallDetection(unittest.TestCase):
         self.assertTrue(success)
         client._try_cancel_plan.assert_not_called()
 
+    def test_spider_client_no_stall(self):
+        """spiderClient job sitting at 'started' must not trigger stall (same fix as spiderAjax)."""
+        client = self._make_client()
+
+        poll_responses = [
+            self._build_progress([]),
+            self._build_progress(['Job spiderClient started']),
+            self._build_progress(['Job spiderClient started']),
+            self._build_progress(['Job spiderClient started']),
+            self._build_progress(
+                ['Job spiderClient started', 'Job spiderClient finished, time taken: 00:02:00'],
+                finished='2026-01-01T00:02:01Z',
+            ),
+        ]
+
+        with patch.object(client, '_make_request', side_effect=[
+            p for p in poll_responses
+        ]), patch('time.sleep'):
+            success, progress = client.wait_for_plan_completion(
+                plan_id=0, timeout=3600, poll_interval=30
+            )
+
+        self.assertTrue(success, "spiderClient scan should complete successfully")
+        client._try_cancel_plan.assert_not_called()
+
     def test_no_stall_when_info_grows(self):
         """Stall counter must reset whenever info list grows, regardless of job type."""
         client = self._make_client()

@@ -373,12 +373,12 @@ class ZAPAPIClient:
                 # If the last message ends with "started", a job began but never finished.
                 last_msg = info[-1] if info else ""
                 if last_msg.endswith("started"):
-                    if "spiderAjax" in last_msg:
-                        # spiderAjax invoked via an automation plan uses an internal
-                        # ZAP code path (SpiderThread/DummyPlugin) that never updates
-                        # ajaxSpider/view/status/. That endpoint returns 'stopped'
-                        # throughout the entire crawl, making it useless as a liveness
-                        # signal here. Stall detection for this job would always false-fire;
+                    if "spiderAjax" in last_msg or "spiderClient" in last_msg:
+                        # Both spider job types (spiderAjax and spiderClient) invoked via
+                        # an automation plan use internal ZAP code paths that never update
+                        # the standalone spider/ajaxSpider status endpoints, and while the
+                        # spider is running there is no active ascan, so ascan/view/status/
+                        # returns HTTP 400. Neither endpoint is a valid liveness signal here;
                         # rely on the caller-supplied timeout to catch genuine crashes.
                         stalled_cycles = 0
                     else:
