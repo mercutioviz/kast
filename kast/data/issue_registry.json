@@ -1176,5 +1176,92 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-3 days",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "Cross-Domain Misconfiguration [Medium]": {
+    "display_name": "Cross-Domain Misconfiguration (CORS)",
+    "description": "ZAP detected overly permissive cross-origin resource sharing (CORS) headers. A misconfigured CORS policy can allow malicious websites to make authenticated requests to the application on behalf of a logged-in user, leaking sensitive data or performing unauthorized actions.",
+    "remediation": "Restrict the Access-Control-Allow-Origin header to explicitly trusted domains and avoid wildcards for credentialed requests. A WAF can enforce CORS policy by stripping or overriding permissive CORS headers before they reach the client.",
+    "severity": "Medium",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "Retrieved from Cache [Informational]": {
+    "display_name": "Response Served from Cache",
+    "description": "ZAP observed that one or more responses were served from a caching layer rather than the origin server. If sensitive pages (account data, session-specific content) are cached without proper Cache-Control directives, cached responses may be served to unintended parties by intermediate proxies or CDNs.",
+    "remediation": "Add Cache-Control: no-store, private directives to responses containing sensitive or session-specific content. A WAF can inject appropriate cache-control headers for protected routes to prevent sensitive data from being cached downstream.",
+    "severity": "Informational",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "Timestamp Disclosure - Unix [Low]": {
+    "display_name": "Unix Timestamp Disclosure",
+    "description": "The application discloses Unix timestamps in HTTP responses or response bodies. While not directly exploitable, timestamp leakage reveals internal server timing, last-modified dates, and session token generation patterns that can assist attackers in timing-based attacks or reconnaissance.",
+    "remediation": "Avoid exposing raw Unix timestamps in public-facing responses; use relative times or omit timestamp data entirely. A WAF can strip or mask timestamp values in responses before they reach the client.",
+    "severity": "Low",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "Loosely Scoped Cookie [Informational]": {
+    "display_name": "Loosely Scoped Cookie",
+    "description": "One or more cookies are scoped to a parent domain (e.g., .example.com) rather than a specific subdomain. If any subdomain of the same root domain is compromised — through XSS or a subdomain takeover — an attacker can read or overwrite these cookies, potentially hijacking sessions.",
+    "remediation": "Scope session and authentication cookies to the most specific domain required. A WAF can rewrite outbound Set-Cookie headers to enforce strict domain and path scoping.",
+    "severity": "Informational",
+    "category": "Authentication",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "Information Disclosure - Information in Browser localStorage [Informational]": {
+    "display_name": "Sensitive Data in Browser localStorage",
+    "description": "The application stores potentially sensitive information in the browser's localStorage. Unlike cookies, localStorage is not transmitted to the server automatically, but it is accessible to any JavaScript running on the same origin — including injected scripts from an XSS vulnerability. Sensitive tokens or PII stored in localStorage are at risk if the application is susceptible to cross-site scripting.",
+    "remediation": "Avoid storing sensitive tokens, credentials, or PII in localStorage. Use httpOnly cookies for session tokens, which are inaccessible to JavaScript. A WAF with XSS protection reduces the risk that injected scripts can access localStorage data, but the root fix requires moving storage to httpOnly cookies.",
+    "severity": "Informational",
+    "category": "Information Disclosure",
+    "waf_addressable": false,
+    "remediation_approach": "code",
+    "code_fix_timeframe": "1-2 weeks"
+  },
+  "User Agent Fuzzer [Informational]": {
+    "display_name": "User Agent Dependent Behavior",
+    "description": "ZAP detected that the application returns different responses depending on the HTTP User-Agent header. This may indicate client-side feature detection, mobile redirect logic, or inconsistent bot-detection checks. Differences in behavior based on User-Agent can reveal hidden endpoints, bypass rate limiting, or expose alternative code paths that have not been hardened to the same standard as the primary flow.",
+    "remediation": "Ensure security controls (authentication, rate limiting, input validation) are applied consistently regardless of the User-Agent header. A WAF provides uniform bot detection and rate limiting across all client types, and can normalize User-Agent-based routing to prevent bypass.",
+    "severity": "Informational",
+    "category": "Access Control",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-2 weeks",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "Server Leaks Version Information via \"Server\" HTTP Response Header Field [Low]": {
+    "display_name": "Server Version Disclosure via HTTP Header",
+    "description": "The HTTP Server response header reveals the web server software name and version (e.g., Apache/2.4.51 or nginx/1.18.0). Attackers use this fingerprint to look up known CVEs for the specific version and target unpatched vulnerabilities without performing additional reconnaissance.",
+    "remediation": "Configure the web server to suppress or genericize the Server header. A WAF can strip or replace the Server header in all outbound responses, immediately eliminating this fingerprinting vector without requiring server configuration changes.",
+    "severity": "Low",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "1-2 days",
+    "waf_deployment_timeframe": "hours"
+  },
+  "Private IP Disclosure [Low]": {
+    "display_name": "Private IP Address Disclosure",
+    "description": "The application is leaking internal/private IP addresses in HTTP response headers, error messages, or response bodies. Private IP addresses reveal the internal network topology and infrastructure layout, giving attackers a map of backend systems that are normally hidden behind load balancers or reverse proxies.",
+    "remediation": "Audit response headers and error pages to remove internal IP references. A WAF can scan outbound responses for RFC 1918 address patterns and strip or redact them before they reach the client.",
+    "severity": "Low",
+    "category": "Information Disclosure",
+    "waf_addressable": true,
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }
