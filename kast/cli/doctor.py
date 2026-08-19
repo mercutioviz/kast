@@ -633,6 +633,65 @@ def check_issue_registry() -> CheckResult:
         )
 
 
+def check_registry_severities(registry_path: Path | None = None) -> CheckResult:
+    """Every registry severity must parse to a real Severity member.
+
+    A hand-written severity the enum doesn't know silently becomes
+    "Unknown" — it loses its badge colour and sorts below Informational
+    in the report. That happened to the five Critical entries before
+    Critical was a member, so it fails loudly here now.
+    """
+    from kast.core.severity import Severity
+
+    if registry_path is None:
+        registry_path = Path(__file__).resolve().parent.parent / "data" / "issue_registry.json"
+    if not registry_path.exists():
+        return CheckResult(
+            section="Issue Registry",
+            name="severity values",
+            status=INFO,
+            detail="skipped — registry not found",
+        )
+    try:
+        data = json.loads(registry_path.read_text())
+    except json.JSONDecodeError:
+        return CheckResult(
+            section="Issue Registry",
+            name="severity values",
+            status=INFO,
+            detail="skipped — registry did not parse",
+        )
+
+    unrecognized: dict[str, list[str]] = {}
+    for issue_id, entry in data.items():
+        raw = (entry or {}).get("severity")
+        if Severity.from_registry(raw) is Severity.UNKNOWN and raw != Severity.UNKNOWN.value:
+            unrecognized.setdefault(str(raw), []).append(issue_id)
+
+    if not unrecognized:
+        valid = ", ".join(s.value for s in Severity if s is not Severity.UNKNOWN)
+        return CheckResult(
+            section="Issue Registry",
+            name="severity values",
+            status=OK,
+            detail=f"all {len(data)} entries use a known severity ({valid})",
+        )
+
+    offenders = "; ".join(
+        f"{raw!r} ({len(ids)}: {', '.join(sorted(ids)[:3])}"
+        f"{'...' if len(ids) > 3 else ''})"
+        for raw, ids in sorted(unrecognized.items())
+    )
+    return CheckResult(
+        section="Issue Registry",
+        name="severity values",
+        status=FAIL,
+        detail=f"unrecognized severity: {offenders}",
+        hint="These render as 'Unknown' and sort last. Fix the registry value "
+             "or add the severity to kast/core/severity.py.",
+    )
+
+
 def check_katana_browser() -> CheckResult:
     """Verify katana's bundled Chromium is cached for headless crawling."""
     cache_dir = Path.home() / ".cache" / "rod" / "browser"
@@ -895,6 +954,7 @@ CHECKS: list[Callable[[], CheckResult | list[CheckResult]]] = [
     check_results_dir,
     check_config_files,
     check_issue_registry,
+    check_registry_severities,
     check_plugin_loading,
     check_tested_versions,
 ]

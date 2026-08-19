@@ -30,6 +30,7 @@ from kast.report_templates import get_issue_metadata
 
 # Severity order used for the delta table, highest first.
 SEVERITY_ORDER = [
+    Severity.CRITICAL.value,
     Severity.HIGH.value,
     Severity.MEDIUM.value,
     Severity.LOW.value,

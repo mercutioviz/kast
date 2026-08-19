@@ -140,12 +140,14 @@ def calculate_waf_statistics(all_issues):
             "waf_addressable_count": 0,
             "waf_addressable_percentage": 0,
             "non_waf_count": 0,
+            "critical_severity_waf": 0,
             "high_severity_waf": 0,
             "medium_severity_waf": 0,
             "low_severity_waf": 0,
         }
 
     waf_addressable = 0
+    critical_severity_waf = 0
     high_severity_waf = 0
     medium_severity_waf = 0
     low_severity_waf = 0
@@ -159,7 +161,9 @@ def calculate_waf_statistics(all_issues):
             continue
         waf_addressable += 1
         severity = Severity.from_registry(issue.get("severity", Severity.UNKNOWN.value))
-        if severity is Severity.HIGH:
+        if severity is Severity.CRITICAL:
+            critical_severity_waf += 1
+        elif severity is Severity.HIGH:
             high_severity_waf += 1
         elif severity is Severity.MEDIUM:
             medium_severity_waf += 1
@@ -171,6 +175,7 @@ def calculate_waf_statistics(all_issues):
         "waf_addressable_count": waf_addressable,
         "waf_addressable_percentage": round(waf_addressable / total * 100, 1),
         "non_waf_count": total - waf_addressable,
+        "critical_severity_waf": critical_severity_waf,
         "high_severity_waf": high_severity_waf,
         "medium_severity_waf": medium_severity_waf,
         "low_severity_waf": low_severity_waf,

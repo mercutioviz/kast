@@ -21,6 +21,7 @@ from kast.cli.doctor import (
     check_issue_registry,
     check_plugin_loading,
     check_python_version,
+    check_registry_severities,
     check_results_dir,
     doctor,
 )
@@ -41,6 +42,26 @@ def test_issue_registry_loads():
     assert result.status == OK
     # Detail should report the entry count
     assert "entries" in result.detail
+
+
+def test_registry_severities_all_recognized():
+    """Every shipped registry severity must map to a real Severity member."""
+    result = check_registry_severities()
+    assert result.status == OK, result.detail
+
+
+def test_registry_severities_flags_unrecognized(tmp_path):
+    """A severity the enum doesn't know is a hard fail, not a silent Unknown."""
+    bogus = tmp_path / "issue_registry.json"
+    bogus.write_text(json.dumps({
+        "good-issue": {"severity": "Critical"},
+        "bad-issue": {"severity": "Catastrophic"},
+    }))
+    result = check_registry_severities(bogus)
+
+    assert result.status == FAIL
+    assert "Catastrophic" in result.detail
+    assert "bad-issue" in result.detail
 
 
 def test_plugin_loading_passes():

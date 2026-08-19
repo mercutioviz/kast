@@ -112,9 +112,9 @@
             <div class="waf-stat-card waf-high">
                 <div class="stat-icon">🔴</div>
                 <div class="stat-content">
-                    <div class="stat-number">{{ scan_metadata.waf_statistics.high_severity_waf }}</div>
-                    <div class="stat-label">High Severity (WAF)</div>
-                    <div class="stat-sublabel">Immediate protection available</div>
+                    <div class="stat-number">{{ scan_metadata.waf_statistics.critical_severity_waf + scan_metadata.waf_statistics.high_severity_waf }}</div>
+                    <div class="stat-label">Critical &amp; High Severity (WAF)</div>
+                    <div class="stat-sublabel">{% if scan_metadata.waf_statistics.critical_severity_waf %}{{ scan_metadata.waf_statistics.critical_severity_waf }} critical — immediate protection available{% else %}Immediate protection available{% endif %}</div>
                 </div>
             </div>
             
@@ -207,6 +207,15 @@
     <div class="issues-header-container">
         <h2><span class="section-icon">⚠️</span> Issues Found</h2>
         <div id="severity-navigation" class="severity-badges">
+            {% if scan_metadata.severity_counts.Critical and scan_metadata.severity_counts.Critical > 0 %}
+            <a href="#critical-issues" class="severity-badge severity-badge-critical" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <span class="badge-icon">🛑</span>
+                <div class="badge-content">
+                    <span class="badge-count">{{ scan_metadata.severity_counts.Critical }}</span>
+                    <span class="badge-label">Critical</span>
+                </div>
+            </a>
+            {% endif %}
             <a href="#high-issues" class="severity-badge severity-badge-high" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <span class="badge-icon">🔴</span>
                 <div class="badge-content">
@@ -247,7 +256,7 @@
         </div>
     </div>
 
-    {% set severity_levels = ['High', 'Medium', 'Low', 'Informational', 'Unknown'] %}
+    {% set severity_levels = ['Critical', 'High', 'Medium', 'Low', 'Informational', 'Unknown'] %}
     {% for severity in severity_levels %}
         {% set severity_issues = issues | selectattr('severity', 'equalto', severity) | list %}
         {% if severity_issues %}

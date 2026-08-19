@@ -16,6 +16,7 @@ import urllib3
 
 from kast.core.atomic import write_json_atomic
 from kast.plugins.base import KastPlugin
+from kast.report_templates import get_severity
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -48,18 +49,6 @@ _ISSUE_LABELS = {
     "cors-credentials-with-wildcard": "Wildcard ACAO with Credentials (misconfigured)",
     "cors-wildcard-origin": "Wildcard ACAO",
     "jsonp-endpoint-detected": "JSONP Endpoint Detected",
-}
-
-_ISSUE_SEVERITY = {
-    "cors-credentials-with-reflected-origin": "Critical",
-    "cors-arbitrary-origin-reflected": "High",
-    "cors-bypass-subdomain": "High",
-    "cors-bypass-suffix": "High",
-    "cors-null-origin-allowed": "Medium",
-    "cors-bypass-http-downgrade": "Medium",
-    "cors-credentials-with-wildcard": "Medium",
-    "cors-wildcard-origin": "Low",
-    "jsonp-endpoint-detected": "Medium",
 }
 
 _SEVERITY_COLORS = {
@@ -381,7 +370,7 @@ class CorsAnalyzerPlugin(KastPlugin):
             )
         worst = issues[0]
         label = _ISSUE_LABELS.get(worst, worst)
-        severity = _ISSUE_SEVERITY.get(worst, "Medium")
+        severity = get_severity(worst)
 
         if worst == "cors-credentials-with-reflected-origin":
             return (
@@ -478,7 +467,7 @@ class CorsAnalyzerPlugin(KastPlugin):
                     "</tr></thead><tbody>",
                 ]
                 for f in all_policy:
-                    sev = _ISSUE_SEVERITY.get(f["issue_type"], "Medium")
+                    sev = get_severity(f["issue_type"])
                     color = _SEVERITY_COLORS.get(sev, "#383d41")
                     label = _ISSUE_LABELS.get(f["issue_type"], f["issue_type"])
                     cred = "Yes" if f.get("credentials") else "No"

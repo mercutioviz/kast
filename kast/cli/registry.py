@@ -119,6 +119,7 @@ def registry_list(
     table.add_column("Display Name", style="dim")
 
     severity_color = {
+        "Critical": "bold red",
         "High": "red",
         "Medium": "yellow",
         "Low": "blue",

@@ -356,6 +356,7 @@ def scan_show(scan_dir: str, json_output: bool) -> None:
 
 
 _SEVERITY_COLORS = {
+    "Critical": "bold red",
     "High": "red",
     "Medium": "yellow",
     "Low": "cyan",

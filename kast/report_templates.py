@@ -39,7 +39,7 @@ def get_severity(issue_id):
     """
     Returns the canonical severity string for a given issue ID.
 
-    Always returns one of "High", "Medium", "Low", "Informational", "Unknown"
+    Always returns one of "Critical", "High", "Medium", "Low", "Informational", "Unknown"
     via the Severity enum's normalization. The historical "Info" spelling
     and the "Issue ID not found." sentinel are normalized to canonical
     values; downstream code (report builder, templates) sees one vocabulary.

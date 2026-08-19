@@ -31,6 +31,7 @@ class Severity(StrEnum):
     "Severity.HIGH".
     """
 
+    CRITICAL = "Critical"
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"
@@ -45,7 +46,8 @@ class Severity(StrEnum):
         """Parse a severity value with normalization.
 
         Accepts:
-        - Canonical values: "High", "Medium", "Low", "Informational", "Unknown"
+        - Canonical values: "Critical", "High", "Medium", "Low",
+          "Informational", "Unknown"
         - Legacy "Info" (normalized to INFORMATIONAL — historical mismatch)
         - The legacy "Issue ID not found." sentinel (normalized to UNKNOWN)
         - Already-Severity instances (returned as-is)
@@ -63,11 +65,12 @@ class Severity(StrEnum):
 
 # Sort order for "highest severity first" sorting; lower index = higher.
 SEVERITY_ORDER: dict[Severity, int] = {
-    Severity.HIGH: 0,
-    Severity.MEDIUM: 1,
-    Severity.LOW: 2,
-    Severity.INFORMATIONAL: 3,
-    Severity.UNKNOWN: 4,
+    Severity.CRITICAL: 0,
+    Severity.HIGH: 1,
+    Severity.MEDIUM: 2,
+    Severity.LOW: 3,
+    Severity.INFORMATIONAL: 4,
+    Severity.UNKNOWN: 5,
 }
 
 

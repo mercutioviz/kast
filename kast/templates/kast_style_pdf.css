@@ -124,6 +124,7 @@ body {
     padding: 0.85em;
 }
 
+.severity-box.critical { border-color: #e11d48; }
 .severity-box.high { border-color: #ff6b6b; }
 .severity-box.medium { border-color: #ffa94d; }
 .severity-box.low { border-color: #ffd43b; }
@@ -324,6 +325,7 @@ body {
     page-break-after: avoid;
 }
 
+.severity-heading.critical { color: #9f1239; border-color: #9f1239; }
 .severity-heading.high { color: #c92a2a; border-color: #c92a2a; }
 .severity-heading.medium { color: #e8590c; border-color: #e8590c; }
 .severity-heading.low { color: #e67700; border-color: #e67700; }
@@ -337,6 +339,7 @@ body {
     page-break-inside: avoid;
 }
 
+.issue.critical { border-color: #9f1239; background: #fff1f2; }
 .issue.high { border-color: #c92a2a; background: #fff5f5; }
 .issue.medium { border-color: #e8590c; background: #fff4e6; }
 .issue.low { border-color: #e67700; background: #fff9db; }

@@ -152,11 +152,11 @@ def test_registry_add_invalid_severity_rejected(tmp_registry):
     runner = CliRunner()
     result = runner.invoke(registry_group, [
         "add", "TEST-001",
-        "--severity", "Critical",  # not a canonical severity
+        "--severity", "Catastrophic",  # not a canonical severity
         "--category", "X",
     ])
     assert result.exit_code != 0
-    assert "Invalid value" in result.output or "Critical" in result.output
+    assert "Invalid value" in result.output or "Catastrophic" in result.output
 
 
 # -- registry promote -------------------------------------------------------

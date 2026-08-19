@@ -172,6 +172,11 @@ body > h2, body > h4, body > .issue, body > .tool-section, body > .plugin-execut
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
+.severity-badge-critical {
+  background: linear-gradient(135deg, #fecdd3 0%, #fda4af 100%);
+  border: 2px solid #e11d48;
+}
+
 .severity-badge-high {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   border: 2px solid #fca5a5;
@@ -243,6 +248,11 @@ h2 {
 }
 
 /* Severity-based color coding */
+.issue.severity-critical {
+  background: #fda4af;
+  border: 1px solid #e11d48;
+}
+
 .issue.severity-high {
   background: #fcc;
   border: 1px solid #fcc;

@@ -8,6 +8,52 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.42] — 2026-08-19
+
+### Added
+
+- **`Severity.CRITICAL`** — the issue registry has carried five `Critical`
+  entries since May (`SSLv2`, `cert-expired`, `exposed-env-file`,
+  `exposed-backup-file`, `cors-credentials-with-reflected-origin`), but the
+  enum didn't have the member, so `Severity.from_registry("Critical")`
+  returned `UNKNOWN`. Consequences in shipped reports: the badge read
+  "Unknown"; the findings were excluded from the WAF stats' high/medium/low
+  buckets; and because `severity_sort_key` mapped them to the UNKNOWN index,
+  an exposed `.env` file sorted *below* every Informational finding. The
+  CORS plugin's own widget rendered
+  `cors-credentials-with-reflected-origin` as Critical while the main issue
+  table of the same report called it Unknown.
+
+  CRITICAL now sorts ahead of HIGH and is rendered in the HTML report
+  (severity nav badge, issue section, `.severity-badge-critical`), the PDF
+  report (cover-page count box, `Critical Severity Issues` section), the
+  scan-diff report, `kast scan diff`'s terminal output, and
+  `kast registry list/add`. `calculate_waf_statistics` gained
+  `critical_severity_waf`, and the WAF card now reads "Critical & High
+  Severity (WAF)".
+
+- **`kast doctor` validates registry severities.** `check_registry_severities`
+  fails if any `issue_registry.json` entry carries a severity the `Severity`
+  enum doesn't recognize, naming the offending value and up to three issue
+  IDs. Nothing caught the Critical gap for three months; this does.
+
+### Changed
+
+- **`zap-sql-injection` and `exposed-git-repository` promoted from High to
+  Critical.** SQL injection is reported only after ZAP's *active* scanner
+  confirms it, so it is a demonstrated compromise rather than an inferred
+  risk — it outranks every pre-existing Critical entry on impact. An exposed
+  `.git` directory yields everything `exposed-backup-file` (already Critical)
+  does plus the full commit history, so credentials deleted from the current
+  code remain recoverable; the two were a tier apart for no defensible
+  reason. Both descriptions and the `.git` remediation were extended to say
+  why. Registry severity mix is now Critical 7, High 26, Medium 38, Low 39,
+  Informational 7.
+
+- `cors_analyzer_plugin` reads severity from the registry via
+  `get_severity()` instead of a private `_ISSUE_SEVERITY` dict, removing the
+  second source of truth that let the plugin and the report disagree.
+
 ## [3.0.41] — 2026-08-19
 
 ### Added

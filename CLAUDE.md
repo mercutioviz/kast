@@ -10,7 +10,7 @@ kast-web (at `/home/mscollins/kast-web/`, a separate repo) is the Flask + Celery
 
 **Reliability and reputational safety are first-class concerns.** An SA cannot run a flaky tool in front of a prospect. Active scans must never look like attacks against the prospect's infrastructure.
 
-Current line: kast `v3.0.41` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
+Current line: kast `v3.0.42` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
 
 ## Frozen contracts
 
@@ -25,7 +25,7 @@ Internal refactoring is free as long as these surfaces stay stable.
 
 ## Architecture and patterns
 
-- **Severity enum at `kast/core/severity.py`.** Use `Severity.HIGH | MEDIUM | LOW | INFORMATIONAL | UNKNOWN`; never write bare severity strings. The registry stores `"Informational"`; `Severity.from_registry(value)` normalizes the legacy `"Info"` and the `"Issue ID not found."` sentinel. `severity_counts` dicts and templates key on `"Informational"`. The badge label is rendered as "Info" for brevity — display-only, not a data value.
+- **Severity enum at `kast/core/severity.py`.** Use `Severity.CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL | UNKNOWN`; never write bare severity strings. The registry stores `"Informational"`; `Severity.from_registry(value)` normalizes the legacy `"Info"` and the `"Issue ID not found."` sentinel. `severity_counts` dicts and templates key on `"Informational"`. The badge label is rendered as "Info" for brevity — display-only, not a data value. `kast doctor`'s `check_registry_severities` fails if any registry entry carries a severity the enum doesn't know — that check exists because the five `Critical` entries silently rendered as "Unknown" and sorted below Informational for three months before CRITICAL was added.
 
 - **PluginRegistry at `kast/registry.py`.** Single source of truth for plugin discovery, instantiation, and lookup. Construct one per kast invocation: `registry = PluginRegistry(logger, cli_args=args, config_manager=cm)`. Use `discover()` for classes, `all_instances()` for cached instances (priority-sorted), `get(name)` for one, `filter_by_mode(mode)` for instances filtered by `scan_type`. `ScannerOrchestrator` takes a list of plugin **instances** (not classes); `kast/utils.py:show_dependency_tree(registry, scan_mode, log)` takes a registry.
 

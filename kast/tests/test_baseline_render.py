@@ -185,6 +185,7 @@ def test_waf_statistics_shape():
         "waf_addressable_count",
         "waf_addressable_percentage",
         "non_waf_count",
+        "critical_severity_waf",
         "high_severity_waf",
         "medium_severity_waf",
         "low_severity_waf",

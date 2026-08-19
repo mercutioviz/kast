@@ -202,7 +202,7 @@ class TestComputeDiff(ScanDiffTestCase):
         deltas = diff["summary"]["severity_deltas"]
         self.assertEqual(deltas["High"], -1)
         self.assertEqual(set(deltas),
-                         {"High", "Medium", "Low", "Informational", "Unknown"})
+                         {"Critical", "High", "Medium", "Low", "Informational", "Unknown"})
 
     def test_total_delta(self):
         diff = self._diff(

@@ -14,10 +14,10 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
+from kast.core.severity import Severity
 from kast.plugins.cors_analyzer_plugin import (
     _DEFAULT_PROBE_PATHS,
     _ISSUE_LABELS,
-    _ISSUE_SEVERITY,
     _ISSUE_SEVERITY_ORDER,
     CorsAnalyzerPlugin,
 )
@@ -314,15 +314,17 @@ class TestReportOnlyMode(unittest.TestCase):
 class TestRegistryCoverage(unittest.TestCase):
     """Every issue ID the plugin can emit must be in the registry."""
 
-    def test_all_issue_ids_present_in_registry(self):
+    def _registry(self):
         registry_path = os.path.join(
             os.path.dirname(__file__), "..", "data", "issue_registry.json"
         )
         with open(registry_path) as f:
-            registry = json.load(f)
+            return json.load(f)
 
-        # Every key in _ISSUE_SEVERITY is an ID the plugin can emit.
-        for issue_id in _ISSUE_SEVERITY:
+    def test_all_issue_ids_present_in_registry(self):
+        registry = self._registry()
+        # Every key in _ISSUE_LABELS is an ID the plugin can emit.
+        for issue_id in _ISSUE_LABELS:
             self.assertIn(
                 issue_id, registry,
                 f"Issue '{issue_id}' produced by CorsAnalyzerPlugin is missing from "
@@ -330,8 +332,21 @@ class TestRegistryCoverage(unittest.TestCase):
                 f"as 'Issue ID not found.'",
             )
 
+    def test_registry_severities_are_recognized(self):
+        # The plugin reads severity from the registry via get_severity(), so a
+        # registry value the Severity enum doesn't know would silently render
+        # the finding as "Unknown" in the report.
+        registry = self._registry()
+        for issue_id in _ISSUE_LABELS:
+            raw = registry[issue_id].get("severity")
+            self.assertIsNot(
+                Severity.from_registry(raw), Severity.UNKNOWN,
+                f"Registry severity '{raw}' for '{issue_id}' is not a recognized "
+                f"Severity value.",
+            )
+
     def test_severity_order_covers_all_known_types(self):
-        # Every issue in _ISSUE_SEVERITY should appear in _ISSUE_SEVERITY_ORDER
-        # (otherwise it would lose its preferred ordering position in the issues list).
-        for issue_id in _ISSUE_SEVERITY:
+        # Every emittable issue should appear in _ISSUE_SEVERITY_ORDER (otherwise
+        # it would lose its preferred ordering position in the issues list).
+        for issue_id in _ISSUE_LABELS:
             self.assertIn(issue_id, _ISSUE_SEVERITY_ORDER)
