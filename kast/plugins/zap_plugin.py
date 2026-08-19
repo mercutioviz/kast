@@ -67,6 +67,7 @@ def _is_waf_addressable(alert_name: str) -> bool:
 # in the report alongside the raw alert list, so it gets WAF framing and TCO data.
 _ZAP_PLUGINID_TO_KAST_ISSUE = {
     # Passive rules
+    "3":     "zap-session-id-in-url",         # Session ID in URL Rewrite
     "10062": "zap-pii-disclosure",            # PII Disclosure
     "90022": "zap-application-error-disclosure",  # Application Error Disclosure
     "10023": "zap-application-error-disclosure",  # Information Disclosure - Debug Errors
@@ -75,6 +76,12 @@ _ZAP_PLUGINID_TO_KAST_ISSUE = {
     "10028": "zap-open-redirect",             # Open Redirect (passive)
     # Active rules
     "20019": "zap-open-redirect",             # Open Redirect (active)
+    "40018": "zap-sql-injection",             # SQL Injection
+    "40019": "zap-sql-injection",             # SQL Injection - MySQL
+    "40020": "zap-sql-injection",             # SQL Injection - Hypersonic SQL
+    "40021": "zap-sql-injection",             # SQL Injection - Oracle
+    "40022": "zap-sql-injection",             # SQL Injection - PostgreSQL
+    "40024": "zap-sql-injection",             # SQL Injection - SQLite
 }
 
 
@@ -1106,14 +1113,18 @@ class ZapPlugin(KastPlugin):
                 waf_addressable_count += 1
             else:
                 code_fix_count += 1
-            issues.append(f"{alert_name} [{risk}]")
 
-            # Map to a named kast issue if this rule has a registry entry
-            # API format uses 'pluginId' (camelCase); file-report format uses 'pluginid'
+            # Map to a named kast issue if this rule has a registry entry.
+            # API format uses 'pluginId' (camelCase); file-report format uses 'pluginid'.
+            # When mapped, skip the raw alert string — the registry entry is the
+            # canonical representation and avoids a missing-registry warning.
             plugin_id = str(alert.get('pluginId', alert.get('pluginid', '')))
             kast_issue_id = _ZAP_PLUGINID_TO_KAST_ISSUE.get(plugin_id)
-            if kast_issue_id and kast_issue_id not in kast_issues:
-                kast_issues.append(kast_issue_id)
+            if kast_issue_id:
+                if kast_issue_id not in kast_issues:
+                    kast_issues.append(kast_issue_id)
+            else:
+                issues.append(f"{alert_name} [{risk}]")
 
         # Calculate findings_count - total number of security alerts/vulnerabilities
         findings_count = total = sum(risk_counts.values())

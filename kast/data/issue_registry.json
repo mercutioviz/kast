@@ -1263,5 +1263,27 @@
     "remediation_approach": "combined",
     "code_fix_timeframe": "1-3 days",
     "waf_deployment_timeframe": "1-2 days"
+  },
+  "zap-sql-injection": {
+    "display_name": "SQL Injection",
+    "category": "Injection",
+    "severity": "High",
+    "waf_addressable": true,
+    "description": "ZAP’s active scanner confirmed that one or more endpoints are vulnerable to SQL injection — user-supplied input is interpolated directly into database queries without parameterization. An attacker can manipulate query logic to exfiltrate data, bypass authentication, modify records, or (on permissive databases) execute OS commands.",
+    "remediation": "Replace dynamic SQL string concatenation with parameterized queries or prepared statements. Audit all database-access code paths, including stored procedures and ORM raw-query escape hatches. A WAF with SQL injection rules can detect and block common payloads in transit, reducing exposure while the underlying code fix is deployed.",
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "3-5 days",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "zap-session-id-in-url": {
+    "display_name": "Session ID Exposed in URL",
+    "category": "Session Management",
+    "severity": "Medium",
+    "waf_addressable": true,
+    "description": "ZAP detected that session identifiers are transmitted as URL parameters (e.g., /page?JSESSIONID=...) rather than in cookies. Session IDs in URLs are leaked in browser history, server access logs, proxy logs, and HTTP Referer headers — any of which can allow an attacker to hijack a session without knowing the user’s credentials.",
+    "remediation": "Migrate session management to HttpOnly, Secure, SameSite cookies. Disable URL-based session tracking in the application framework (e.g., disable URL rewriting in Java EE, set session.use_only_cookies=1 in PHP). A WAF can be configured to detect and strip session tokens from URL parameters as a short-term mitigation.",
+    "remediation_approach": "combined",
+    "code_fix_timeframe": "1-3 days",
+    "waf_deployment_timeframe": "1-2 days"
   }
 }
