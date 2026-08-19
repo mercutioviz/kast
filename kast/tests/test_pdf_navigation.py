@@ -5,7 +5,7 @@ Smoke test: generate a sample PDF report with navigation features.
 from kast.report import generate_pdf_report
 
 
-def test_pdf_navigation():
+def test_pdf_navigation(tmp_path):
     """Generate a sample PDF report to test navigation features."""
 
     # Create sample plugin results with multiple tools and issues
@@ -106,8 +106,15 @@ def test_pdf_navigation():
         }
     ]
 
-    # Generate PDF report
-    output_path = "test_navigation_report.pdf"
+    # tmp_path, not the cwd: generate_pdf_report also writes
+    # missing_issue_ids.json beside its output, and this fixture's issue IDs
+    # are invented. Run from the repo root it dropped six IDs no plugin emits
+    # into missing_issue_ids.json, which then read as a real registry backlog.
+    output_path = tmp_path / "test_navigation_report.pdf"
     target = "example.com"
 
-    generate_pdf_report(plugin_results, output_path, target=target)
+    generate_pdf_report(plugin_results, str(output_path), target=target)
+
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+    assert output_path.read_bytes().startswith(b"%PDF-")

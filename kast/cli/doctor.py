@@ -692,6 +692,129 @@ def check_registry_severities(registry_path: Path | None = None) -> CheckResult:
     )
 
 
+def check_registry_timeframes(registry_path: Path | None = None) -> CheckResult:
+    """Every registry entry needs both TCO timeframes, or an explicit "N/A".
+
+    ``compute_tco`` skips rows whose timeframe is missing or unparseable,
+    so a blank field doesn't fail — it silently shrinks the totals in the
+    TCO appendix, which is the number an SA quotes to a prospect. An
+    explicit ``"N/A"`` is a deliberate "this issue has no timeframe" and is
+    not flagged; an absent or unrecognized value is.
+    """
+    from kast.report.tco import parse_timeframe
+
+    if registry_path is None:
+        registry_path = Path(__file__).resolve().parent.parent / "data" / "issue_registry.json"
+    if not registry_path.exists():
+        return CheckResult(
+            section="Issue Registry",
+            name="TCO timeframes",
+            status=INFO,
+            detail="skipped — registry not found",
+        )
+    try:
+        data = json.loads(registry_path.read_text())
+    except json.JSONDecodeError:
+        return CheckResult(
+            section="Issue Registry",
+            name="TCO timeframes",
+            status=INFO,
+            detail="skipped — registry did not parse",
+        )
+
+    bad: list[str] = []
+    for issue_id, entry in data.items():
+        entry = entry or {}
+        for field in ("code_fix_timeframe", "waf_deployment_timeframe"):
+            raw = entry.get(field)
+            if raw is not None and str(raw).strip().upper() == "N/A":
+                continue
+            if parse_timeframe(raw) is None:
+                bad.append(f"{issue_id} ({field})")
+
+    if not bad:
+        return CheckResult(
+            section="Issue Registry",
+            name="TCO timeframes",
+            status=OK,
+            detail=f"all {len(data)} entries have a parseable or explicitly N/A "
+                   "code-fix and WAF-deploy timeframe",
+        )
+
+    shown = ", ".join(sorted(bad)[:3])
+    return CheckResult(
+        section="Issue Registry",
+        name="TCO timeframes",
+        status=WARN,
+        detail=f"{len(bad)} missing or unparseable: {shown}"
+               f"{'...' if len(bad) > 3 else ''}",
+        hint="These rows are dropped from the TCO appendix, so its totals "
+             "under-report. Set the field, or set it to \"N/A\" if the issue "
+             "genuinely has no timeframe.",
+    )
+
+
+def check_zap_image_pin(configured_image: str | None = None) -> CheckResult:
+    """The effective ZAP image must be the digest kast was tested against.
+
+    ZAP is the one tool kast runs from a container rather than a pinned
+    binary, so it has no ``tested_tool_version``; the digest is that
+    annotation. A floating tag is what shipped the 2.14 -> 2.17 breakage to
+    SAs with no kast change to blame.
+    """
+    from kast.scripts.zap_providers import ZAP_IMAGE, ZAP_TESTED_VERSION
+
+    section = "ZAP"
+    name = "image pin"
+
+    if configured_image is None:
+        try:
+            from kast.cli._shared import make_args_namespace
+            from kast.plugins.zap_plugin import ZapPlugin
+
+            plugin = ZapPlugin(make_args_namespace(set=[]))
+            config = plugin._load_config() or {}
+            # Same resolution LocalZapProvider._start_zap_container performs, so
+            # this reports the image a scan will actually run, not just what a
+            # config file happens to mention.
+            configured_image = (config.get("local") or {}).get("docker_image") or ZAP_IMAGE
+        except Exception as exc:
+            return CheckResult(
+                section=section,
+                name=name,
+                status=INFO,
+                detail=f"skipped — could not read ZAP config ({exc})",
+            )
+
+    if configured_image == ZAP_IMAGE:
+        return CheckResult(
+            section=section,
+            name=name,
+            status=OK,
+            detail=f"pinned to ZAP {ZAP_TESTED_VERSION} ({ZAP_IMAGE.split('@')[-1][:19]}...)",
+        )
+
+    if "@sha256:" not in configured_image:
+        return CheckResult(
+            section=section,
+            name=name,
+            status=WARN,
+            detail=f"floating tag in use: {configured_image}",
+            hint="A tag lets an upstream ZAP release change the scanner mid-engagement. "
+                 f"Pin it: zap.local.docker_image={ZAP_IMAGE}",
+        )
+
+    return CheckResult(
+        section=section,
+        name=name,
+        status=WARN,
+        detail=f"pinned to a different digest than kast was tested against "
+               f"({configured_image.split('@')[-1][:19]}... vs ZAP {ZAP_TESTED_VERSION})",
+        hint="Deliberate overrides are fine — run `kast doctor --check-syntax` and a "
+             "ZAP smoke scan before using it in front of a prospect.",
+    )
+
+
 def check_katana_browser() -> CheckResult:
     """Verify katana's bundled Chromium is cached for headless crawling."""
     cache_dir = Path.home() / ".cache" / "rod" / "browser"
@@ -955,6 +1078,8 @@ CHECKS: list[Callable[[], CheckResult | list[CheckResult]]] = [
     check_config_files,
     check_issue_registry,
     check_registry_severities,
+    check_registry_timeframes,
+    check_zap_image_pin,
     check_plugin_loading,
     check_tested_versions,
 ]

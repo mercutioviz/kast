@@ -29,6 +29,19 @@ h2 { color: #0c4a6e; border-bottom: 2px solid #bae6fd; padding-bottom: 0.3em; ma
   font-size: 1.25em; font-weight: 600; color: #0c4a6e; background: #e0f2fe;
   border-left: 5px solid #0284c7; padding: 1em 1.2em; border-radius: 6px; margin-bottom: 1.5em;
 }
+.ai-narrative-block {
+  margin: 0 0 1.5em; padding: 1.2em 1.4em; background: #f0f9ff;
+  border-left: 5px solid #0c4a6e; border-radius: 0 8px 8px 0;
+}
+.ai-narrative-block .ai-headline {
+  font-size: 1.15em; font-weight: 600; color: #0c4a6e; margin-bottom: 0.6em; line-height: 1.4;
+}
+.ai-narrative-block p { margin: 0 0 0.8em; line-height: 1.6; }
+.ai-narrative-block h5 { margin: 1em 0 0.4em; color: #0c4a6e; font-size: 1em; }
+.ai-narrative-block ul { margin: 0 0 0.8em 1.2em; padding: 0; }
+.ai-narrative-block li { margin-bottom: 0.3em; line-height: 1.5; }
+.ai-narrative-block .ai-caveats li { color: #7c2d12; }
+.ai-disclaimer { margin-top: 1.2em; font-size: 0.82em; color: #4b5563; font-style: italic; }
 .stat-grid { display: flex; gap: 1.2em; flex-wrap: wrap; margin-bottom: 1.5em; }
 .stat-card {
   flex: 1; min-width: 170px; padding: 1.2em; border-radius: 12px;
@@ -137,6 +150,34 @@ details.persisting summary { cursor: pointer; font-weight: 600; color: #075985;
   <strong>Targets differ between the two scans.</strong>
   Baseline scanned <em>{{ baseline.target }}</em>; the current scan targeted
   <em>{{ current.target }}</em>. The comparison below may not be meaningful.
+</div>
+{% endif %}
+
+{% if ai_error %}
+<div class="warning-banner">
+  <strong>AI narrative unavailable:</strong> {{ ai_error }}. The deterministic summary below is unaffected.
+</div>
+{% endif %}
+
+{% if ai_narrative %}
+<div class="ai-narrative-block">
+  <div class="ai-headline">{{ ai_narrative.headline }}</div>
+  {% for para in ai_narrative.narrative.split('\n\n') if para.strip() %}
+  <p>{{ para.strip() }}</p>
+  {% endfor %}
+  {% if ai_narrative.notable_changes %}
+  <h5>Notable changes</h5>
+  <ul>
+    {% for change in ai_narrative.notable_changes %}<li>{{ change }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if ai_narrative.caveats %}
+  <h5>What this comparison cannot show</h5>
+  <ul class="ai-caveats">
+    {% for caveat in ai_narrative.caveats %}<li>{{ caveat }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <p class="ai-disclaimer">AI-generated{% if ai_narrative._meta and ai_narrative._meta.model %} ({{ ai_narrative._meta.model }}){% endif %}. Review for accuracy before sharing.</p>
 </div>
 {% endif %}
 

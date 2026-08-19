@@ -15,6 +15,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from click.testing import CliRunner
 
@@ -398,12 +399,69 @@ class TestRenderDiffHtml(ScanDiffTestCase):
         self.assertIn("&lt;script&gt;", html)
 
 
+class TestRenderDiffHtmlAiNarrative(ScanDiffTestCase):
+    def _render(self, **kwargs):
+        diff = diff_scans(
+            _write_scan(self.tmp, "base", {"testssl": [_issue("SSLv3")]}),
+            _write_scan(self.tmp, "curr", {"testssl": []}),
+        )
+        out = Path(self.tmp) / "comparison.html"
+        render_diff_html(diff, str(out), **kwargs)
+        return out.read_text()
+
+    def test_no_narrative_block_when_absent(self):
+        html = self._render()
+        self.assertNotIn('<div class="ai-narrative-block">', html)
+        self.assertNotIn("AI narrative unavailable", html)
+        self.assertIn('class="headline"', html)
+
+    def test_narrative_is_rendered(self):
+        html = self._render(ai_narrative={
+            "headline": "Transport security improved.",
+            "narrative": "First paragraph.\n\nSecond paragraph.",
+            "notable_changes": ["SSLv3 removed"],
+            "caveats": ["nikto did not re-run"],
+            "_meta": {"model": "claude-sonnet-4-6"},
+        })
+        self.assertIn("Transport security improved.", html)
+        self.assertIn("<p>First paragraph.</p>", html)
+        self.assertIn("<p>Second paragraph.</p>", html)
+        self.assertIn("SSLv3 removed", html)
+        self.assertIn("nikto did not re-run", html)
+        self.assertIn("claude-sonnet-4-6", html)
+
+    def test_deterministic_headline_still_rendered_alongside_narrative(self):
+        html = self._render(ai_narrative={"headline": "h", "narrative": "n"})
+        self.assertIn('class="headline"', html)
+        self.assertIn("no longer", html)
+
+    def test_model_output_is_escaped(self):
+        html = self._render(ai_narrative={
+            "headline": "<script>alert(1)</script>",
+            "narrative": "<img src=x onerror=alert(2)>",
+            "notable_changes": ["<b>bold</b>"],
+        })
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertNotIn("<img src=x", html)
+        self.assertNotIn("<b>bold</b>", html)
+        self.assertIn("&lt;script&gt;", html)
+
+    def test_error_banner_rendered(self):
+        html = self._render(ai_error="API key not configured")
+        self.assertIn("AI narrative unavailable", html)
+        self.assertIn("API key not configured", html)
+        self.assertIn('class="headline"', html)
+
+
 class TestScanDiffCommand(ScanDiffTestCase):
     def setUp(self):
         super().setUp()
         self.runner = CliRunner()
         self.base = _write_scan(self.tmp, "base", {"testssl": [_issue("SSLv3")]})
         self.curr = _write_scan(self.tmp, "curr", {"testssl": []})
+
+    def _run(self, *extra):
+        return self.runner.invoke(scan, ["diff", self.base, self.curr, *extra])
 
     def test_prints_comparison(self):
         result = self.runner.invoke(scan, ["diff", self.base, self.curr])
@@ -454,6 +512,41 @@ class TestScanDiffCommand(ScanDiffTestCase):
         curr = _write_scan(self.tmp, "c3", {"whatweb": []})
         result = self.runner.invoke(scan, ["diff", self.base, curr])
         self.assertIn("Plugin coverage differs", result.output)
+
+    def test_ai_flags_listed_in_help(self):
+        result = CliRunner().invoke(scan, ["diff", "--help"])
+        self.assertIn("--ai-summary", result.output)
+        self.assertIn("--ai-endpoint", result.output)
+
+    def test_no_adapter_touched_without_the_flag(self):
+        with mock.patch("kast.ai.config.get_ai_adapter") as fake:
+            self._run()
+        fake.assert_not_called()
+
+    def test_ai_narrative_printed_alongside_deterministic_headline(self):
+        narrative = {
+            "headline": "Transport security improved.",
+            "narrative": "SSLv3 is gone.",
+            "notable_changes": ["SSLv3 removed"],
+            "caveats": [],
+            "_meta": {"model": "claude-sonnet-4-6"},
+        }
+        with mock.patch("kast.ai.config.get_ai_adapter"), \
+             mock.patch("kast.ai.diff_narrative.generate_diff_narrative",
+                        return_value=narrative):
+            result = self._run("--ai-summary")
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Transport security improved.", result.output)
+        self.assertIn("SSLv3 removed", result.output)
+        self.assertIn("no longer detected", result.output)
+
+    def test_ai_failure_degrades_to_deterministic_output(self):
+        with mock.patch("kast.ai.config.get_ai_adapter",
+                        side_effect=RuntimeError("no API key")):
+            result = self._run("--ai-summary")
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("AI narrative unavailable", result.output)
+        self.assertIn("no longer detected", result.output)
 
     def test_target_mismatch_warning_shown(self):
         curr = _write_scan(self.tmp, "c4", {"testssl": []},

@@ -22,7 +22,9 @@ from kast.cli.doctor import (
     check_plugin_loading,
     check_python_version,
     check_registry_severities,
+    check_registry_timeframes,
     check_results_dir,
+    check_zap_image_pin,
     doctor,
 )
 
@@ -62,6 +64,59 @@ def test_registry_severities_flags_unrecognized(tmp_path):
     assert result.status == FAIL
     assert "Catastrophic" in result.detail
     assert "bad-issue" in result.detail
+
+
+def test_registry_timeframes_all_parseable():
+    """Every shipped entry must have parseable or explicitly-N/A timeframes."""
+    result = check_registry_timeframes()
+    assert result.status == OK, result.detail
+
+
+def test_registry_timeframes_allows_explicit_na(tmp_path):
+    """An explicit "N/A" is a deliberate "no timeframe", not an omission."""
+    bogus = tmp_path / "issue_registry.json"
+    bogus.write_text(json.dumps({
+        "no-timeframe-issue": {"code_fix_timeframe": "N/A", "waf_deployment_timeframe": "n/a"},
+    }))
+    assert check_registry_timeframes(bogus).status == OK
+
+
+def test_registry_timeframes_flags_missing_and_unparseable(tmp_path):
+    """An absent or unrecognized value silently shrinks the TCO totals."""
+    bogus = tmp_path / "issue_registry.json"
+    bogus.write_text(json.dumps({
+        "fine": {"code_fix_timeframe": "1-2 weeks", "waf_deployment_timeframe": "hours"},
+        "absent": {"code_fix_timeframe": "1 week"},
+        "garbled": {"code_fix_timeframe": "soonish", "waf_deployment_timeframe": "1-2 days"},
+    }))
+    result = check_registry_timeframes(bogus)
+
+    assert result.status == WARN
+    assert "2 missing or unparseable" in result.detail
+    assert "absent (waf_deployment_timeframe)" in result.detail
+    assert "garbled (code_fix_timeframe)" in result.detail
+    assert "fine" not in result.detail
+
+
+def test_zap_image_pin_ok_on_shipped_config():
+    """A stock install must resolve to the digest kast was tested against."""
+    result = check_zap_image_pin()
+    assert result.status == OK, result.detail
+
+
+def test_zap_image_pin_warns_on_floating_tag():
+    """A tag lets an upstream ZAP release change the scanner mid-engagement."""
+    result = check_zap_image_pin("ghcr.io/zaproxy/zaproxy:stable")
+    assert result.status == WARN
+    assert "floating tag" in result.detail
+
+
+def test_zap_image_pin_warns_on_different_digest():
+    """An explicit override is allowed, but must not pass silently."""
+    other = "ghcr.io/zaproxy/zaproxy@sha256:" + "0" * 64
+    result = check_zap_image_pin(other)
+    assert result.status == WARN
+    assert "different digest" in result.detail
 
 
 def test_plugin_loading_passes():

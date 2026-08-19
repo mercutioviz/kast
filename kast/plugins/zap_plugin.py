@@ -12,7 +12,12 @@ import yaml
 
 from kast.core.atomic import write_json_atomic
 from kast.plugins.base import KastPlugin
-from kast.scripts.zap_providers import LocalZapProvider, RemoteZapProvider
+from kast.scripts.zap_providers import (
+    ZAP_IMAGE,
+    ZAP_TESTED_VERSION,
+    LocalZapProvider,
+    RemoteZapProvider,
+)
 
 # Substrings (lowercase) that indicate a WAF can address the finding.
 # Checked against the alert name with case-insensitive substring match.
@@ -123,8 +128,11 @@ class ZapPlugin(KastPlugin):
                 "properties": {
                     "docker_image": {
                         "type": "string",
-                        "default": "ghcr.io/zaproxy/zaproxy:stable",
-                        "description": "Docker image for local ZAP container"
+                        "default": ZAP_IMAGE,
+                        "description": (
+                            f"Docker image for local ZAP container (pinned to ZAP "
+                            f"{ZAP_TESTED_VERSION}; set a tag to track upstream instead)"
+                        )
                     },
                     "auto_start": {
                         "type": "boolean",

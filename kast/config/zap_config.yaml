@@ -19,7 +19,11 @@ auto_discovery:
 
 # Local ZAP Configuration (Docker)
 local:
-  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+  # Pinned to ZAP 2.17.0. The floating :stable tag broke every local scan once
+  # already (2.14 -> 2.17 moved the API off the proxy port). Keep this in sync
+  # with ZAP_IMAGE_DIGEST in kast/scripts/zap_providers.py; `kast doctor` warns
+  # if they drift apart or if this is set to a tag.
+  docker_image: "ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef"
   auto_start: true  # Automatically start ZAP if not running
   api_port: 8080
   api_key: "kast-local"
@@ -71,7 +75,8 @@ cloud:
 
 # ZAP Scanning Configuration (Common to all modes)
 zap_config:
-  docker_image: "ghcr.io/zaproxy/zaproxy:stable"
+  # Same pin as local.docker_image above.
+  docker_image: "ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef"
   api_port: 8080
   api_key: "kast01"
   # Automation plan - Use profile shortcuts or specify full path

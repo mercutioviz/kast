@@ -9,20 +9,28 @@ N weeks; with a WAF, M days." It's the most concrete sales-enablement
 section in the report — pure rendering, no AI required.
 
 Timeframes in the registry are strings like ``"1-2 weeks"``, ``"4-6 weeks"``,
-``"1 week"``, ``"1-2 days"``, or ``"N/A"`` / ``None``. We parse them into
-``(min_days, max_days)`` tuples for aggregation, then format back to
-human-readable strings.
+``"1 week"``, ``"1-2 days"``, ``"hours"``, or ``"N/A"`` / ``None``. We parse
+them into ``(min_days, max_days)`` tuples for aggregation, then format back
+to human-readable strings.
+
+The count is unitless-bare-unit tolerant (``"hours"`` with no number) because
+four registry entries are written that way, including SSLv2 and SSLv3 — the
+two findings a WAF conversation leans on hardest. When ``"hours"`` didn't
+parse, those rows still printed their raw timeframe in the per-issue table
+while being dropped from the aggregate, so the appendix quoted a total that
+was quietly lower than the rows above it.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Iterable
 
 from kast.report_templates import get_issue_metadata
 
 _TIMEFRAME_RE = re.compile(
-    r"^\s*(\d+)(?:\s*-\s*(\d+))?\s*(day|days|week|weeks)\s*$",
+    r"^\s*(?:(\d+)(?:\s*-\s*(\d+))?\s*)?(hour|hours|day|days|week|weeks)\s*$",
     re.IGNORECASE,
 )
 _DAYS_PER_UNIT = {
@@ -34,9 +42,12 @@ _DAYS_PER_UNIT = {
 
 
 def parse_timeframe(value: str | None) -> tuple[int, int] | None:
-    """Parse ``"1-2 weeks"`` / ``"1 week"`` / ``"1-2 days"`` to ``(min_days, max_days)``.
+    """Parse ``"1-2 weeks"`` / ``"1 week"`` / ``"1-2 days"`` / ``"hours"``
+    to ``(min_days, max_days)``.
 
     Returns ``None`` for ``"N/A"``, ``None``, or anything unparseable.
+    Hour-scale values round to ``(0, 1)`` — the totals are day-granular, and
+    "under a day" is the honest aggregation of a config change.
     """
     if not value:
         return None
@@ -46,9 +57,12 @@ def parse_timeframe(value: str | None) -> tuple[int, int] | None:
     m = _TIMEFRAME_RE.match(s)
     if not m:
         return None
-    low = int(m.group(1))
+    low = int(m.group(1)) if m.group(1) else 1
     high = int(m.group(2)) if m.group(2) else low
-    unit_days = _DAYS_PER_UNIT[m.group(3).lower()]
+    unit = m.group(3).lower()
+    if unit.startswith("hour"):
+        return (low // 24, math.ceil(high / 24))
+    unit_days = _DAYS_PER_UNIT[unit]
     return (low * unit_days, high * unit_days)
 
 

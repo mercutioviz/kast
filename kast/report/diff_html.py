@@ -26,8 +26,14 @@ _env = Environment(
 )
 
 
-def render_diff_html(diff, output_path):
-    """Render a comparison dict to a standalone HTML file."""
+def render_diff_html(diff, output_path, ai_narrative=None, ai_error=None):
+    """Render a comparison dict to a standalone HTML file.
+
+    ``ai_narrative`` is optional. The deterministic ``build_headline`` is
+    always rendered, so an absent or failed narrative degrades to the same
+    report the flag-free invocation produces plus a banner — the same
+    failure mode as the main report's AI executive summary.
+    """
     template = _env.get_template("diff_template.html")
     html_content = template.render(
         baseline=diff["baseline"],
@@ -38,6 +44,8 @@ def render_diff_html(diff, output_path):
         resolved_issues=diff["resolved_issues"],
         persisting_issues=diff["persisting_issues"],
         headline=build_headline(diff),
+        ai_narrative=ai_narrative,
+        ai_error=ai_error,
         kast_version=__version__,
     )
 

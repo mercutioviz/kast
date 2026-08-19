@@ -175,6 +175,7 @@ kast scan diff BASELINE_DIR CURRENT_DIR
 kast scan diff BASELINE_DIR CURRENT_DIR --show-persisting
 kast scan diff BASELINE_DIR CURRENT_DIR --html comparison.html
 kast scan diff BASELINE_DIR CURRENT_DIR --json
+kast scan diff BASELINE_DIR CURRENT_DIR --ai-summary --html comparison.html
 ```
 
 Reports what changed between two completed scans of the same target:
@@ -193,6 +194,14 @@ rather than quietly inflating the "resolved" number.
 
 The `--html` output is self-contained (CSS inlined, no sidecar files), so it
 can be emailed or attached without breaking.
+
+`--ai-summary` adds a natural-language narrative of what changed, above the
+deterministic headline (which always renders). It uses the same credential
+resolution as the scan-level `--ai-summary` and accepts the same
+`--ai-model` / `--ai-adapter` / `--ai-endpoint` overrides. If the call fails,
+the comparison renders unchanged with a banner. When plugin coverage differs
+between the two scans, the affected findings are withheld from the model
+entirely and the narrative is rejected unless it states the limitation.
 
 ### Plugins, registry, doctor
 

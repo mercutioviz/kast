@@ -1,14 +1,18 @@
 """
 Tests for stall detection logic in ZAPAPIClient.wait_for_plan_completion.
 
-Covers the spiderAjax false-positive fix: when the last planProgress.info
-message is "Job spiderAjax started", stall detection must not fire because
-the automation-framework code path never updates ajaxSpider/view/status/.
+Stall detection is opt-in per job type: a job is only judged stalled if
+_JOB_LIVENESS_PROBES maps its type to an endpoint that actually moves while
+it runs. spiderAjax and spiderClient false-fired under the old exemption-list
+shape because the automation-framework code path never updates the standalone
+spider status endpoints, so both are mapped to None here — as is any job type
+the taxonomy has never heard of, which is what test_unknown_job_type_no_stall
+pins.
 """
 
-import time
 import unittest
-from unittest.mock import MagicMock, call, patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 
 class TestStallDetection(unittest.TestCase):
@@ -172,6 +176,84 @@ class TestStallDetection(unittest.TestCase):
 
         self.assertTrue(success)
         client._try_cancel_plan.assert_not_called()
+
+    def test_unknown_job_type_no_stall(self):
+        """A job type absent from the taxonomy must never trigger a stall abort.
+
+        This is the regression that spiderAjax and then spiderClient each hit:
+        an unmapped job type used to inherit the activeScan treatment, and with
+        no active scan running ascan/view/status/ reports done, so a healthy
+        long-running job was aborted mid-scan. The timeout still catches a real
+        crash — just later, which is the safe direction to be wrong in.
+        """
+        client = self._make_client()
+
+        frozen_progress = self._build_progress(['Job spiderQuantum started'])
+        responses = [frozen_progress] * 4 + [
+            self._build_progress(
+                ['Job spiderQuantum started', 'Job spiderQuantum finished'],
+                finished='2026-01-01T00:09:00Z',
+            ),
+        ]
+
+        def make_request(endpoint, **kwargs):
+            if 'planProgress' in endpoint:
+                return responses.pop(0)
+            # A job with no active scan behind it: ZAP reports the scanner idle.
+            if 'ascan/view/status' in endpoint:
+                return {'status': '100'}
+            return {}
+
+        with patch.object(client, '_make_request', side_effect=make_request), \
+             patch('time.sleep'):
+            success, _ = client.wait_for_plan_completion(
+                plan_id=0, timeout=3600, poll_interval=30
+            )
+
+        self.assertTrue(success, "Unmapped job type must not be judged stalled")
+        client._try_cancel_plan.assert_not_called()
+
+    def test_started_job_type_parsing(self):
+        """The job type comes from ZAP's own message, matched anchored."""
+        from kast.scripts.zap_api_client import ZAPAPIClient
+
+        parse = ZAPAPIClient._started_job_type
+        self.assertEqual(parse('Job activeScan started'), 'activeScan')
+        self.assertEqual(parse('  Job spiderAjax started  '), 'spiderAjax')
+        self.assertIsNone(parse('Job activeScan finished, time taken: 00:05:00'))
+        self.assertIsNone(parse('Job activeScan started scanning'))
+        self.assertIsNone(parse(''))
+        self.assertIsNone(parse(None))
+
+    def test_taxonomy_covers_every_job_type_kast_emits(self):
+        """Every job type kast puts in an automation plan must be classified.
+
+        An unclassified type is safe (it just skips stall detection) but silent.
+        Pinning it here means adding a job to a profile forces a deliberate
+        answer about whether that job has a liveness signal.
+        """
+        import yaml
+
+        from kast.scripts.zap_api_client import _JOB_LIVENESS_PROBES
+
+        profile_dir = Path(__file__).resolve().parent.parent / 'config'
+        plans = sorted(profile_dir.glob('zap_automation_*.yaml'))
+        self.assertTrue(plans, f"No ZAP automation profiles found under {profile_dir}")
+
+        emitted = set()
+        for plan_path in plans:
+            plan = yaml.safe_load(plan_path.read_text()) or {}
+            for job in plan.get('jobs', []) or []:
+                if job.get('type'):
+                    emitted.add(job['type'])
+        # _inject_spider_type swaps the 'spider' job for one of these at runtime.
+        emitted.update({'spiderAjax', 'spiderClient'})
+
+        missing = sorted(emitted - set(_JOB_LIVENESS_PROBES))
+        self.assertEqual(
+            missing, [],
+            f"Job types in shipped ZAP profiles are absent from _JOB_LIVENESS_PROBES: {missing}"
+        )
 
 
 if __name__ == '__main__':

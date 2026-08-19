@@ -4,6 +4,7 @@ Handles interaction with OWASP ZAP REST API
 """
 
 import json
+import re
 import time
 from datetime import UTC
 from pathlib import Path
@@ -11,6 +12,35 @@ from pathlib import Path
 import requests
 
 from kast.core.atomic import write_json_atomic
+
+# ZAP's own progress line for a job that has begun but not yet reported done.
+_JOB_STARTED_RE = re.compile(r"^Job\s+(\S+)\s+started\s*$")
+
+# Automation-plan job type -> the ZAP endpoint whose percentage advances while
+# that job runs. A job type is eligible for stall detection ONLY if it appears
+# here with a probe; anything else — including job types ZAP adds in a future
+# release — falls through to the caller's timeout instead.
+#
+# The default is deliberately "assume alive". A false stall aborts a scan in
+# front of a prospect; an unmapped genuine crash merely waits out the clock.
+# The previous shape was an exemption list, so every new job type was treated
+# as stall-eligible until it false-fired and someone patched the list — which
+# is exactly what happened twice, for spiderAjax and then spiderClient.
+#
+# The spider jobs map to None rather than to their standalone status endpoints
+# on purpose: invoked through an automation plan they use internal ZAP code
+# paths that never update /JSON/spider/view/status/ or
+# /JSON/ajaxSpider/view/status/, and with no active scan running
+# /JSON/ascan/view/status/ answers HTTP 400. Neither is a liveness signal here.
+_JOB_LIVENESS_PROBES: dict[str, str | None] = {
+    "activeScan": "/JSON/ascan/view/status/",
+    "spider": None,
+    "spiderAjax": None,
+    "spiderClient": None,
+    "passiveScan-wait": None,
+    "passiveScan-config": None,
+    "report": None,
+}
 
 
 class ZAPAPIClient:
@@ -311,7 +341,6 @@ class ZAPAPIClient:
         last_info_count = 0
         scan_start_time = None
         stalled_cycles = 0
-        last_ascan_pct = None
 
         while time.time() - start_time < timeout:
             progress = self.get_plan_progress(plan_id)
@@ -370,28 +399,21 @@ class ZAPAPIClient:
                 stalled_cycles = 0
             else:
                 # Info list didn't grow — check for a silently crashed automation thread.
-                # If the last message ends with "started", a job began but never finished.
+                # If the last message says a job started, it began but never finished.
                 last_msg = info[-1] if info else ""
-                if last_msg.endswith("started"):
-                    if "spiderAjax" in last_msg or "spiderClient" in last_msg:
-                        # Both spider job types (spiderAjax and spiderClient) invoked via
-                        # an automation plan use internal ZAP code paths that never update
-                        # the standalone spider/ajaxSpider status endpoints, and while the
-                        # spider is running there is no active ascan, so ascan/view/status/
-                        # returns HTTP 400. Neither endpoint is a valid liveness signal here;
-                        # rely on the caller-supplied timeout to catch genuine crashes.
+                job_type = self._started_job_type(last_msg)
+                if job_type is not None:
+                    probe = _JOB_LIVENESS_PROBES.get(job_type)
+                    if probe is None:
+                        if job_type not in _JOB_LIVENESS_PROBES:
+                            self.debug(
+                                f"Job type '{job_type}' has no liveness probe in the taxonomy — "
+                                "skipping stall detection for it, the timeout still applies."
+                            )
                         stalled_cycles = 0
                     else:
-                        # For all other silent jobs (e.g. activeScan), check whether the
-                        # active scanner is still making progress before counting a stall.
-                        ascan_pct = None
-                        try:
-                            ascan_resp = self._make_request('/JSON/ascan/view/status/')
-                            ascan_pct = int(ascan_resp.get('status', 100))
-                        except Exception:
-                            pass
-
-                        if ascan_pct is not None and ascan_pct < 100:
+                        pct = self._probe_percent(probe)
+                        if pct is not None and pct < 100:
                             stalled_cycles = 0
                         else:
                             stalled_cycles += 1
@@ -405,8 +427,6 @@ class ZAPAPIClient:
                                 self._try_cancel_plan(plan_id)
                                 return False, progress
 
-                        last_ascan_pct = ascan_pct
-
             # Check for warnings
             warnings = progress.get('warn', [])
             if warnings:
@@ -419,6 +439,29 @@ class ZAPAPIClient:
 
         self.debug(f"Timeout waiting for plan {plan_id} completion")
         return False, None
+
+    @staticmethod
+    def _started_job_type(message):
+        """Return the job type from a ZAP "Job <type> started" line, else None.
+
+        Returning None means the line is not a started-but-unfinished job, so
+        there is nothing for stall detection to judge.
+        """
+        match = _JOB_STARTED_RE.match((message or "").strip())
+        return match.group(1) if match else None
+
+    def _probe_percent(self, endpoint):
+        """Read a ZAP percentage-style status endpoint, or None if unreadable.
+
+        None means "no signal" and is treated as not-alive by the caller, so
+        only endpoints known to answer for the running job belong in
+        ``_JOB_LIVENESS_PROBES``.
+        """
+        try:
+            response = self._make_request(endpoint)
+            return int(response.get('status', 100))
+        except Exception:
+            return None
 
     def _try_cancel_plan(self, plan_id):
         """Best-effort cleanup after stall detection. Tries to stop any running

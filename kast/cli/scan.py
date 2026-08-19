@@ -408,8 +408,19 @@ def _print_issue_table(title: str, entries: list, title_style: str,
               help="Also write a standalone HTML comparison report to this path.")
 @click.option("--show-persisting", is_flag=True,
               help="Include the unchanged-issues table in the text output.")
+@click.option("--ai-summary", "ai_summary_flag", is_flag=True,
+              help="Generate an AI narrative of what changed between the two scans.")
+@click.option("--ai-model", type=str, default=None,
+              help="Override the AI model.")
+@click.option("--ai-adapter", type=click.Choice(["anthropic"]), default="anthropic",
+              help="AI provider adapter (default: anthropic).")
+@click.option("--ai-endpoint", type=str, default=None, envvar="KAST_AI_ENDPOINT",
+              help="Route AI requests through a kast-web AI service instead of the "
+                   "provider API directly. Overrides --ai-adapter and KAST_AI_API_KEY.")
 def scan_diff(baseline_dir: str, current_dir: str, json_output: bool,
-              html_path: str | None, show_persisting: bool) -> None:
+              html_path: str | None, show_persisting: bool,
+              ai_summary_flag: bool, ai_model: str | None,
+              ai_adapter: str, ai_endpoint: str | None) -> None:
     """Compare two scans and report what changed.
 
     BASELINE_DIR is the earlier scan, CURRENT_DIR the later one. Issues
@@ -428,12 +439,28 @@ def scan_diff(baseline_dir: str, current_dir: str, json_output: bool,
         console.print(f"[bold red]Error:[/bold red] {e}")
         sys.exit(1)
 
+    ai_narrative = None
+    ai_error: str | None = None
+    if ai_summary_flag:
+        try:
+            from kast.ai.config import get_ai_adapter
+            from kast.ai.diff_narrative import generate_diff_narrative
+            adapter = get_ai_adapter(ai_adapter, ai_model, endpoint_url=ai_endpoint)
+            ai_narrative = generate_diff_narrative(adapter, diff)
+        except Exception as e:
+            ai_error = str(e)
+            console.print(f"[yellow]Warning:[/yellow] AI narrative unavailable: {e}")
+
     if html_path:
         from kast.report.diff_html import render_diff_html
-        render_diff_html(diff, html_path)
+        render_diff_html(diff, html_path, ai_narrative=ai_narrative, ai_error=ai_error)
 
     if json_output:
-        click.echo(json.dumps(diff, indent=2, default=str))
+        payload = dict(diff)
+        if ai_narrative or ai_error:
+            payload["ai_narrative"] = ai_narrative
+            payload["ai_error"] = ai_error
+        click.echo(json.dumps(payload, indent=2, default=str))
         return
 
     summary = diff["summary"]
@@ -452,6 +479,18 @@ def scan_diff(baseline_dir: str, current_dir: str, json_output: bool,
             f"[bold yellow]Warning:[/bold yellow] targets differ "
             f"({base['target']} vs {curr['target']}). The comparison may be meaningless."
         )
+        console.print()
+
+    if ai_narrative:
+        console.print(f"[bold]{ai_narrative['headline']}[/bold]")
+        console.print()
+        console.print(ai_narrative["narrative"])
+        console.print()
+        for change in ai_narrative.get("notable_changes") or []:
+            console.print(f"  - {change}")
+        for caveat in ai_narrative.get("caveats") or []:
+            console.print(f"  [yellow]![/yellow] {caveat}")
+        console.print(f"[dim]AI-generated ({ai_narrative['_meta']['model']}).[/dim]")
         console.print()
 
     console.print(f"[bold]{build_headline(diff)}[/bold]")

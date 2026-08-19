@@ -29,6 +29,25 @@ def test_parse_timeframe_unparseable():
     assert parse_timeframe("immediate") is None
 
 
+def test_parse_timeframe_hours():
+    """Bare "hours" is how the registry writes sub-day config changes.
+
+    Three entries use it, including SSLv2 and SSLv3. Before this parsed,
+    those rows printed "hours" in the per-issue table but were dropped from
+    the aggregate, so the totals disagreed with the rows above them.
+    """
+    assert parse_timeframe("hours") == (0, 1)
+    assert parse_timeframe("hour") == (0, 1)
+    assert parse_timeframe("2 hours") == (0, 1)
+    assert parse_timeframe("1-4 hours") == (0, 1)
+    assert parse_timeframe("36 hours") == (1, 2)
+
+
+def test_parse_timeframe_bare_unit():
+    assert parse_timeframe("week") == (7, 7)
+    assert parse_timeframe("days") == (1, 1)
+
+
 def test_format_days_weekly_range():
     assert format_days(7, 14) == "1-2 weeks"
     assert format_days(28, 42) == "4-6 weeks"

@@ -76,7 +76,12 @@ class TestZapConfig(unittest.TestCase):
         self.assertIn("cleanup_on_completion", local_props)
 
         # Verify defaults
-        self.assertEqual(local_props["docker_image"]["default"], "ghcr.io/zaproxy/zaproxy:stable")
+        from kast.scripts.zap_providers import ZAP_IMAGE
+
+        self.assertEqual(local_props["docker_image"]["default"], ZAP_IMAGE)
+        # The pin is the point: a floating tag let an upstream ZAP release
+        # break every local scan once already.
+        self.assertIn("@sha256:", local_props["docker_image"]["default"])
         self.assertEqual(local_props["auto_start"]["default"], True)
         self.assertEqual(local_props["api_port"]["default"], 8080)
         self.assertEqual(local_props["cleanup_on_completion"]["default"], False)

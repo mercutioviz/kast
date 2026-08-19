@@ -8,6 +8,84 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.43] — 2026-08-19
+
+### Added
+
+- **AI narrative for scan comparisons** — `kast scan diff --ai-summary`
+  generates a natural-language account of what changed between two scans,
+  with `--ai-model` / `--ai-adapter` / `--ai-endpoint` overrides matching the
+  scan-level flag. New module `kast/ai/diff_narrative.py` and prompt
+  `kast/ai/prompts/diff_narrative_v1.md`. `build_headline` still renders
+  unconditionally in both the terminal and the HTML, so the AI block is
+  additive and a failed call degrades to a banner plus the deterministic
+  comparison.
+
+  Two coverage-gap defenses, because "we fixed that" said to a prospect about
+  a plugin that simply did not re-run is this report's worst failure mode.
+  Findings marked `coverage_gap` are dropped before the prompt is built — the
+  model cannot misreport a fix it was never shown — and `_validate_narrative`
+  raises when `summary["has_coverage_gap"]` is set but the response lists no
+  caveats.
+
+- **`kast doctor` check `check_registry_timeframes`** — warns on any registry
+  entry whose `code_fix_timeframe` or `waf_deployment_timeframe` is absent or
+  unparseable. An explicit `"N/A"` is a deliberate "no timeframe" and passes.
+
+- **`kast doctor` check `check_zap_image_pin`** — warns when the configured
+  ZAP image is a floating tag, or a digest other than the tested one.
+
+- **ZAP smoke test** (`kast/tests/test_zap_smoke.py`, opt-in via
+  `KAST_ZAP_SMOKE=1`) — boots the pinned image and asserts the API is
+  reachable through the proxied session and that every liveness-probe
+  endpoint still routes. That is the exact shape of the 2.14 → 2.17
+  ExtensionNetwork break.
+
+### Fixed
+
+- **TCO timeframes reading `"hours"` were silently dropped.**
+  `parse_timeframe` required a leading digit, so the bare unit string
+  `"hours"` returned `None`. Three registry entries are written that way
+  (`SSLv2`, `SSLv3`, and the `Server` header version leak). The rows printed
+  their raw `"hours"` text in the per-issue TCO table while being excluded
+  from the aggregate, so the appendix quoted a total lower than the rows
+  above it — and for a scan finding only those issues, `has_data` was false
+  and the appendix did not render at all. Hour-scale values now map to a
+  `(0, 1)`-day range.
+
+- **Two registry entries were missing `waf_deployment_timeframe`**
+  (`Outdated Apache`, `Information Disclosure - Information in Browser
+  localStorage`). Both now carry an explicit `"N/A"`.
+
+- **ZAP container reuse never worked.** `_find_running_zap_container`
+  filtered on `ancestor=ghcr.io/zaproxy/zaproxy`, which Docker resolves to
+  `:latest` — a tag ZAP does not publish. It now filters on the configured
+  image reference, so a running container is actually found and reused.
+
+- **`test_pdf_navigation.py` wrote `missing_issue_ids.json` into the cwd.**
+  Running the suite from the repo root manufactured a file listing six
+  invented fixture IDs, which read like a registry backlog. The test now
+  writes to `tmp_path`, and it gained real assertions (it previously had
+  none).
+
+### Changed
+
+- **ZAP stall detection is now opt-in per job type.** `_JOB_LIVENESS_PROBES`
+  in `kast/scripts/zap_api_client.py` maps an automation-plan job type to the
+  endpoint whose percentage advances while it runs; a job is only judged
+  stalled if it has a probe. Everything else — including job types ZAP adds
+  later — falls through to the caller's timeout. The previous shape was an
+  exemption list, so each new job type was stall-eligible until it false-fired
+  and someone patched it (`spiderAjax`, then `spiderClient`). Being wrong now
+  costs a timeout instead of aborting a healthy scan mid-demo.
+  `test_taxonomy_covers_every_job_type_kast_emits` fails if a shipped
+  `zap_automation_*.yaml` profile gains an unclassified job.
+
+- **The ZAP Docker image is digest-pinned** (`ZAP_IMAGE_REPO` /
+  `ZAP_IMAGE_DIGEST` / `ZAP_TESTED_VERSION` in `kast/scripts/zap_providers.py`,
+  currently ZAP 2.17.0) so upstream can no longer change the scanner
+  underneath a demo. Bump recipe is in the comment beside the constants.
+
 ## [3.0.42] — 2026-08-19
 
 ### Added

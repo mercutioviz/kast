@@ -10,6 +10,25 @@ from pathlib import Path
 
 from kast.scripts.zap_api_client import ZAPAPIClient
 
+# Pinned ZAP image.
+#
+# The floating :stable tag is what broke kast in v3.0.33: ZAP 2.14 -> 2.17 moved
+# the API off the proxy port (ExtensionNetwork), and every local scan failed with
+# no kast change to blame. An SA cannot debug that in front of a prospect, so the
+# shipped default is a digest — the image a scan runs against is the image kast
+# was tested against, and an upstream release can no longer change it underneath
+# a demo. Operators who want the newest ZAP can still set
+# ``zap.local.docker_image`` to a tag.
+#
+# To bump: pull the new :stable, read its version with
+# ``docker run --rm <ref> zap.sh -version``, update all three constants below and
+# the two docker_image entries in kast/config/zap_config.yaml, then run
+# ``KAST_ZAP_SMOKE=1 pytest kast/tests/test_zap_smoke.py``.
+ZAP_IMAGE_REPO = "ghcr.io/zaproxy/zaproxy"
+ZAP_IMAGE_DIGEST = "sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef"
+ZAP_TESTED_VERSION = "2.17.0"
+ZAP_IMAGE = f"{ZAP_IMAGE_REPO}@{ZAP_IMAGE_DIGEST}"
+
 
 class ZapInstanceProvider(ABC):
     """Abstract base class for ZAP instance providers"""
@@ -101,9 +120,16 @@ class LocalZapProvider(ZapInstanceProvider):
             return False
 
     def _find_running_zap_container(self):
-        """Find running ZAP container"""
+        """Find a running container started from the configured ZAP image.
+
+        The filter has to be the full image reference. Docker resolves a bare
+        repository to ``:latest``, and ZAP publishes ``stable``/``nightly``/
+        ``bare`` but no ``latest``, so filtering on the repo alone matched
+        nothing and kast started a redundant container every run.
+        """
+        docker_image = self.config.get('local', {}).get('docker_image', ZAP_IMAGE)
         try:
-            result = subprocess.run(['docker', 'ps', '--filter', 'ancestor=ghcr.io/zaproxy/zaproxy',
+            result = subprocess.run(['docker', 'ps', '--filter', f'ancestor={docker_image}',
                                     '--format', '{{.Names}}'],
                                    capture_output=True,
                                    text=True,
@@ -119,7 +145,7 @@ class LocalZapProvider(ZapInstanceProvider):
     def _start_zap_container(self, output_dir):
         """Start new ZAP Docker container"""
         local_config = self.config.get('local', {})
-        docker_image = local_config.get('docker_image', 'ghcr.io/zaproxy/zaproxy:stable')
+        docker_image = local_config.get('docker_image', ZAP_IMAGE)
         api_port = local_config.get('api_port', 8080)
         api_key = local_config.get('api_key', 'kast-local')
         self.container_name = local_config.get('container_name', 'kast-zap-local')
