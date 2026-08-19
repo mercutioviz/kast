@@ -351,6 +351,179 @@ def scan_show(scan_dir: str, json_output: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
+# scan diff
+# ---------------------------------------------------------------------------
+
+
+_SEVERITY_COLORS = {
+    "High": "red",
+    "Medium": "yellow",
+    "Low": "cyan",
+    "Informational": "dim",
+    "Unknown": "dim",
+}
+
+
+def _delta_str(value: int) -> str:
+    """Signed delta with sales-facing colouring: fewer issues is good."""
+    if value > 0:
+        return f"[red]+{value}[/red]"
+    if value < 0:
+        return f"[green]{value}[/green]"
+    return "[dim]0[/dim]"
+
+
+def _print_issue_table(title: str, entries: list, title_style: str,
+                       show_delta: bool = False) -> None:
+    table = Table(title=title, title_style=title_style, show_lines=False)
+    table.add_column("Severity")
+    table.add_column("Issue", style="bold")
+    table.add_column("Reported by", style="dim")
+    table.add_column("Occurrences", justify="right")
+    if show_delta:
+        table.add_column("Change", justify="right")
+    table.add_column("WAF", justify="center")
+    for e in entries:
+        color = _SEVERITY_COLORS.get(e["severity"], "white")
+        row = [
+            f"[{color}]{e['severity']}[/{color}]",
+            (e["display_name"] or e["id"] or "—") + (" *" if e.get("coverage_gap") else ""),
+            e["reported_by_tool"],
+            str(e["occurrences"]),
+        ]
+        if show_delta:
+            row.append(_delta_str(e["occurrence_delta"]))
+        row.append("[green]yes[/green]" if e["waf_addressable"] else "[dim]no[/dim]")
+        table.add_row(*row)
+    console.print(table)
+
+
+@scan.command(name="diff")
+@click.argument("baseline_dir", type=click.Path(exists=True))
+@click.argument("current_dir", type=click.Path(exists=True))
+@click.option("--json", "json_output", is_flag=True,
+              help="Emit machine-readable JSON instead of formatted tables.")
+@click.option("--html", "html_path", type=click.Path(),
+              help="Also write a standalone HTML comparison report to this path.")
+@click.option("--show-persisting", is_flag=True,
+              help="Include the unchanged-issues table in the text output.")
+def scan_diff(baseline_dir: str, current_dir: str, json_output: bool,
+              html_path: str | None, show_persisting: bool) -> None:
+    """Compare two scans and report what changed.
+
+    BASELINE_DIR is the earlier scan, CURRENT_DIR the later one. Issues
+    are compared as (reporting plugin, issue ID) pairs; repeat occurrences
+    of the same issue collapse into one row with an occurrence count.
+
+    Issues whose reporting plugin did not run on both sides are marked
+    with an asterisk and excluded from the headline counts — a plugin that
+    was skipped cannot prove anything was fixed.
+    """
+    from kast.report.diff import ScanDiffError, build_headline, diff_scans
+
+    try:
+        diff = diff_scans(baseline_dir, current_dir)
+    except ScanDiffError as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        sys.exit(1)
+
+    if html_path:
+        from kast.report.diff_html import render_diff_html
+        render_diff_html(diff, html_path)
+
+    if json_output:
+        click.echo(json.dumps(diff, indent=2, default=str))
+        return
+
+    summary = diff["summary"]
+    base, curr = diff["baseline"], diff["current"]
+
+    console.print()
+    console.print(f"[bold cyan]Scan comparison:[/bold cyan] {curr['target']}")
+    console.print(f"  [bold]Baseline:[/bold] {(base['scan_date'] or '')[:19].replace('T', ' ')} "
+                  f"[dim]{base['path']}[/dim]")
+    console.print(f"  [bold]Current: [/bold] {(curr['scan_date'] or '')[:19].replace('T', ' ')} "
+                  f"[dim]{curr['path']}[/dim]")
+    console.print()
+
+    if not summary["target_match"]:
+        console.print(
+            f"[bold yellow]Warning:[/bold yellow] targets differ "
+            f"({base['target']} vs {curr['target']}). The comparison may be meaningless."
+        )
+        console.print()
+
+    console.print(f"[bold]{build_headline(diff)}[/bold]")
+    console.print()
+
+    overview = Table(show_header=True, header_style="bold cyan", box=None, pad_edge=False)
+    overview.add_column("Severity")
+    overview.add_column("Baseline", justify="right")
+    overview.add_column("Current", justify="right")
+    overview.add_column("Change", justify="right")
+    for sev, delta in summary["severity_deltas"].items():
+        color = _SEVERITY_COLORS.get(sev, "white")
+        overview.add_row(
+            f"[{color}]{sev}[/{color}]",
+            str(base["severity_counts"].get(sev, 0)),
+            str(curr["severity_counts"].get(sev, 0)),
+            _delta_str(delta),
+        )
+    overview.add_row(
+        "[bold]Total[/bold]",
+        f"[bold]{base['total_issues']}[/bold]",
+        f"[bold]{curr['total_issues']}[/bold]",
+        _delta_str(summary["total_delta"]),
+    )
+    console.print(overview)
+    console.print()
+
+    console.print(
+        f"[green]Resolved:[/green] {summary['resolved_count']}   "
+        f"[red]New:[/red] {summary['new_count']}   "
+        f"[dim]Unchanged:[/dim] {summary['persisting_count']}   "
+        f"[cyan]WAF-addressable resolved:[/cyan] {summary['waf_addressable_resolved']}"
+    )
+    console.print()
+
+    coverage = diff["coverage"]
+    if summary["has_coverage_gap"]:
+        console.print("[bold yellow]Plugin coverage differs between the two scans.[/bold yellow]")
+        if coverage["baseline_only"]:
+            console.print(
+                f"  Ran in baseline only: [yellow]{', '.join(coverage['baseline_only'])}[/yellow] "
+                f"— their issues cannot be counted as resolved."
+            )
+        if coverage["current_only"]:
+            console.print(
+                f"  Ran in current only:  [yellow]{', '.join(coverage['current_only'])}[/yellow] "
+                f"— their issues cannot be counted as newly introduced."
+            )
+        console.print("  [dim]Affected rows are marked with *.[/dim]")
+        console.print()
+
+    if diff["resolved_issues"]:
+        _print_issue_table("Resolved", diff["resolved_issues"], "bold green")
+        console.print()
+    if diff["new_issues"]:
+        _print_issue_table("New", diff["new_issues"], "bold red")
+        console.print()
+    if show_persisting and diff["persisting_issues"]:
+        _print_issue_table("Unchanged", diff["persisting_issues"], "bold white",
+                           show_delta=True)
+        console.print()
+    elif diff["persisting_issues"]:
+        console.print(
+            f"[dim]{len(diff['persisting_issues'])} issue type(s) present in both scans "
+            f"(--show-persisting to list).[/dim]"
+        )
+        console.print()
+
+    if html_path:
+        console.print(f"[green]HTML comparison report written:[/green] {html_path}")
+
+
+# ---------------------------------------------------------------------------
 # scan rerun (alias for --report-only)
 # ---------------------------------------------------------------------------
 

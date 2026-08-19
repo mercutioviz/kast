@@ -8,6 +8,338 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.41] — 2026-08-19
+
+### Added
+
+- **`kast scan diff BASELINE_DIR CURRENT_DIR`** — compares two completed
+  scan directories and reports what changed: issues resolved, issues newly
+  appearing, issues present in both (with an occurrence delta), and the
+  severity mix on each side. Built for the before-WAF / after-WAF demo, so
+  the framing is "resolved" rather than raw set arithmetic. Issue identity
+  is `(reporting plugin, issue ID)`; repeat occurrences of the same issue
+  collapse into one row with a count.
+
+  Findings whose reporting plugin did not run on **both** sides are marked
+  with an asterisk and excluded from the headline resolved/new counts — a
+  plugin that was skipped in the second scan cannot prove anything was
+  fixed, and claiming otherwise in front of a prospect is a reputational
+  hazard. `summary["has_coverage_gap"]` drives an explicit warning block in
+  both output formats.
+
+  Flags: `--json` for the full comparison dict, `--html PATH` for a
+  self-contained shareable HTML report (CSS inlined, no sidecar files),
+  `--show-persisting` to list the unchanged issues in the terminal.
+
+  New modules: `kast/report/diff.py` (`load_scan_snapshot`, `compute_diff`,
+  `diff_scans`, `build_headline`) and `kast/report/diff_html.py`
+  (`render_diff_html`), plus `kast/templates/diff_template.html`. Closes
+  backlog item E5; unblocks A6 (AI narrative over the diff).
+
+- **`kast/tests/test_org_discovery.py`** — 70 tests covering the
+  `org_discovery` plugin's apex extraction, crt.sh retry/backoff, CA-issuer
+  filtering, whois and amass parsing, Shodan gating, domain correlation and
+  confidence scoring, and `post_process` output contract. Several are
+  regression guards for the v3.0.26 and v3.0.30 fixes. All network and
+  subprocess boundaries are mocked; a captured raw payload lives at
+  `kast/tests/fixtures/org_discovery_output.json`.
+
+- **ZAP SQL-injection and session-ID issue mapping** — `zap-sql-injection`
+  (mapping ZAP plugin IDs `40018`/`40019`/`40020`/`40021`/`40022`/`40024`
+  — the generic, MySQL, Hypersonic, Oracle, PostgreSQL, and SQLite active
+  rules) and `zap-session-id-in-url` (passive rule `3`, Session ID in URL
+  Rewrite) added to `_ZAP_PLUGINID_TO_KAST_ISSUE` and to the issue
+  registry. Registry is now 117 entries.
+
+### Changed
+
+- **CHANGELOG backfilled for v3.0.26 through v3.0.40** — 15 releases that
+  previously existed only as commit subjects now have structured entries.
+- **`CLAUDE.md` accuracy pass** — the stated version was 4 months and 20
+  patches stale (`3.0.20` vs `3.0.40`), the registry count was `107` vs the
+  actual 117, and two Open threads were wrong: the test `sys.path` hygiene
+  cleanup was already complete (0 remaining), and the ruff finding count was
+  18 vs the actual 3. Replaced with accurate threads covering ZAP subsystem
+  churn, the 6 unresolved IDs in `missing_issue_ids.json`, and the 2 registry
+  entries missing `waf_deployment_timeframe`.
+
+---
+
+## [3.0.40] — 2026-07-29
+
+### Fixed
+
+- **Stall-detection false positive on `spiderClient` jobs** — same root
+  cause as the `spiderAjax` fix in v3.0.38. While a client spider crawls,
+  no active scan is running, so `ascan/view/status/` returns HTTP 400. The
+  exception was caught, `ascan_pct` stayed `None`, and the `else` branch
+  counted a stall cycle; after 2 cycles (~60s) the plan aborted. The
+  spider exemption now covers `spiderAjax` **and** `spiderClient`. Fixes a
+  live failure (scan id 45, plan aborted after 64s).
+
+### Tests
+
+- `test_spider_client_no_stall` added to `test_zap_stall_detection.py`
+  (5 tests total).
+
+---
+
+## [3.0.39] — 2026-07-29
+
+### Added
+
+- **8 ZAP passive-scan issues added to the registry** — alert strings that
+  were surfacing as "not in the issue registry" warnings in scan reports:
+  Cross-Domain Misconfiguration [Medium], Retrieved from Cache
+  [Informational], Timestamp Disclosure - Unix [Low], Loosely Scoped
+  Cookie [Informational], Information Disclosure - Information in Browser
+  localStorage [Informational], User Agent Fuzzer [Informational], Server
+  Leaks Version Information via "Server" HTTP Response Header Field [Low],
+  and Private IP Disclosure [Low]. Each carries WAF framing, remediation
+  approach, and TCO timeframes. localStorage disclosure is
+  `waf_addressable: false` (code fix required); Server-header version
+  disclosure is `waf_addressable: true` with a WAF-only remediation
+  approach.
+
+---
+
+## [3.0.38] — 2026-07-28
+
+### Fixed
+
+- **`spiderAjax` stall-detection false positive, and cancel-on-stall** —
+  the automation-framework code path for `spiderAjax`
+  (`SpiderThread`/`DummyPlugin`) never updates `ajaxSpider/view/status/`;
+  that endpoint returns `stopped` for the whole crawl. The previous guard
+  polled it, always read `stopped`, and aborted the scan as stalled after
+  2 cycles (~60s). Stall detection is now skipped entirely when the last
+  `planProgress.info` message mentions `spiderAjax`, deferring to the
+  caller-supplied plan timeout. The `ajaxSpider/view/status/` probe is
+  removed — it was never a reliable signal on this path.
+- **ZAP CLI script fixes.**
+
+---
+
+## [3.0.37] — 2026-07-27
+
+### Fixed
+
+- **`newSession` POST must use `data=`, not `params=`** — ZAP action
+  endpoints require a form-encoded POST body. `_make_request` only sets
+  `Content-Type` and injects the API key when `data` or `files` is truthy,
+  so passing `params=` left the body empty and ZAP returned HTTP 400
+  `content_type_not_supported`. The session was therefore never reset
+  between scans. Verified: `params=` → 400; `data=` → `{"Result":"OK"}`.
+- **Job type name corrected** from `ajaxSpider` to `spiderAjax` to match
+  the automation-framework job identifier.
+
+---
+
+## [3.0.36] — 2026-07-27
+
+### Added
+
+- **`zap.local.memory_limit` config option** — `--set
+  zap.local.memory_limit=<value>` (e.g. `2g`, `512m`) passes `--memory` to
+  `docker run` when kast starts the ZAP container. Empty string (the
+  default) applies no limit.
+
+---
+
+## [3.0.35] — 2026-07-23
+
+### Added
+
+- **Orthogonal spider-type selection** — `--set
+  zap.spider_type=traditional|ajax|client` injects the chosen spider into
+  the automation plan YAML at runtime, independent of the scan profile.
+  kast probes live ZAP for spider availability via the corresponding API
+  endpoints, falls back to the best available type with a log warning,
+  reports requested-vs-used in the scan output and report when they
+  differ, and preserves profile timing/depth settings across all spider
+  types.
+- **`kast/config/zap_automation_standard.yaml`** — 2× the depth and
+  duration of the quick profile, plus `addQueryParam` and a larger
+  passive/active budget. Foundation for future scan-profile work.
+
+---
+
+## [3.0.34] — 2026-07-23
+
+### Fixed
+
+- **ZAP add-on auto-update disabled during scans** —
+  `-config autoupdate.checkOnStart=false` is now passed to `docker run`,
+  so ZAP does not hot-swap add-ons mid-scan. Prevents the
+  `NoClassDefFoundError` crash where the report job referenced a
+  classloader that `DownloadInstaller` had already replaced.
+- **Stall detection for silent plan crashes** — `wait_for_plan_completion`
+  now detects when `planProgress.info` stops growing while the last entry
+  ends with `started`. It checks active-scan status: if ascan is still
+  under 100% the scan is legitimately running and kast keeps waiting; if
+  ascan is done or unavailable for 2 consecutive cycles, kast aborts
+  rather than blocking for the full 3600s timeout.
+
+---
+
+## [3.0.33] — 2026-07-22
+
+### Fixed
+
+- **ZAP 2.17 / ExtensionNetwork compatibility (local Docker)** — ZAP 2.14+
+  binds to localhost inside the container by default, which blocks Docker
+  port mapping. `network.localServers.mainProxy.address=0.0.0.0` is now
+  added to the `docker run` command so the mapped port is reachable from
+  the host. All `ZAPAPIClient` requests are routed through the ZAP proxy
+  session using the `http://zap/` API hostname, required in 2.14+ where
+  ExtensionNetwork serves the API via the proxy interface rather than
+  directly at the bound port.
+- **`post_process` handles the flat alerts list** returned by the ZAP API
+  (`findings['alerts']`) in addition to the older site-tree XML report
+  format (`findings['site']`), including the `riskcode`/`pluginId` field
+  naming difference between the two.
+- **`zap_watch_live.py` proxy-based API access** — `build_url` constructs
+  `http://zap/` URLs and `fetch_json` routes through a `ProxyHandler`, for
+  the same ExtensionNetwork reason.
+
+---
+
+## [3.0.32] — 2026-06-12
+
+### Fixed
+
+- **`script_detection` missing `findings_count`** on the failure path in
+  `post_process`. kast-web's scan-details page requires the field on every
+  processed dict.
+- **`script_detection` user agent** changed from
+  `KAST-Security-Scanner/1.0` to a Chrome UA — sites blocking obvious
+  scanner strings no longer return 404.
+
+### Tests
+
+- `test_doctor_updates`: observatory mock updated to `npm list -g` output
+  format; `test_no_other_spec_has_a_resolver` updated to include
+  `mdn-http-observatory-scan`.
+- `test_related_sites_error_handling`: `executive_summary` assertion
+  corrected from `list` to `str`.
+- `test_script_detection_config`: two user-agent default assertions
+  updated.
+
+---
+
+## [3.0.31] — 2026-06-11
+
+### Added
+
+- **`kast doctor` tool-version drift check** — each plugin wrapping an
+  external tool declares `tested_tool_version` as a class attribute (the
+  version it was last validated against). A new `check_tested_versions()`
+  pass runs by default, no flag needed: **OK** when installed matches
+  tested-against, **WARN** on drift (with a hint to run `--check-syntax`),
+  **INFO** when the version can't be read. Covered: testssl (3.3), whatweb
+  (0.6.4), wafw00f (2.4.2), katana (1.6.1), subfinder (2.14.0),
+  mdn-http-observatory (1.6.2). Visibility only — `--check-syntax` remains
+  the enforcement gate.
+
+---
+
+## [3.0.30] — 2026-06-11
+
+### Fixed
+
+- **`org_discovery` CA skip used exact matching** — `_CA_SKIP_SUBSTRINGS`
+  replaces the exact-match `_CA_SKIP` set, so `DigiCert`, `DigiCert Inc`,
+  and `DigiCert, Inc.` all match. The old set held `digicert inc`, but
+  certificates often carry just `DigiCert`, causing the CA to be
+  identified as the site owner and passed on to amass and Shodan.
+- **`amass -org` flag removed** — dropped in amass v4/v5, causing exit
+  code 1 on v5.1.1. Passive `-d` enumeration is unaffected.
+- **crt.sh 502 retry** — added alongside the existing 503 retry; both are
+  transient server-side errors that benefit from exponential backoff.
+
+---
+
+## [3.0.28] — 2026-06-11
+
+### Fixed
+
+- **`ftap` returned `disposition=fail` on zero results** — ftap exits 0
+  and logs "No results to export" without writing its output file when no
+  admin panels are found. The plugin pre-creates an empty `ftap.json` as a
+  progress marker, so `json.load()` on a 0-byte file raised
+  `JSONDecodeError` and was caught as a failure. The file is now read as a
+  string first and parsed only if non-empty, otherwise an empty dict is
+  used. This also unblocks the sensitive-path and login-portal probes,
+  which never ran while the exception short-circuited `run()`. Confirmed
+  via live scan: `/server-status` (200) now surfaces under
+  `exposed-debug-endpoint`.
+- **`aiohttp` added to `requirements.txt`** — ftap's launcher at
+  `/usr/local/bin/ftap` activates the kast venv, so its async HTTP
+  dependency must be installed there. Without it ftap crashed on startup
+  with `ModuleNotFoundError` and `is_available()` returned False.
+- **`whatweb` output fields** — `format_summary` now returns a string (was
+  a list); `count_findings` counts URLs analyzed (was unique tech names);
+  `format_executive_summary` reports EOL detections instead of being empty
+  on non-redirect scans; `extract_issues` refactored onto a shared
+  `_collect_eol_detections` helper.
+- **`related_sites` executive summary** returned the `summary_points` list
+  directly instead of joining it into a string.
+- **`observatory` output** — removed a spurious `-= ... =-` prefix from
+  `executive_summary`; added `_generate_details()` describing each failing
+  test with its result code and score modifier, so `details` is no longer
+  empty on a successful scan.
+
+### Tests
+
+- 4 regression tests in `test_plugin_parsing.py` covering the above.
+
+---
+
+## [3.0.26] — 2026-06-11
+
+### Added
+
+- **Regression-prevention framework.** `kast doctor --check-syntax` calls
+  `check_plugin_commands()`: for each plugin exposing `get_dry_run_info()`
+  it builds the command, extracts the `--flags`, and verifies each appears
+  in the binary's `--help` output — catching upstream flag renames before
+  they reach production.
+- **`kast/tests/fixtures/`** — 5 real scan outputs (wafw00f, whatweb,
+  testssl, cors_analyzer, observatory) committed as parsing fixtures.
+- **`kast/tests/test_plugin_parsing.py`** — 22 fixture-based tests
+  covering the full `parse` → `extract_issues` → `post_process` pipeline
+  without requiring the tools to be installed, including a dedicated
+  regression test for the testssl false-all-clear-on-failure bug.
+
+### Fixed
+
+- **`testssl`**: replaced the removed `--connect-timeout` with
+  `--socket-timeout` (a 3.3dev change); added a fail-disposition guard in
+  `post_process()`, which previously fell through to the normal path and
+  emitted a misleading "no issues found" summary on failure.
+- **`whatweb`**: `_EOL_TECHNOLOGIES` key `"jQuery"` → `"JQuery"` to match
+  WhatWeb's actual output — jQuery 1.x EOL detections were silently
+  missing.
+- **`ftap`**: `is_available()` probes `ftap --version` instead of only
+  `shutil.which()`, catching a broken runtime (missing `aiohttp`) that
+  `which` cannot detect.
+- **`org_discovery`**: strips leading and trailing quotes from the
+  `org_name` extracted from the crt.sh `issuer_name` field
+  (`O="DigiCert"` → `DigiCert`).
+- **Third-party tool installation consistency** (`install.sh`): Go tools
+  install to `GOBIN=/usr/local/bin`; whatweb and testssl.sh install from
+  git with symlinks; wafw00f installs via pipx to `/usr/local/bin`;
+  Node.js upgraded 22 → 24 (required by mdn-http-observatory >= 1.4.9);
+  bare `cd` calls in `install_golang_manual` and `install_ftap` fixed;
+  `*.egg-info` excluded from rsync so stale metadata no longer lands in
+  `/opt/kast`.
+- **`doctor.py`**: reads the observatory installed version via
+  `npm list -g` instead of `--version` (the binary hard-codes 1.0.0
+  regardless of package version); install and update hints updated per
+  tool.
+
+---
+
 ## [3.0.25] — 2026-06-10
 
 ### Fixed

@@ -1,0 +1,120 @@
+{
+  "target": "https://example.com",
+  "apex_domain": "example.com",
+  "org_name": "Example Holdings Inc",
+  "org_source": "crt.sh certificate issuer",
+  "whois": {
+    "status": "success",
+    "org": "Example Holdings Inc",
+    "email": "hostmaster@example.com"
+  },
+  "amass_available": true,
+  "shodan_enabled": true,
+  "shodan_available": true,
+  "shodan_exposure": [
+    {
+      "ip": "93.184.216.34",
+      "port": 443,
+      "transport": "tcp",
+      "product": "nginx",
+      "version": "1.24.0",
+      "hostnames": ["www.example.com", "example.com"],
+      "org": "Example Holdings Inc",
+      "service": "443/tcp (nginx 1.24.0)"
+    },
+    {
+      "ip": "198.51.100.12",
+      "port": 8080,
+      "transport": "tcp",
+      "product": "Apache Tomcat",
+      "version": "9.0.85",
+      "hostnames": ["legacy.example-corp.net"],
+      "org": "Example Holdings Inc",
+      "service": "8080/tcp (Apache Tomcat 9.0.85)"
+    },
+    {
+      "ip": "203.0.113.7",
+      "port": 22,
+      "transport": "tcp",
+      "product": "OpenSSH",
+      "version": "8.9p1",
+      "hostnames": [],
+      "org": "Example Holdings Inc",
+      "service": "22/tcp (OpenSSH 8.9p1)"
+    }
+  ],
+  "discovered_domains": [
+    {
+      "domain": "example-corp.net",
+      "confidence": 1.0,
+      "sources": ["amass", "crtsh_org", "shodan", "whois_match"],
+      "cert_count": 14,
+      "amass_sources": ["Crtsh", "DNSDumpster", "HackerTarget"],
+      "shodan_services": [
+        {
+          "ip": "198.51.100.12",
+          "port": 8080,
+          "transport": "tcp",
+          "product": "Apache Tomcat",
+          "version": "9.0.85",
+          "hostnames": ["legacy.example-corp.net"],
+          "org": "Example Holdings Inc",
+          "service": "8080/tcp (Apache Tomcat 9.0.85)"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "domain": "examplecdn.io",
+      "confidence": 0.7,
+      "sources": ["crtsh_org", "whois_match"],
+      "cert_count": 3,
+      "amass_sources": [],
+      "shodan_services": [],
+      "notes": []
+    },
+    {
+      "domain": "example-mail.com",
+      "confidence": 0.5,
+      "sources": ["spf_include", "dmarc_ref"],
+      "cert_count": 0,
+      "amass_sources": [],
+      "shodan_services": [],
+      "notes": []
+    },
+    {
+      "domain": "example-labs.org",
+      "confidence": 0.3,
+      "sources": ["crtsh_domain"],
+      "cert_count": 1,
+      "amass_sources": [],
+      "shodan_services": [],
+      "notes": []
+    }
+  ],
+  "sources_used": [
+    "amass",
+    "crtsh_domain",
+    "crtsh_org",
+    "dmarc_ref",
+    "shodan",
+    "spf_include",
+    "whois_match"
+  ],
+  "command_executed": {
+    "crtsh_queries": [
+      "https://crt.sh/?q=example.com&output=json",
+      "https://crt.sh/?q=O%3DExample+Holdings+Inc&output=json"
+    ],
+    "dns_queries": ["TXT example.com (SPF)", "TXT _dmarc.example.com (DMARC)"],
+    "whois_queries": ["WHOIS example.com"],
+    "amass_commands": [
+      "amass enum -passive -d example.com -json amass_output.json -timeout 5"
+    ],
+    "shodan_queries": [
+      "Shodan search: hostname:example.com",
+      "Shodan search: org:\"Example Holdings Inc\""
+    ]
+  },
+  "timestamp": "2026-08-19T02:15:44.312+00:00"
+}

@@ -10,7 +10,7 @@ kast-web (at `/home/mscollins/kast-web/`, a separate repo) is the Flask + Celery
 
 **Reliability and reputational safety are first-class concerns.** An SA cannot run a flaky tool in front of a prospect. Active scans must never look like attacks against the prospect's infrastructure.
 
-Current line: kast `v3.0.20` on `main`; kast-web on its `v2.0` line. v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
+Current line: kast `v3.0.41` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
 
 ## Frozen contracts
 
@@ -37,6 +37,8 @@ Internal refactoring is free as long as these surfaces stay stable.
 
 - **Unified report pipeline at `kast/report/`.** `collect_report_data(plugin_results, target) -> dict`, then `render_html(data, output_path, logo_path)` or `render_pdf(data, output_path, logo_path)`. Both renderers consume the SAME data structure; differences are template selection, JSON pre-rendering (PDF), CSS placement (HTML copies, PDF embeds), logo embedding (PDF base64, HTML filename ref), and exec-summary anchor links (HTML only). **Never reintroduce parallel HTML/PDF data-prep paths** — extract new shared work into `collect_report_data`. Helpers (`format_multiline_text`, `format_json_for_pdf`, `infer_issue_metadata`, etc.) live in `kast/report/helpers.py`. One-shot ergonomic entrypoints `generate_html_report` and `generate_pdf_report` are exposed from `kast.report` for callers that want collect-and-render in one call.
 
+- **Scan comparison at `kast/report/diff.py` + `diff_html.py`.** `load_scan_snapshot(scan_dir)` reads a completed scan's `*_processed.json` + `kast_info.json` into a comparable snapshot; `compute_diff(baseline, current)` returns the comparison dict; `diff_scans(a, b)` does both. `render_diff_html(diff, path)` writes a **self-contained** HTML file from `templates/diff_template.html` — CSS is inlined, not copied alongside, because a comparison gets emailed to prospects. Surfaced as `kast scan diff`. Issue identity is `(reported_by_tool, issue_id)`; occurrences collapse with a count. **The coverage-gating rule is load-bearing:** a plugin that ran in one scan but not the other cannot support a new-vs-resolved claim, so its findings get `coverage_gap: True`, are excluded from `summary["new_count"]`/`summary["resolved_count"]`, and set `summary["has_coverage_gap"]`. Any new consumer of this dict must surface that flag — silently over-reporting "resolved" in front of a prospect is exactly the failure mode kast exists to avoid.
+
 - **CSS-based long-string wrapping.** Long URLs and other strings wrap via `overflow-wrap: anywhere` on `.report-paragraph`, `.json-string`, `.json-key`, `.issue-description`, `td`, etc., in `kast_style.css` and `kast_style_pdf.css`. **Don't reintroduce `<wbr>` injection in Python.** New sections needing aggressive wrapping go in the comment-block at the bottom of `kast_style_pdf.css`. WeasyPrint accepts `overflow-wrap: anywhere` but rejects `word-break: break-word` (non-standard CSS); use `word-break: break-all` for extra-aggressive PDF breaking.
 
 - **Jinja macros at `templates/_macros.html`.** Both report templates do `{% import "_macros.html" as kast %}`. Currently one macro: `kast.tool_anchor(name)` for anchor-ID generation. Add new macros only when the same logic is duplicated across HTML and PDF templates. `templates/partials/` exists for shared template blocks; see its README for criteria. The two templates have legitimately different layouts (HTML interactive nav, PDF cover page); aggressive template inheritance is not pursued without golden-output diff coverage.
@@ -62,8 +64,10 @@ Loose ends from the v3.0 ship — tracked but not blocking active work:
 - **kast-web AI service (C8–C11).** The kast side of the AI hook landed (`--ai-endpoint URL` flag + `HttpAdapter`), but the kast-web service itself — cost gating, admin UI, DB migration — has not been built. Done in a kast-web session.
 - **kast-web plugin-discovery migration.** kast-web still parses `kast -ls` text output (`/home/mscollins/kast-web/app/routes/admin.py:634`). The v3-native endpoint is `kast plugins list --json`. Migrate when convenient.
 - **F2 "Why Barracuda" WAF feature map (C6).** Deferred until other v3 work shipped. Now unblocked but waiting on Barracuda product-marketing content.
-- **Test sys.path hygiene.** ~12 test files still have hardcoded `sys.path.insert(0, '/opt/kast')` (or similar) plus a couple of bare imports that work only by side-effect. Tests pass today because the dev venv has `pip install -e .` and pytest's collection happens to import in the right order. Worth a mechanical cleanup pass to remove the hacks and rely on the proper package install.
-- **18 ruff findings remain.** After the v3.0.21 baseline pass: 7 `F401` unused-import (some may be intentional re-exports), 3 `B904` raise-without-from, 3 `E722` bare-except, plus minor `B005/B007/B027/UP035`. None are bugs; all are judgment calls. Decide per finding when next touching the file.
+- **3 ruff findings remain**, all in `kast/tests/test_zap_stall_detection.py`: 2 `F401` unused-import and 1 `F841` unused-variable. Auto-fixable; not bugs.
+- **ZAP subsystem churn.** 13 of the last 30 commits touch ZAP, and two of them were fixes to a prior fix (stall detection false-fired on `spiderAjax`, then again on `spiderClient`). The exemption list is reactive; a job-type taxonomy sourced from ZAP itself would be the durable fix. ZAP breakage is also version-coupled — the 2.14 → 2.17 ExtensionNetwork change bit twice (v3.0.33). A pinned image digest plus a smoke test would catch it before an SA does.
+- **6 unresolved registry IDs** sit in the repo-root `missing_issue_ids.json` (dated 2026-07-22): `exposed-api-endpoint`, `server-version-disclosed`, `ssl-certificate-expiring-soon`, `ssl-weak-cipher-suite`, `subdomain-takeover-risk`, `x-frame-options-header-missing`. `kast registry promote` handles these.
+- **2 registry entries lack `waf_deployment_timeframe`**, so the TCO appendix silently under-reports those rows.
 
 ## v3.1 backlog
 
@@ -73,7 +77,7 @@ Deferred capability candidates live in `docs/v3.1-backlog.md`. Reference that fi
 
 - **Run tests:** `python -m pytest kast/tests/`
 - **Plugin discovery:** plugins live at `kast/plugins/*_plugin.py`, auto-discovered (see `kast/utils.py:discover_plugins`)
-- **Issue registry:** `kast/data/issue_registry.json` (107 entries, almost all marked `waf_addressable`)
+- **Issue registry:** `kast/data/issue_registry.json` (117 entries, 114 marked `waf_addressable`)
 - **Issue registry workflow:** `kast registry list/add/promote`. `kast registry add ID --severity ... --category ...` adds an entry. `kast registry promote SCAN_DIR` reads `missing_issue_ids.json` and walks the operator through accepting candidate entries (use `--accept-all` for CI). Both write atomically.
 - **Sample scan baseline:** `docs/baseline-v2.14/sample-scan-1/` — reference for expected kast output structure.
 - **kast-web:** at `/home/mscollins/kast-web/`; shells out to `/usr/local/bin/kast`.

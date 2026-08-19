@@ -33,6 +33,7 @@ For the full migration story, see [`docs/MIGRATION_V2_TO_V3.md`](docs/MIGRATION_
 - AI-augmented executive summaries (opt-in)
 - Active and passive scanning modes
 - Report-only mode (`kast scan rerun DIR`) regenerates reports from existing scan data
+- Scan-to-scan comparison (`kast scan diff BASELINE CURRENT`) for before-WAF / after-WAF reporting
 - Dry-run mode previews execution without running tools
 - Selective plugin execution (`--run-only`)
 - Priority-based plugin scheduling
@@ -166,6 +167,32 @@ kast scan list                     # list past scans under ~/kast_results
 kast scan show DIR                 # show details of a past scan
 kast scan rerun DIR                # re-render reports from existing data
 ```
+
+### Comparing two scans
+
+```bash
+kast scan diff BASELINE_DIR CURRENT_DIR
+kast scan diff BASELINE_DIR CURRENT_DIR --show-persisting
+kast scan diff BASELINE_DIR CURRENT_DIR --html comparison.html
+kast scan diff BASELINE_DIR CURRENT_DIR --json
+```
+
+Reports what changed between two completed scans of the same target:
+issues resolved, issues newly appearing, issues present in both (with an
+occurrence delta), and the severity movement. Built for the before-WAF /
+after-WAF comparison.
+
+Issues are compared as `(reporting plugin, issue ID)` pairs, so the same
+finding reported by two different tools stays distinct. Repeat occurrences
+collapse into one row with a count.
+
+If a plugin ran in one scan but not the other, its findings are marked with
+an asterisk and excluded from the headline resolved/new counts — a skipped
+plugin cannot prove anything was fixed. The comparison says so explicitly
+rather than quietly inflating the "resolved" number.
+
+The `--html` output is self-contained (CSS inlined, no sidecar files), so it
+can be emailed or attached without breaking.
 
 ### Plugins, registry, doctor
 
