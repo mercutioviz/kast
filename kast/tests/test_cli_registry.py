@@ -7,6 +7,8 @@ mutated.
 """
 
 import json
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -112,6 +114,24 @@ def test_registry_add_creates_entry(tmp_registry):
     assert entry["waf_addressable"] is True
     # display_name derived from id
     assert entry["display_name"] == "Test 001"
+
+
+def test_shipped_registry_survives_a_write_unchanged():
+    """Loading and re-saving the real registry must be a byte-level no-op.
+
+    ``kast registry add`` rewrites the whole file. Before ``ensure_ascii=False``
+    it escaped every em-dash and dropped the trailing newline, so adding one
+    issue produced a diff touching dozens of untouched entries — enough churn
+    to hide the actual change during review.
+    """
+    from kast.cli.registry import REGISTRY_PATH, _load_registry, _save_registry
+
+    original = REGISTRY_PATH.read_bytes()
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp) / "issue_registry.json"
+        copy.write_bytes(original)
+        _save_registry(copy, _load_registry(copy))
+        assert copy.read_bytes() == original
 
 
 def test_registry_add_rejects_existing_without_force(tmp_registry):

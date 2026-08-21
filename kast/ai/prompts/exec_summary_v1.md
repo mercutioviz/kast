@@ -35,6 +35,7 @@ Generate an executive summary for this web-application security scan.
 **WAF-addressable analysis:**
 - Total issues: {{ waf_stats.total_issues | default(0) }}
 - Addressable by WAF: {{ waf_stats.waf_addressable_count | default(0) }} ({{ waf_stats.waf_addressable_percentage | default(0) }}%)
+- Critical-severity WAF-addressable: {{ waf_stats.critical_severity_waf | default(0) }}
 - High-severity WAF-addressable: {{ waf_stats.high_severity_waf | default(0) }}
 - Medium-severity WAF-addressable: {{ waf_stats.medium_severity_waf | default(0) }}
 - Low-severity WAF-addressable: {{ waf_stats.low_severity_waf | default(0) }}

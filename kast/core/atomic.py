@@ -36,6 +36,9 @@ def write_json_atomic(path: PathLike, data: Any, **dump_kwargs: Any) -> None:
     :param dump_kwargs: Additional kwargs for :func:`json.dump`. ``indent=2``
         is the default; pass ``indent=None`` for compact output.
         ``default`` is honored for non-standard types (e.g., ``default=str``).
+        Pass ``ensure_ascii=False`` for files a human reads or diffs — the
+        default escapes every non-ASCII character, so rewriting a file with
+        em-dashes churns lines the caller never touched.
 
     :raises TypeError, ValueError: If ``data`` is not JSON-serializable.
     :raises OSError: If the file cannot be written or replaced.
@@ -51,6 +54,7 @@ def write_json_atomic(path: PathLike, data: Any, **dump_kwargs: Any) -> None:
     try:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, **dump_kwargs)
+            f.write("\n")
         os.replace(tmp, path)
     except Exception:
         try:

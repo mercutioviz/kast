@@ -48,8 +48,13 @@ def _load_registry(path: Path) -> dict:
 
 
 def _save_registry(path: Path, data: dict) -> None:
-    """Atomic write of the full registry."""
-    write_json_atomic(path, data)
+    """Atomic write of the full registry.
+
+    ``ensure_ascii=False`` because the registry is a checked-in file that
+    gets reviewed as a diff. The default would escape every em-dash in every
+    entry, so adding one issue would rewrite dozens of untouched lines.
+    """
+    write_json_atomic(path, data, ensure_ascii=False)
 
 
 def _derive_display_name(issue_id: str) -> str:

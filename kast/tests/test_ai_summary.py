@@ -102,6 +102,23 @@ def test_generate_ai_summary_renders_target_into_prompt():
     assert "example.com" in adapter.last_call["prompt"]
 
 
+def test_generate_ai_summary_renders_critical_waf_count_into_prompt():
+    """The prompt must expose Critical WAF-addressability, not just High/Medium/Low.
+
+    Severity.CRITICAL was added after this prompt was written, so the count
+    existed in waf_statistics but never reached the model.
+    """
+    rd = _sample_report_data()
+    rd["scan_metadata"]["severity_counts"]["Critical"] = 2
+    rd["scan_metadata"]["waf_statistics"]["critical_severity_waf"] = 2
+
+    adapter = _MockAdapter(_good_response_text())
+    generate_ai_summary(adapter, rd)
+
+    assert "Critical-severity WAF-addressable: 2" in adapter.last_call["prompt"]
+    assert "Critical: 2" in adapter.last_call["prompt"]
+
+
 def test_generate_ai_summary_invalid_json_raises():
     adapter = _MockAdapter("not actually json")
     with pytest.raises(AIGenerationError, match="not valid JSON"):

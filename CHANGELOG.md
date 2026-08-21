@@ -8,6 +8,53 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.44] — 2026-08-21
+
+### Changed
+
+- **Certificate issues that break the page for every visitor are now
+  Critical.** `cert-chain-invalid`, `cert-self-signed`, and
+  `hsts-invalid-cert` were High; they join `cert-expired`, which was already
+  Critical. All four produce a browser interstitial for every visitor, and
+  `hsts-invalid-cert` is the strictest case — under HSTS the warning cannot
+  be clicked through, so the site is simply unreachable. Rating these below
+  findings no visitor can see understated the one failure an SA can
+  demonstrate on a prospect's own laptop.
+
+  `cert-expiring-soon` and `cert-weak-key` are unchanged; neither produces a
+  warning today.
+
+### Fixed
+
+- **The AI executive summary could not see Critical WAF-addressability.**
+  `exec_summary_v1.md` listed high/medium/low WAF-addressable counts, but
+  `critical_severity_waf` was added to `waf_statistics` alongside
+  `Severity.CRITICAL` in v3.0.42 and the prompt was never updated. Critical
+  findings still reached the model through the severity counts and the
+  top-issues list, so nothing was invisible — but the summary could not say
+  how many of the most severe findings a WAF would address, which is the
+  framing the report exists to support. Edited in place rather than versioned
+  to v2: the addition is context-only, the output schema is unchanged, and
+  the existing eval goldens still pass.
+
+- **`kast registry add` rewrote the whole registry file.**
+  `write_json_atomic` defaults to `json.dump`'s `ensure_ascii=True` and wrote
+  no trailing newline, so adding a single issue escaped every em-dash in
+  every entry and stripped the final newline — roughly 45 changed lines for a
+  10-line addition, enough churn to hide the actual change during review.
+  `_save_registry` now passes `ensure_ascii=False`, and `write_json_atomic`
+  always terminates its output with a newline.
+
+  `ensure_ascii=False` is deliberately scoped to the registry rather than
+  made the global default: the registry is a checked-in file that gets read
+  as a diff, whereas flipping the default would newly introduce non-ASCII
+  bytes into every `*_processed.json` on the kast-web contract surface. The
+  trailing newline is safe everywhere — trailing whitespace is valid JSON and
+  no consumer is affected.
+
+  A regression test pins a load/save round-trip of the shipped registry to be
+  byte-identical. A real `kast registry add` now produces a pure append.
+
 ## [3.0.43] — 2026-08-19
 
 ### Added

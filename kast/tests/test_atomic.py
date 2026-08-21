@@ -30,7 +30,28 @@ def test_default_indent_is_2(tmp_path):
 def test_indent_can_be_overridden(tmp_path):
     target = tmp_path / "out.json"
     write_json_atomic(target, {"a": 1}, indent=None)
-    assert target.read_text() == '{"a": 1}'
+    assert target.read_text() == '{"a": 1}\n'
+
+
+def test_output_ends_with_a_newline(tmp_path):
+    target = tmp_path / "out.json"
+    write_json_atomic(target, {"a": 1})
+    assert target.read_text().endswith("}\n")
+
+
+def test_ensure_ascii_false_preserves_non_ascii(tmp_path):
+    """Checked-in files (the issue registry) pass this so diffs stay minimal."""
+    target = tmp_path / "out.json"
+    write_json_atomic(target, {"a": "one — two"}, ensure_ascii=False)
+    text = target.read_text()
+    assert "one — two" in text
+    assert "\\u2014" not in text
+
+
+def test_ensure_ascii_defaults_to_escaping(tmp_path):
+    target = tmp_path / "out.json"
+    write_json_atomic(target, {"a": "one — two"})
+    assert "\\u2014" in target.read_text()
 
 
 def test_default_kwarg_for_non_serializable(tmp_path):
