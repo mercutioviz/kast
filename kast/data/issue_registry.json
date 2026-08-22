@@ -143,6 +143,28 @@
     "code_fix_timeframe": "N/A",
     "waf_deployment_timeframe": "1-2 days"
   },
+  "cdn-without-waf": {
+    "display_name": "CDN Present Without WAF Protection",
+    "description": "A CDN or edge layer was identified in front of the application, but no web application firewall was detected on it. The edge infrastructure needed to inspect and filter application-layer traffic is already deployed; the protection it can carry is not enabled. Requests reach the origin application unfiltered despite passing through the edge.",
+    "remediation": "Enable the web application firewall capability on the existing edge provider, or route the application through a WAF-enabled edge service. Because the traffic path already terminates at an edge provider, adding application-layer inspection is a configuration change rather than an architectural one.",
+    "severity": "Low",
+    "category": "WAF Detection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 days"
+  },
+  "no-cdn-detected": {
+    "display_name": "No CDN or Edge Layer Detected",
+    "description": "No CDN, edge cache, or reverse proxy was detected in front of the application. Client traffic reaches the origin server directly, so the origin absorbs all volumetric and application-layer traffic itself, TLS is terminated only at the origin, and there is no upstream point at which malicious requests can be filtered or rate-limited.",
+    "remediation": "Place the application behind a CDN or edge security service to absorb volumetric traffic, terminate TLS closer to the client, and provide an enforcement point for application-layer filtering ahead of the origin.",
+    "severity": "Low",
+    "category": "WAF Detection",
+    "waf_addressable": true,
+    "remediation_approach": "waf",
+    "code_fix_timeframe": "N/A",
+    "waf_deployment_timeframe": "1-2 days"
+  },
   "cookies-session-without-secure-flag": {
     "display_name": "Session Cookie Without Secure Flag",
     "description": "A session cookie is set without the 'Secure' flag, allowing it to be transmitted over unencrypted connections.",

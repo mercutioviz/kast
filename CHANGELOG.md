@@ -8,6 +8,40 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.45] — 2026-08-22
+
+### Added
+
+- **CDN / Edge Profile plugin (`edge_profile`).** Fingerprints whatever sits
+  in front of the origin — response headers, edge-set cookies, DNS
+  (CNAME chain, NS delegation, PTR), and whatweb corroboration — and crosses
+  that verdict with wafw00f's to state an edge posture.
+
+  The gap it closes: wafw00f detects Cloudflare, Akamai, and Fastly only as
+  *WAFs*, and only while the WAF is actively blocking. A Cloudflare-fronted
+  site with the WAF switched off reports a bare `No WAF Detected`, which
+  leaves the SA arguing "you need a WAF" when the far better opening is
+  "you are already paying for the edge and the WAF is off."
+
+  Two new registry entries, both `Low` on purpose: `cdn-without-waf` (edge
+  present, no WAF) and `no-cdn-detected` (origin directly exposed).
+  `No WAF Detected` is already `High`, and scoring the same exposure twice
+  would inflate the risk narrative.
+
+  A failed fetch classifies `unknown`, never `none` — "no CDN detected" is a
+  claim about the prospect's infrastructure, and kast does not make it off a
+  connection error.
+
+### Fixed
+
+- **`edge_profile` CNAME detection stopped at the first hop.** Managed edges
+  are routinely reached through a chain — `www.barracuda.com` goes Traffic
+  Manager -> Barracuda WaaS -> Azure Front Door — so the CDN suffix is rarely
+  on hop 1. The chain is now walked (capped at 8 hops, with a loop guard),
+  and `cudawaas.com` was added to the suffix table. Header signals had been
+  masking this; a target whose edge does not leak headers would have been
+  reported as having no CDN.
+
 ## [3.0.44] — 2026-08-21
 
 ### Changed

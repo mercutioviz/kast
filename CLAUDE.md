@@ -10,7 +10,7 @@ kast-web (at `/home/mscollins/kast-web/`, a separate repo) is the Flask + Celery
 
 **Reliability and reputational safety are first-class concerns.** An SA cannot run a flaky tool in front of a prospect. Active scans must never look like attacks against the prospect's infrastructure.
 
-Current line: kast `v3.0.42` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
+Current line: kast `v3.0.45` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
 
 ## Frozen contracts
 
@@ -55,6 +55,8 @@ Internal refactoring is free as long as these surfaces stay stable.
 
 - **AI Surface Detection plugin at `kast/plugins/ai_surface_detection_plugin.py`.** Plugin name `ai_surface_detection`. Covers chatbots/virtual agents (`AI_CHATBOT_SCRIPT_PATTERNS` + `AI_CHATBOT_URL_PATTERNS` + `WHATWEB_CHAT_INDICATORS`) **and** AI semantic search / RAG platforms (`AI_SEARCH_RAG_SCRIPT_PATTERNS` + `AI_SEARCH_RAG_URL_PATTERNS` + `WHATWEB_SEARCH_INDICATORS`). Each detection carries a `detection_type` field (`"chatbot"` or `"ai_search"`). `post_process` emits `AI-CHATBOT-001`/`AI-CHATBOT-002` for chatbots and `AI-SEARCH-001` for search/RAG. The plugin replaced the old `ai_chatbot_detection_plugin.py`; the old name is gone everywhere.
 
+- **CDN / Edge Profile plugin at `kast/plugins/edge_profile_plugin.py`.** Plugin name `edge_profile`, priority 20, depends on `wafw00f` + `whatweb`. Fingerprints the edge from four sources — response headers (`EDGE_HEADER_SIGNATURES`), edge-set cookies (`EDGE_COOKIE_SIGNATURES`), DNS CNAME/NS/PTR (`EDGE_CNAME_SUFFIXES` / `EDGE_NS_SUFFIXES`), and whatweb corroboration (`WHATWEB_EDGE_INDICATORS`) — then classifies `specific | generic | none`, deliberately mirroring wafw00f's triad so the two verdicts read as a pair. It does not re-derive the WAF verdict: `_read_waf_classification` calls `Wafw00fPlugin._classify` directly. Crossing the two produces `edge_posture` and the issue IDs `cdn-without-waf` (edge present, no WAF — the "enable it, don't buy it" conversation) and `no-cdn-detected`. Both are `Low` on purpose: wafw00f's `No WAF Detected` is already `High`, and scoring the same exposure twice would inflate the risk narrative. **A failed fetch classifies `unknown`, never `none`** — "no CDN detected" is a claim about the prospect's infrastructure, and kast must not make it off a connection error. Header signatures are deliberately conservative; a speculative pattern that false-fires in front of a prospect costs more than a missed detection.
+
 - **AI prompt eval harness at `kast/ai/evals/`.** `kast.ai.evals.criteria` provides 8 quality criterion functions (`check_schema`, `check_headline_length`, `check_headline_not_generic`, `check_narrative_length`, `check_key_findings_count`, `check_recommended_actions_count`, `check_target_mentioned`, `check_no_forbidden_phrases`), each returning `CriterionResult`. `kast.ai.evals.runner` provides `EvalScenario` / `EvalResult` dataclasses and two run modes: `run_eval(scenario, adapter)` (live/mocked API) and `run_golden_eval(scenario)` (validates stored golden file, no API call). Scenarios live at `kast/ai/evals/scenarios/*.yaml`; golden outputs at `kast/ai/evals/golden/*.json`. The parametrized `test_golden_passes_criteria` in `test_ai_evals.py` automatically picks up new scenarios.
 
 - **Cloud ZAP lives in kast-web, not kast.** The kast CLI sees only local and remote ZAP modes; the cloud subsystem (Terraform, providers, SSH executor, infrastructure scripts) moved to `kast-web/app/cloud/`. kast-web's `execute_scan_task` calls `cloud_provision_task` (provisions the ZAP instance), captures the resulting URL + API key, then spawns the kast CLI with `--set zap.execution_mode=remote --set zap.remote.url=... --set zap.remote.api_key=...`. `kast/scripts/zap_providers.py` retains `LocalZapProvider` and `RemoteZapProvider`; `kast/plugins/zap_plugin.py` imports them directly and dispatches inline. Migration guide for v2.x cloud users: `kast-web/docs/MIGRATION_FROM_KAST_CLOUD.md`.
@@ -79,7 +81,7 @@ Deferred capability candidates live in `docs/v3.1-backlog.md`. Reference that fi
 
 - **Run tests:** `python -m pytest kast/tests/`
 - **Plugin discovery:** plugins live at `kast/plugins/*_plugin.py`, auto-discovered (see `kast/utils.py:discover_plugins`)
-- **Issue registry:** `kast/data/issue_registry.json` (117 entries, 114 marked `waf_addressable`)
+- **Issue registry:** `kast/data/issue_registry.json` (119 entries, 116 marked `waf_addressable`)
 - **Issue registry workflow:** `kast registry list/add/promote`. `kast registry add ID --severity ... --category ...` adds an entry. `kast registry promote SCAN_DIR` reads `missing_issue_ids.json` and walks the operator through accepting candidate entries (use `--accept-all` for CI). Both write atomically.
 - **Sample scan baseline:** `docs/baseline-v2.14/sample-scan-1/` — reference for expected kast output structure.
 - **kast-web:** at `/home/mscollins/kast-web/`; shells out to `/usr/local/bin/kast`.
