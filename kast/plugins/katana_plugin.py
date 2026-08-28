@@ -6,11 +6,20 @@ Description: Site crawler and URL finder plugin for KAST.
 import os
 import shutil
 import subprocess
+import tempfile
+import time
 from datetime import UTC, datetime
 from pprint import pformat
 
 from kast.core.atomic import write_json_atomic
 from kast.plugins.base import KastPlugin
+
+# How often to check katana.txt's line count while the crawl is running.
+KATANA_POLL_INTERVAL_SECONDS = 3
+# If the URL count hasn't grown in this long, flag the crawl as stalled
+# (still running, but no new URLs — likely near the end of the frontier,
+# or genuinely stuck on a slow/unresponsive page).
+KATANA_STALL_THRESHOLD_SECONDS = 45
 
 # Categories ordered by security priority (first-match wins per URL).
 INTERESTING_PATH_PATTERNS = {
@@ -226,6 +235,42 @@ class KatanaPlugin(KastPlugin):
         """
         return shutil.which("katana") is not None
 
+    def _count_lines(self, path):
+        """Count non-empty lines in a file, tolerating concurrent writes."""
+        if not os.path.exists(path):
+            return 0
+        count = 0
+        try:
+            with open(path) as f:
+                for line in f:
+                    if line.strip():
+                        count += 1
+        except OSError:
+            # File may be mid-write/rotated by katana; treat as no update this tick.
+            return None
+        return count
+
+    def _write_progress(self, output_dir, status, urls_found, stalled_seconds=0):
+        """
+        Write a small progress snapshot so kast-web can show crawl activity
+        instead of an opaque "in progress" state. Katana's total URL count
+        isn't known ahead of time (it's a discovery crawl), so we report the
+        running count plus a stall signal rather than a percentage.
+
+        :param output_dir: Directory to write the progress file
+        :param status: One of "crawling", "stalled", "done"
+        :param urls_found: Current count of lines in katana.txt
+        :param stalled_seconds: Seconds since urls_found last changed
+        """
+        progress_file = os.path.join(output_dir, "katana_progress.json")
+        data = {
+            "status": status,
+            "urls_found": urls_found,
+            "stalled_seconds": stalled_seconds,
+            "last_updated": datetime.now(UTC).isoformat(timespec="milliseconds"),
+        }
+        write_json_atomic(progress_file, data)
+
     def run(self, target, output_dir, report_only):
         """
         Run the tool and return standardized result dict.
@@ -325,13 +370,42 @@ class KatanaPlugin(KastPlugin):
                 # Create empty katana.json file first, so that kast-web knows we are running
                 in_progress_file = os.path.join(output_dir, "katana.json")
                 open(in_progress_file, 'a').close()
-                proc = subprocess.run(cmd, capture_output=True, text=True)
-                os.remove(in_progress_file)
-                if proc.returncode != 0:
-                    return self.get_result_dict(
-                        disposition="fail",
-                        results=proc.stderr.strip()
-                    )
+
+                # stdout/stderr go to a spooled temp file rather than PIPE: with -o
+                # writing URLs directly to katana.txt, katana shouldn't produce much
+                # on either stream, but an unread PIPE can fill its OS buffer and
+                # deadlock the process during a long poll loop. A real file has no
+                # such limit and needs no draining.
+                with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as combined_output:
+                    proc = subprocess.Popen(cmd, stdout=combined_output, stderr=combined_output)
+
+                    last_count = 0
+                    last_change_time = time.monotonic()
+                    while proc.poll() is None:
+                        time.sleep(KATANA_POLL_INTERVAL_SECONDS)
+                        count = self._count_lines(output_file)
+                        if count is None:
+                            continue
+                        now = time.monotonic()
+                        if count != last_count:
+                            last_count = count
+                            last_change_time = now
+                        stalled_seconds = int(now - last_change_time)
+                        status = "stalled" if stalled_seconds >= KATANA_STALL_THRESHOLD_SECONDS else "crawling"
+                        self._write_progress(output_dir, status, last_count, stalled_seconds)
+
+                    proc.wait()
+                    final_count = self._count_lines(output_file) or 0
+                    self._write_progress(output_dir, "done", final_count)
+
+                    os.remove(in_progress_file)
+                    if proc.returncode != 0:
+                        combined_output.seek(0)
+                        error_output = combined_output.read().strip()
+                        return self.get_result_dict(
+                            disposition="fail",
+                            results=error_output
+                        )
 
                 # Read plain text output file and store raw URLs
                 raw_urls = []

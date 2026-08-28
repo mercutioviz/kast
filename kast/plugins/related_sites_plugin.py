@@ -258,6 +258,24 @@ class RelatedSitesPlugin(KastPlugin):
             self.debug(f"Subfinder execution error: {e}")
             return []
 
+    def _write_progress(self, output_dir, phase, **extra):
+        """
+        Write a small progress snapshot so kast-web can show which phase
+        (subdomain enumeration vs. httpx probing) is currently running,
+        instead of a single opaque "in progress" state.
+
+        :param output_dir: Directory to write the progress file
+        :param phase: One of "enumerating", "probing", "done"
+        :param extra: Additional phase-specific fields (e.g. total_subdomains)
+        """
+        progress_file = os.path.join(output_dir, "related_sites_progress.json")
+        data = {
+            "phase": phase,
+            "last_updated": datetime.now(UTC).isoformat(timespec="milliseconds"),
+        }
+        data.update(extra)
+        write_json_atomic(progress_file, data)
+
     def _probe_subdomains_with_httpx(self, subdomains, output_dir):
         """
         Probe subdomains with httpx to find live web services.
@@ -507,6 +525,7 @@ class RelatedSitesPlugin(KastPlugin):
 
         # Step 2: Discover subdomains with subfinder
         self.debug(f"Discovering subdomains for {scan_target}")
+        self._write_progress(output_dir, "enumerating", scanned_domain=scan_target)
         subdomains = self._run_subfinder(scan_target, output_dir)
 
         if not subdomains:
@@ -546,7 +565,16 @@ class RelatedSitesPlugin(KastPlugin):
         self.debug(f"Probing {len(filtered_subdomains)} related subdomain(s) with httpx")
 
         # Step 3: Probe with httpx (using filtered list)
+        self._write_progress(
+            output_dir, "probing",
+            total_subdomains=len(filtered_subdomains),
+            ports=self.httpx_ports,
+        )
         probe_results = self._probe_subdomains_with_httpx(filtered_subdomains, output_dir)
+        self._write_progress(
+            output_dir, "done",
+            total_subdomains=len(filtered_subdomains),
+        )
 
         # Step 4: Calculate statistics from host-centric data
         live_hosts = probe_results["live_hosts"]
