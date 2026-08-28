@@ -100,13 +100,16 @@ class TestFtapPostProcess(unittest.TestCase):
         self.assertEqual(len(processed["issues"]), 1)
         issue = processed["issues"][0]
         self.assertEqual(issue["id"], "exposed_admin_panel")
-        self.assertIn("4 exposed admin panel", issue["description"])
+        # Two of the four sample results are URL fragments (/#admin/ and
+        # /admin#/), which never reach the server. Only two real panels remain.
+        self.assertIn("2 exposed admin panels", issue["description"])
+        self.assertNotIn("#", issue["description"])
 
         # Verify summary
-        self.assertIn("4 exposed admin panels", processed["summary"])
+        self.assertIn("2 exposed admin panels", processed["summary"])
 
         # Verify executive summary is simplified (one sentence)
-        self.assertEqual(processed["executive_summary"], "Found 4 admin panels.")
+        self.assertEqual(processed["executive_summary"], "Found 2 admin panels.")
 
         # Verify details section
         self.assertIn("Exposed Admin Panels:", processed["details"])
@@ -137,7 +140,7 @@ class TestFtapPostProcess(unittest.TestCase):
         """Test summary generation."""
         # Test with findings
         summary = self.plugin._generate_summary(self.sample_data)
-        self.assertIn("Found 4 exposed admin panels", summary)
+        self.assertIn("Found 2 exposed admin panels", summary)
 
         # Test with no findings
         empty_data = {"results": []}
@@ -164,18 +167,20 @@ class TestFtapPostProcess(unittest.TestCase):
         # Check for key information
         self.assertIn("Exposed Admin Panels:", details)
         self.assertIn("Panel #1:", details)
-        self.assertIn("https://waas.cudalabx.net/#admin/", details)
+        self.assertIn("https://waas.cudalabx.net/account/", details)
         self.assertIn("Hackazon", details)
-        self.assertIn("Confidence: 90.0%", details)
         self.assertIn("Login Form Detected: Yes", details)
-        self.assertIn("Technologies: Node.js, jQuery, PHP, Bootstrap", details)
+
+        # Fragment URLs are probe artifacts, not panels, and must not be listed.
+        self.assertNotIn("https://waas.cudalabx.net/#admin/", details)
+        self.assertNotIn("https://waas.cudalabx.net/admin#/", details)
 
     def test_build_executive_summary(self):
         """Test executive summary building."""
         summary = self.plugin._build_executive_summary(self.sample_data)
 
         # Check for simplified one-sentence format
-        self.assertEqual(summary, "Found 4 admin panels.")
+        self.assertEqual(summary, "Found 2 admin panels.")
 
         # Test with no findings
         empty_data = {"results": []}

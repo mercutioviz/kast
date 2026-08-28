@@ -678,6 +678,33 @@ def _setup_logging(log_dir: str, verbose: bool) -> None:
     )
 
 
+def _expand_dependencies(selected, registry):
+    """Add the plugins `selected` depends on, transitively.
+
+    `--run-only ftap` has to produce a correct ftap report, and a plugin whose
+    dependency was filtered out silently degrades — ftap would drop every
+    technology it could not corroborate, and in parallel mode the orchestrator
+    would call it a dependency deadlock. Returns (plugins in priority order,
+    names added).
+    """
+    resolved = {p.name: p for p in selected}
+    queue = list(selected)
+    added = []
+
+    while queue:
+        for dep in getattr(queue.pop(), "dependencies", None) or []:
+            name = dep.get("plugin")
+            if name in resolved:
+                continue
+            instance = registry.get(name)
+            resolved[name] = instance
+            added.append(name)
+            queue.append(instance)
+
+    ordered = sorted(resolved.values(), key=lambda p: getattr(p, "priority", 100))
+    return ordered, added
+
+
 def _run_scan(
     *, target, mode, output_dir, report_only_path, format_, dry_run,
     parallel, max_workers, verbose, log_dir, logo, run_only,
@@ -824,7 +851,15 @@ def _run_scan(
                 f"[bold red]Error:[/bold red] Invalid plugin name(s): {', '.join(invalid)}"
             )
             sys.exit(1)
-        selected_plugins = [registry.get(n) for n in requested_names]
+        selected_plugins, pulled_in = _expand_dependencies(
+            [registry.get(n) for n in requested_names], registry
+        )
+        if pulled_in:
+            log.info(f"--run-only pulled in dependencies: {pulled_in}")
+            console.print(
+                f"[yellow]Note:[/yellow] also running {', '.join(pulled_in)} — "
+                f"required by {', '.join(requested_names)}."
+            )
         log.info(
             f"Filtered to {len(selected_plugins)} plugin(s): "
             f"{[p.name for p in selected_plugins]}"

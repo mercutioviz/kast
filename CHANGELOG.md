@@ -8,6 +8,47 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.46] — 2026-08-28
+
+### Fixed
+
+- **ftap no longer reports one admin panel as many.** A CMS that routes every
+  `/admin*` path to the same sign-in page made ftap report the wordlist rather
+  than the site: www.hingham-ma.gov came back as "12 exposed admin panels"
+  that were one page, including `/admin-area-51/` and `/admin-2028/`.
+  Responses are now collapsed when status and title match and the bodies are
+  the same size to within a tolerance — aliases differ only by the echoed path
+  and per-request CSRF tokens. Collapsing requires positive evidence: a result
+  with no `content_length` is always counted as its own panel, since merging
+  two genuinely distinct panels would understate the finding.
+
+  Collapsed URLs are disclosed, not dropped — the issue says "(also reachable
+  via N other paths)" and the details, HTML card, and PDF list name every one.
+
+- **ftap no longer counts URL fragments as panels.** A fragment is never sent
+  to the server, so `/#admin/` is the homepage. Those hits are excluded from
+  the panel count and shown under "Other Findings" instead.
+
+- **ftap's technology fingerprints are corroborated against whatweb.** Upstream
+  ftap's detector is a case-insensitive substring scan of the response body
+  with no word boundaries — `"h2"` matches every `<h2>` heading, `"_token"`
+  matches any CSRF field, `"vue"` matches "revue" — so it reported Laravel and
+  Vue.js for an ASP.NET site. A technology is now shown only if whatweb saw it
+  too, matched across naming differences (`ASP_NET` ↔ `ASP.NET`). Entries
+  upstream derives from response headers (`Security: …`) or an anchored
+  `<meta name=generator>` regex are kept regardless, being first-hand evidence.
+  Absent whatweb output suppresses the list rather than printing guesses.
+
+  Trade-off accepted: the intersection is conservative and will drop true
+  positives when whatweb's view of the target differs from ftap's per-URL view.
+  A phantom framework quoted to a prospect costs more than a missing one.
+
+- **`--run-only` now expands declared plugin dependencies.** `--run-only ftap`
+  pulls in `whatweb` (transitively, in priority order) and prints what it
+  added. Without this a dependent plugin degrades silently, and parallel mode
+  reports a dependency deadlock. Also covers `edge_profile` and
+  `ai_surface_detection`, which had the same latent gap.
+
 ## [3.0.45] — 2026-08-22
 
 ### Added

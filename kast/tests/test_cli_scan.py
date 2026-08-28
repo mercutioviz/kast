@@ -12,6 +12,7 @@ from unittest.mock import patch
 from click.testing import CliRunner
 
 from kast.cli.scan import (
+    _expand_dependencies,
     _read_scan_metadata,
 )
 from kast.cli.scan import (
@@ -204,3 +205,67 @@ def test_scan_without_target_or_report_only_errors():
     # function runs and exits 1 because target/report-only is required.
     assert result.exit_code == 1
     assert "--target is required" in result.output
+
+
+# -- --run-only dependency expansion ----------------------------------------
+
+
+class _FakePlugin:
+    def __init__(self, name, priority, deps=()):
+        self.name = name
+        self.priority = priority
+        self.dependencies = [{"plugin": d, "condition": lambda r: True} for d in deps]
+
+
+class _FakeRegistry:
+    def __init__(self, plugins):
+        self._by_name = {p.name: p for p in plugins}
+
+    def get(self, name):
+        return self._by_name[name]
+
+
+def test_expand_dependencies_pulls_in_a_direct_dependency():
+    """`--run-only ftap` must also run whatweb, or ftap degrades silently."""
+    whatweb = _FakePlugin("whatweb", 15)
+    ftap = _FakePlugin("ftap", 50, deps=["whatweb"])
+    registry = _FakeRegistry([whatweb, ftap])
+
+    plugins, added = _expand_dependencies([ftap], registry)
+
+    assert added == ["whatweb"]
+    assert [p.name for p in plugins] == ["whatweb", "ftap"]
+
+
+def test_expand_dependencies_is_transitive():
+    a = _FakePlugin("a", 10)
+    b = _FakePlugin("b", 20, deps=["a"])
+    c = _FakePlugin("c", 30, deps=["b"])
+    registry = _FakeRegistry([a, b, c])
+
+    plugins, added = _expand_dependencies([c], registry)
+
+    assert sorted(added) == ["a", "b"]
+    assert [p.name for p in plugins] == ["a", "b", "c"]
+
+
+def test_expand_dependencies_adds_nothing_when_already_selected():
+    whatweb = _FakePlugin("whatweb", 15)
+    ftap = _FakePlugin("ftap", 50, deps=["whatweb"])
+    registry = _FakeRegistry([whatweb, ftap])
+
+    plugins, added = _expand_dependencies([ftap, whatweb], registry)
+
+    assert added == []
+    assert [p.name for p in plugins] == ["whatweb", "ftap"]
+
+
+def test_expand_dependencies_survives_a_dependency_cycle():
+    x = _FakePlugin("x", 10, deps=["y"])
+    y = _FakePlugin("y", 20, deps=["x"])
+    registry = _FakeRegistry([x, y])
+
+    plugins, added = _expand_dependencies([x], registry)
+
+    assert added == ["y"]
+    assert len(plugins) == 2

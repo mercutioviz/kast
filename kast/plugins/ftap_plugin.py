@@ -10,6 +10,7 @@ import shutil
 import subprocess
 from datetime import UTC, datetime
 from pprint import pformat
+from urllib.parse import urlsplit
 
 from kast.core.atomic import write_json_atomic
 from kast.plugins.base import KastPlugin
@@ -76,6 +77,34 @@ LOGIN_PROBE_PATHS = [
     "/partners",
     "/my-portal",
 ]
+
+# A panel is only counted once ftap is this confident it found one.
+PANEL_CONFIDENCE_THRESHOLD = 0.86
+
+# Alias collapsing. A CMS that routes every /admin* path to one sign-in page
+# (CivicEngage, many others) makes ftap report the wordlist rather than the
+# site: www.hingham-ma.gov returned 12 "panels" that were one page, including
+# /admin-area-51/ and /admin-2028/. Responses are treated as the same page when
+# status and title match and the bodies are the same size to within a tolerance
+# — aliases differ only by the echoed path and per-request CSRF tokens.
+ALIAS_LENGTH_TOLERANCE = 64
+ALIAS_LENGTH_RATIO = 0.02
+
+# Technology corroboration. Upstream ftap's _detect_technologies (scanner.py) is a
+# case-insensitive substring scan of the response body with no word boundaries:
+# "h2" matches every <h2> heading, "_token" matches any CSRF field, "vue" matches
+# "revue". It reported Laravel and Vue.js for an ASP.NET site. whatweb is the
+# fingerprinter of record, so a technology is only shown once whatweb saw it too.
+#
+# These prefixes are exempt: upstream derives them from response-header presence
+# and an anchored <meta name=generator> regex, which is first-hand per-URL
+# evidence rather than a body guess.
+TRUSTED_TECH_PREFIXES = ("Security:", "Generator:")
+
+
+def _normalize_tech(value):
+    return re.sub(r"[^a-z0-9]", "", (value or "").lower())
+
 
 class FtapPlugin(KastPlugin):
     priority = 50  # Set plugin run order (lower runs earlier)
@@ -161,6 +190,9 @@ class FtapPlugin(KastPlugin):
     output_type = "file"
 
     def __init__(self, cli_args, config_manager=None):
+        # Ordering only: ftap needs whatweb's fingerprints on disk by post_process
+        # time to corroborate its own. See TRUSTED_TECH_PREFIXES.
+        self.dependencies = [{"plugin": "whatweb", "condition": lambda r: True}]
         super().__init__(cli_args, config_manager)
         self.command_executed = None
         self._load_plugin_config()
@@ -381,18 +413,9 @@ class FtapPlugin(KastPlugin):
 
         self.debug(f"{self.name} raw findings:\n{pformat(findings)}")
 
-        # Handle both direct results array and dict with results key
-        if isinstance(findings, dict):
-            results = findings.get("results", [])
-        elif isinstance(findings, list):
-            results = findings
-        else:
-            results = []
+        findings = self._corroborate_technologies(findings, output_dir)
 
-        exposed_panels = [
-            r for r in results
-            if r.get("found", False) and r.get("confidence", 0) >= 0.86
-        ]
+        exposed_panels = self._exposed_panels(findings)
 
         # Read sensitive path probe results written by run()
         sensitive_findings = []
@@ -417,12 +440,12 @@ class FtapPlugin(KastPlugin):
         # One issue entry regardless of panel count; description lists all URLs.
         issues = []
         if exposed_panels:
-            urls = [p.get("url", "N/A") for p in exposed_panels]
+            urls = [p.get("url", "N/A") + self._alias_note(p) for p in exposed_panels]
             count = len(urls)
-            noun = "URL" if count == 1 else "URLs"
+            noun = "panel" if count == 1 else "panels"
             issues.append({
                 "id": "exposed_admin_panel",
-                "description": f"{count} exposed admin panel {noun} detected: {', '.join(urls)}",
+                "description": f"{count} exposed admin {noun} detected: {', '.join(urls)}",
             })
 
         # One issue entry per unique sensitive-path issue_id; lists all found URLs.
@@ -495,12 +518,155 @@ class FtapPlugin(KastPlugin):
 
         return processed_path
 
+    @staticmethod
+    def _panel_results(findings):
+        if isinstance(findings, dict):
+            return findings.get("results", []) or []
+        if isinstance(findings, list):
+            return findings
+        return []
+
+    @staticmethod
+    def _is_probe_artifact(url):
+        """A URL fragment never reaches the server, so /#admin/ is the homepage."""
+        return bool(urlsplit(url or "").fragment)
+
+    @classmethod
+    def _collapse_aliases(cls, panels):
+        """Collapse panels that are the same page reached by different paths.
+
+        The representative is the shortest URL in the group — the canonical
+        path rather than whichever alias the wordlist happened to hit first.
+        Collapsed URLs are kept on the representative as `alias_urls` so the
+        report can still show what was folded in.
+        """
+        groups = {}
+        for panel in panels:
+            key = (panel.get("status_code"), (panel.get("title") or "").strip().lower())
+            groups.setdefault(key, []).append(panel)
+
+        collapsed = []
+        for members in groups.values():
+            clusters = []
+            for panel in sorted(members, key=lambda p: p.get("content_length") or 0):
+                length = panel.get("content_length")
+                # Without a body size there is no evidence these are the same
+                # page, and merging two distinct panels understates the finding.
+                if length is None:
+                    clusters.append([panel])
+                    continue
+                for cluster in clusters:
+                    reference = cluster[0].get("content_length")
+                    if reference is None:
+                        continue
+                    tolerance = max(ALIAS_LENGTH_TOLERANCE, reference * ALIAS_LENGTH_RATIO)
+                    if abs(length - reference) <= tolerance:
+                        cluster.append(panel)
+                        break
+                else:
+                    clusters.append([panel])
+
+            for cluster in clusters:
+                cluster.sort(key=lambda p: (len(p.get("url") or ""), p.get("url") or ""))
+                representative = dict(cluster[0])
+                if len(cluster) > 1:
+                    representative["alias_urls"] = [p.get("url") for p in cluster[1:]]
+                collapsed.append(representative)
+
+        collapsed.sort(key=lambda p: p.get("url") or "")
+        return collapsed
+
+    @classmethod
+    def _exposed_panels(cls, findings):
+        """High-confidence admin panels, artifact-free and alias-collapsed.
+
+        Single source of truth for the panel count — issues, findings_count,
+        summary, details, executive summary, and both report widgets all read
+        from here, so the number cannot disagree between them.
+        """
+        candidates = [
+            r for r in cls._panel_results(findings)
+            if r.get("found", False)
+            and r.get("confidence", 0) >= PANEL_CONFIDENCE_THRESHOLD
+            and not cls._is_probe_artifact(r.get("url"))
+        ]
+        return cls._collapse_aliases(candidates)
+
+    def _whatweb_fingerprints(self, output_dir):
+        """Normalized technology tokens whatweb identified at the target.
+
+        An empty set is the safe default: it suppresses every body-sniffed
+        technology, which is the right outcome whether whatweb was skipped, its
+        binary is missing, or it genuinely found nothing.
+        """
+        path = os.path.join(str(output_dir), "whatweb_processed.json")
+        if not os.path.isfile(path):
+            self.debug("whatweb_processed.json absent; technology fingerprints suppressed")
+            return set()
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except Exception as e:
+            self.debug(f"Could not read whatweb_processed.json: {e}")
+            return set()
+
+        findings = data.get("findings", {})
+        results = findings.get("results", []) if isinstance(findings, dict) else findings
+        tokens = set()
+        for entry in results or []:
+            if not isinstance(entry, dict):
+                continue
+            for pname, pdata in (entry.get("plugins") or {}).items():
+                tokens.add(_normalize_tech(pname))
+                if isinstance(pdata, dict):
+                    for value in pdata.get("string", []) or []:
+                        tokens.add(_normalize_tech(value))
+        tokens.discard("")
+        self.debug(f"whatweb corroborating fingerprints: {sorted(tokens)}")
+        return tokens
+
+    @classmethod
+    def _filter_technologies(cls, technologies, corroborated):
+        return [
+            tech for tech in technologies or []
+            if tech.startswith(TRUSTED_TECH_PREFIXES)
+            or _normalize_tech(tech) in corroborated
+        ]
+
+    def _corroborate_technologies(self, findings, output_dir):
+        results = self._panel_results(findings)
+        if not results:
+            return findings
+
+        corroborated = self._whatweb_fingerprints(output_dir)
+        rewritten = []
+        for result in results:
+            if isinstance(result, dict) and "technologies" in result:
+                result = dict(result)
+                result["technologies"] = self._filter_technologies(
+                    result["technologies"], corroborated
+                )
+            rewritten.append(result)
+
+        if isinstance(findings, dict):
+            findings = dict(findings)
+            findings["results"] = rewritten
+            return findings
+        return rewritten
+
+    @staticmethod
+    def _alias_note(panel):
+        count = len(panel.get("alias_urls") or [])
+        if not count:
+            return ""
+        noun = "path" if count == 1 else "paths"
+        return f" (also reachable via {count} other {noun})"
+
     def _generate_summary(self, findings, sensitive_findings=None, login_findings=None):
         """Generate a human-readable summary from findings."""
         self.debug(f"_generate_summary called with findings type: {type(findings)}")
 
-        results = findings.get("results", []) if isinstance(findings, dict) else []
-        found_count = len([r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86])
+        found_count = len(self._exposed_panels(findings))
         sensitive_count = len(sensitive_findings or [])
         login_count = len(login_findings or [])
 
@@ -524,8 +690,7 @@ class FtapPlugin(KastPlugin):
 
     def _build_details(self, findings, sensitive_findings=None, login_findings=None):
         """Build detailed information about discovered admin panels, sensitive paths, and login portals."""
-        results = findings.get("results", []) if isinstance(findings, dict) else []
-        high_confidence_results = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
+        high_confidence_results = self._exposed_panels(findings)
 
         details_lines = []
 
@@ -547,6 +712,12 @@ class FtapPlugin(KastPlugin):
                 details_lines.append(f"  Login Form Detected: {'Yes' if has_login else 'No'}")
                 if technologies:
                     details_lines.append(f"  Technologies: {', '.join(technologies)}")
+                aliases = panel.get("alias_urls") or []
+                if aliases:
+                    details_lines.append(
+                        f"  Same page also served at {len(aliases)} other path(s): "
+                        f"{', '.join(aliases)}"
+                    )
                 details_lines.append("")
         else:
             details_lines.append("No admin panels detected.")
@@ -567,9 +738,7 @@ class FtapPlugin(KastPlugin):
 
     def _build_executive_summary(self, findings, sensitive_findings=None, login_findings=None):
         """Build executive summary — one to two sentences."""
-        results = findings.get("results", []) if isinstance(findings, dict) else []
-        found_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
-        panel_count = len(found_panels)
+        panel_count = len(self._exposed_panels(findings))
         sensitive_count = len(sensitive_findings or [])
         login_count = len(login_findings or [])
 
@@ -618,14 +787,24 @@ class FtapPlugin(KastPlugin):
         3. "Other URLs Tested" (found=False or not categorized above)
         Simplified single-level display matching katana's style.
         """
-        results = findings.get("results", []) if isinstance(findings, dict) else []
+        results = self._panel_results(findings)
 
         if not results:
             return "<p>No admin panels found.</p>"
 
-        # Split into three groups
-        exposed_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
-        other_findings = [r for r in results if r.get("found", False) and r.get("confidence", 0) < 0.86]
+        # Split into three groups. Collapsed aliases are listed on their
+        # representative's card rather than appearing as separate panels.
+        exposed_panels = self._exposed_panels(findings)
+        # Anything ftap called a hit but that isn't a panel — low confidence, or a
+        # probe artifact — still gets shown, just not as an exposure. Only the URLs
+        # already accounted for on a panel card are held back.
+        accounted = {p.get("url") for p in exposed_panels}
+        for p in exposed_panels:
+            accounted.update(p.get("alias_urls") or [])
+        other_findings = [
+            r for r in results
+            if r.get("found", False) and r.get("url") not in accounted
+        ]
         # Other URLs tested includes everything that wasn't found (found=False or missing 'found' key)
         other_urls = [r for r in results if not r.get("found", False)]
 
@@ -767,6 +946,19 @@ class FtapPlugin(KastPlugin):
                     </div>
         '''
 
+        aliases = panel.get("alias_urls") or []
+        if aliases:
+            alias_list = ", ".join(
+                a.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                for a in aliases
+            )
+            html += f'''
+                    <div style="margin: 0.4em 0;">
+                        <span style="font-weight: 600; color: #075985; font-size: 0.85em;">Also served at:</span>
+                        <span style="margin-left: 0.5em; color: #6b7280; font-size: 0.8em; word-break: break-all;">{len(aliases)} other path(s) returning this same page — {alias_list}</span>
+                    </div>
+            '''
+
         if technologies:
             html += '''
                     <div style="margin: 0.4em 0;">
@@ -793,8 +985,7 @@ class FtapPlugin(KastPlugin):
         Generate a PDF-friendly list of admin panels and login portals.
         Shows only high-confidence admin panels (≥0.86) with truncation notice.
         """
-        results = findings.get("results", []) if isinstance(findings, dict) else []
-        exposed_panels = [r for r in results if r.get("found", False) and r.get("confidence", 0) >= 0.86]
+        exposed_panels = self._exposed_panels(findings)
 
         html = ""
 
@@ -812,7 +1003,8 @@ class FtapPlugin(KastPlugin):
                 title = panel.get("title", "Unknown")
                 confidence = panel.get("confidence", 0)
                 safe_url = url.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                html += f'<li class="pdf-url-item"><div><strong>{title}</strong> - Confidence: {confidence:.1%}</div><div><code>{safe_url}</code></div></li>'
+                alias_note = self._alias_note(panel)
+                html += f'<li class="pdf-url-item"><div><strong>{title}</strong> - Confidence: {confidence:.1%}</div><div><code>{safe_url}</code>{alias_note}</div></li>'
 
             html += '</ul>'
             if truncated_count > 0:
