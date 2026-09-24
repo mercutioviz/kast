@@ -122,7 +122,7 @@ def check_python_modules() -> list[CheckResult]:
 EXTERNAL_TOOLS = [
     ("whatweb",    "whatweb",       "sudo git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && sudo ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb"),
     ("wafw00f",    "wafw00f",       "sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install wafw00f"),
-    ("testssl",    "testssl",       "sudo git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh && sudo ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl"),
+    ("testssl",    "testssl",       "sudo git clone --depth 1 --branch 3.2 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh && sudo ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl"),
     ("subfinder",  "subfinder",     "sudo GOBIN=/usr/local/bin go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"),
     ("katana",     "katana",        "sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@latest"),
     ("httpx",      "related_sites", "sudo GOBIN=/usr/local/bin go install github.com/projectdiscovery/httpx/cmd/httpx@latest"),
@@ -224,7 +224,9 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"testssl[^\d]*version\s+(\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="drwetter/testssl.sh",
-        update_hint="sudo git -C /opt/testssl.sh pull",
+        # Only meaningful on a 3.2 clone. A pre-v3.0.47 box is on 3.3dev, whose
+        # version parses as 3.3 and reports "ahead" — re-run install.sh there.
+        update_hint="sudo git -C /opt/testssl.sh pull --ff-only",
     ),
     ToolUpdateSpec(
         binary="subfinder",

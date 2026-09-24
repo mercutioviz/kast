@@ -8,6 +8,40 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.47] — 2026-09-24
+
+### Fixed
+
+- **testssl.sh is pinned to the stable branch.** The installer cloned the repo
+  without naming a branch, so it took the remote's default HEAD — which
+  upstream points at `3.3dev`. Every bare-metal install therefore ran a
+  development snapshot of whatever that branch held on the day it was
+  installed, and `kast doctor` reported "installed 3.3 is ahead of upstream
+  release 3.2.4" because it was comparing a dev branch against the stable
+  release feed. Two SAs who installed a month apart ran materially different
+  scanners and both reported `3.3`.
+
+  The clone is now `--branch 3.2`, the stable line, which declares `3.2.4` and
+  reads as `current` in `kast doctor`. Tracking the branch rather than the tag
+  keeps post-release backports.
+
+  **Existing installs do not migrate themselves on a plain upgrade.** The
+  shallow clone's refspec only fetches `3.3dev`, so switching lines needs a
+  fresh clone. `install_testssl` now detects an off-branch clone and re-clones
+  it; re-run the installer (or `install.sh --tools-only`) to move a box over.
+  To do it by hand:
+
+  ```
+  sudo rm -rf /opt/testssl.sh
+  sudo git clone --depth 1 --branch 3.2 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh
+  sudo ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl
+  ```
+
+  `kast doctor`'s install and update hints were updated to match. Note that
+  the Docker image installs Debian's packaged `testssl.sh` and is unaffected —
+  container and bare-metal builds are both on a stable line now, but are still
+  not guaranteed to be the same version.
+
 ## [3.0.46] — 2026-08-28
 
 ### Fixed

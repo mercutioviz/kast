@@ -49,6 +49,12 @@ CHECKPOINT_FTAP="ftap"
 CHECKPOINT_LAUNCHERS="launcher_scripts"
 CHECKPOINT_COMPLETE="complete"
 
+# testssl.sh is pinned to the stable release branch. Upstream points the repo's
+# default HEAD at 3.3dev, so an unpinned clone installs a development snapshot
+# whose contents depend on the day the install ran.
+TESTSSL_REPO="https://github.com/drwetter/testssl.sh.git"
+TESTSSL_BRANCH="3.2"
+
 ###############################################################################
 # TOOL REQUIREMENTS REGISTRY
 ###############################################################################
@@ -1570,20 +1576,37 @@ install_whatweb() {
     log_success "WhatWeb installed"
 }
 
+testssl_installed_branch() {
+    [[ -d "/opt/testssl.sh/.git" ]] || return 0
+    git -C /opt/testssl.sh rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
 install_testssl() {
-    if [[ -L "/usr/local/bin/testssl" ]] && [[ -d "/opt/testssl.sh/.git" ]]; then
-        log_info "testssl.sh already installed from git, skipping..."
+    local installed_branch
+    installed_branch="$(testssl_installed_branch)"
+
+    if [[ -L "/usr/local/bin/testssl" ]] && [[ "$installed_branch" == "$TESTSSL_BRANCH" ]]; then
+        log_info "testssl.sh already installed from git (branch $TESTSSL_BRANCH), skipping..."
         return 0
     fi
 
-    log_info "Installing testssl.sh from git..."
+    log_info "Installing testssl.sh from git (branch $TESTSSL_BRANCH)..."
 
-    if [[ -d "/opt/testssl.sh/.git" ]]; then
+    if [[ -n "$installed_branch" ]] && [[ "$installed_branch" != "$TESTSSL_BRANCH" ]]; then
+        # Installs before v3.0.47 cloned the repo's default HEAD, which is the
+        # 3.3dev development branch. The shallow clone only fetches that one
+        # branch, so moving to the stable line needs a fresh clone.
+        log_warning "Existing clone is on branch '$installed_branch'; re-cloning onto $TESTSSL_BRANCH"
+        rm -rf /opt/testssl.sh
+        installed_branch=""
+    fi
+
+    if [[ -n "$installed_branch" ]]; then
         log_info "Updating existing testssl.sh clone..."
         git -C /opt/testssl.sh pull --ff-only
     else
         log_info "Cloning testssl.sh repository..."
-        git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh
+        git clone --depth 1 --branch "$TESTSSL_BRANCH" "$TESTSSL_REPO" /opt/testssl.sh
     fi
 
     if [[ ! -d "/opt/testssl.sh" ]]; then
@@ -2078,8 +2101,8 @@ check_and_install_tools() {
         ((tools_skipped++))
     fi
 
-    # Install testssl.sh from git
-    if [[ ! -f "/usr/local/bin/testssl" ]]; then
+    # Install testssl.sh from git, pinned to the stable branch
+    if [[ ! -f "/usr/local/bin/testssl" ]] || [[ "$(testssl_installed_branch)" != "$TESTSSL_BRANCH" ]]; then
         log_info "Installing testssl.sh..."
         if install_testssl; then
             ((tools_installed++))
