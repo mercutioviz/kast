@@ -969,9 +969,11 @@ install_system_packages() {
     
     # Build package lists - separate critical from optional
     local critical_packages="git gpg python3 python3-venv build-essential"
-    # ruby/ruby-bundler: required by whatweb (installed from git, not apt)
+    # ruby + ruby-addressable/ruby-rchardet: whatweb (installed from git, not apt)
+    # loads its gems with plain `require`, never bundler/setup, so it needs the
+    # gems but not Bundler itself. See install_whatweb_gems.
     # pipx: required by wafw00f installation
-    local tool_packages="htop nginx sslscan ruby ruby-dev ruby-bundler pipx"
+    local tool_packages="htop nginx sslscan ruby ruby-dev ruby-addressable ruby-rchardet pipx"
     local optional_packages=""
     
     # Add firefox if specified
@@ -1531,6 +1533,35 @@ install_observatory() {
     log_success "Observatory installed"
 }
 
+gem_available() {
+    ruby -e "Gem::Specification.find_by_name('$1')" &>/dev/null
+}
+
+install_whatweb_gems() {
+    # WhatWeb resolves its dependencies through plain `require` in lib/gems.rb,
+    # never `bundler/setup`, so `bundle install` is not needed — and running it
+    # as root pulled WhatWeb's whole dev/test group (rubocop, simplecov,
+    # bundler-audit, pry) into the system gem path.
+    #
+    # ipaddr and json are Ruby default gems. addressable and rchardet normally
+    # arrive via apt in install_system_packages; this is the fallback for
+    # distributions that don't package them.
+    local missing=()
+    local gem_name
+
+    for gem_name in addressable rchardet; do
+        gem_available "$gem_name" || missing+=("$gem_name")
+    done
+
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        log_info "WhatWeb gem dependencies already satisfied"
+        return 0
+    fi
+
+    log_info "Installing WhatWeb gems: ${missing[*]}"
+    gem install --no-document "${missing[@]}"
+}
+
 install_whatweb() {
     # Check for the git-based installation specifically — a symlink to /opt/whatweb.
     # checkpoint_completed alone is not reliable here because an existing install
@@ -1558,17 +1589,23 @@ install_whatweb() {
     chmod +x /opt/whatweb/whatweb
 
     log_info "Installing WhatWeb gem dependencies..."
-    ( cd /opt/whatweb && bundle install --quiet )
-    if [[ $? -ne 0 ]]; then
-        log_warning "bundle install failed — WhatWeb may work with reduced functionality"
+    if ! install_whatweb_gems; then
+        log_warning "WhatWeb gem install failed — WhatWeb may work with reduced functionality"
     fi
 
     ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb
 
-    if command -v whatweb &>/dev/null; then
-        log_success "WhatWeb installed successfully"
-    else
+    if ! command -v whatweb &>/dev/null; then
         log_error "WhatWeb installation failed (binary not found in PATH)"
+        return 1
+    fi
+
+    # lib/gems.rb prints the missing gems and exits 1 if a required one is
+    # absent. Let upstream's own check be the verdict rather than restating
+    # its dependency list here, where it would silently drift.
+    if ! whatweb --version &>/dev/null; then
+        log_error "WhatWeb is installed but failed its dependency check:"
+        whatweb --version 2>&1 | sed 's/^/    /'
         return 1
     fi
 

@@ -120,7 +120,7 @@ def check_python_modules() -> list[CheckResult]:
 
 # Tool binary checks: (tool, plugin_name, install_hint)
 EXTERNAL_TOOLS = [
-    ("whatweb",    "whatweb",       "sudo git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && sudo ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb"),
+    ("whatweb",    "whatweb",       "sudo apt install -y ruby ruby-addressable ruby-rchardet && sudo git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && sudo ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb"),
     ("wafw00f",    "wafw00f",       "sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install wafw00f"),
     ("testssl",    "testssl",       "sudo git clone --depth 1 --branch 3.2 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh && sudo ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl"),
     ("subfinder",  "subfinder",     "sudo GOBIN=/usr/local/bin go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"),
@@ -206,7 +206,7 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"WhatWeb version (\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="urbanadventurer/WhatWeb",
-        update_hint="sudo git -C /opt/whatweb pull && sudo sh -c 'cd /opt/whatweb && bundle install --quiet'",
+        update_hint="sudo git -C /opt/whatweb pull && sudo apt install -y ruby-addressable ruby-rchardet",
     ),
     ToolUpdateSpec(
         binary="wafw00f",

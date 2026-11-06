@@ -10,7 +10,7 @@ kast-web (at `/home/mscollins/kast-web/`, a separate repo) is the Flask + Celery
 
 **Reliability and reputational safety are first-class concerns.** An SA cannot run a flaky tool in front of a prospect. Active scans must never look like attacks against the prospect's infrastructure.
 
-Current line: kast `v3.0.46` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
+Current line: kast `v3.0.48` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
 
 ## Frozen contracts
 

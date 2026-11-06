@@ -8,6 +8,43 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.48] — 2026-10-09
+
+### Fixed
+
+- **The installer no longer runs Bundler to set up WhatWeb.** `install.sh`
+  called `bundle install` inside the WhatWeb clone, which printed two warnings
+  on every fresh install — "Don't run Bundler as root", and a duplicate
+  `rchardet` entry in upstream's Gemfile. The first is accurate (the installer
+  runs as root by design); the second is upstream's and is emitted during
+  Gemfile parse, before group filtering, so `--without` cannot suppress it.
+
+  Behind the warnings was a real problem: Bundler resolved the entire Gemfile,
+  so WhatWeb's dev and test groups — `rubocop`, `simplecov`, `bundler-audit`,
+  `minitest`, `pry` — were being installed into the system gem path as root on
+  every SA's box. kast needs none of them.
+
+  WhatWeb does not use Bundler at runtime. `lib/gems.rb` resolves dependencies
+  with `Gem::Specification.find_by_name` and plain `require`, and nothing in
+  the tool loads `bundler/setup`. The installer now installs only what WhatWeb
+  actually requires: `addressable` and `rchardet` via apt alongside the other
+  system packages (`ipaddr` and `json` are Ruby default gems), with a
+  `gem install --no-document` fallback for the `--tools-only` path and for
+  distributions that don't package them. `ruby-bundler` is no longer installed.
+
+  The install is verified by running `whatweb --version` and checking the exit
+  code, so upstream's own dependency check is the verdict — rather than
+  restating its required-gem list in the installer, where it would silently
+  drift the next time upstream changes it.
+
+  **Existing boxes keep the dev/test gems they already have.** Nothing
+  uninstalls them, deliberately: `rake` and `minitest` may be depended on by
+  unrelated system packages, and removing gems as root from a working machine
+  is a worse failure than leaving them. They simply are not installed going
+  forward.
+
+  `kast doctor`'s whatweb install and update hints were updated to match.
+
 ## [3.0.47] — 2026-09-24
 
 ### Fixed
