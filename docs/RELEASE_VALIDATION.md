@@ -52,8 +52,21 @@ kast doctor --fix
 ```bash
 kast --version                 # expect 3.0.0
 kast doctor                    # expect 0 FAIL; some WARN is acceptable for missing optional tools
+kast doctor --check-syntax     # expect 0 FAIL in "Plugin Command Syntax"
 kast plugins list              # expect 12 plugins
 ```
+
+`--check-syntax` is not optional on any release that touches `install.sh`'s
+pinned tool versions. It builds each plugin's real command line and verifies
+every flag against the installed binary's `--help`, which is the only check
+that catches a version pin moving underneath a plugin's flags. v3.0.47 pinned
+testssl.sh from `3.3dev` back to the stable `3.2` branch without it, and
+shipped a `--socket-timeout` flag that only exists on `3.3dev` — testssl failed
+on every scan from a freshly installed box until v3.0.49.
+
+Also confirm the "Tool Versions" section shows no plugin whose installed
+version differs from its `tested_tool_version`; a mismatch there is the early
+warning that a flag check is about to matter.
 
 ### 3. Run a passive scan
 

@@ -8,6 +8,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.49] — 2026-11-06
+
+### Fixed
+
+- **testssl's connect-timeout flag is probed, not hardcoded.** v3.0.26 changed
+  the plugin from `--connect-timeout` to `--socket-timeout`, which was correct
+  at the time because the installer cloned testssl's default HEAD and that is
+  the `3.3dev` name. v3.0.47 then pinned installs to the stable `3.2` branch —
+  where the flag is still `--connect-timeout` — and did not revert the plugin.
+  Every box that took the v3.0.47 migration therefore failed **every** testssl
+  scan with `unrecognized option "--socket-timeout"`, reported through
+  kast-web as `testssl scan failed:`. The default `connect_timeout` of 10 meant
+  the flag was always emitted, so this was total plugin failure, not an
+  intermittent one.
+
+  kast now meets at least three testssl versions in the field — the pinned
+  `3.2` clone, the `3.3dev` snapshot on boxes installed before v3.0.47, and
+  Debian's packaged `testssl.sh` in the container image — so
+  `detect_timeout_flag()` reads the name from the binary's own `--help` once
+  per process and caches it. If a build advertises neither name the flag is
+  omitted with a debug line rather than passed blind; an unrecognized flag
+  aborts the whole scan, while a missing connect timeout is still bounded by
+  the plugin's own `timeout` subprocess kill.
+
+  Command construction moved into `_build_command()`, which `run()` and
+  `get_dry_run_info()` now share, so `kast doctor --check-syntax` validates the
+  exact argv a scan will use. The availability check in `run()` moved ahead of
+  command building because the probe shells out to the binary.
+
+- **`tested_tool_version` for testssl corrected** from `3.3` to `3.2.4`, the
+  version the pinned `3.2` branch declares. It read `3.3` because that is what
+  the pre-v3.0.47 `3.3dev` clone reported. A correctly pinned box now reads
+  `current` in `kast doctor`, and a box still on the old `3.3dev` clone
+  surfaces a "Tool Versions" WARN — the intended signal to re-run the
+  installer. The `3.2` branch takes backports, so this needs a bump whenever
+  it declares a new patch level.
+
+### Changed
+
+- **`kast doctor --check-syntax` is now mandatory in release validation**
+  (`docs/RELEASE_VALIDATION.md`) for any release that touches a pinned tool
+  version in `install.sh`. It builds each plugin's real command and checks
+  every flag against the installed binary's `--help`; running it would have
+  caught the v3.0.47 regression before it shipped.
+
+### Tests
+
+- `TestTestsslTimeoutFlagDetection` in `test_testssl_config.py` — 7 tests
+  covering 3.2-style help, 3.3dev-style help, `--openssl-timeout` not
+  false-matching, a missing binary probing to `None`, probe caching, and the
+  built command under each outcome. The two existing command-building tests
+  now patch the probe instead of asserting a hardcoded flag name.
+
 ## [3.0.48] — 2026-10-09
 
 ### Fixed

@@ -14,6 +14,37 @@ from pprint import pformat
 from kast.core.atomic import write_json_atomic
 from kast.plugins.base import KastPlugin
 
+# testssl renamed --connect-timeout to --socket-timeout on the 3.3dev line, and
+# kast meets at least three testssl versions in the field: the pinned 3.2 clone
+# installed by install.sh, the 3.3dev snapshot on boxes installed before
+# v3.0.47, and Debian's packaged testssl.sh in the container image. Hardcoding
+# either name fails a scan outright on the other, so the name is read from the
+# binary's own --help. Checked socket-first: a version documenting both is on
+# the newer line.
+_TIMEOUT_FLAG_CANDIDATES = ("--socket-timeout", "--connect-timeout")
+_TIMEOUT_FLAG_CACHE: dict[str, str | None] = {}
+
+
+def detect_timeout_flag(binary: str = "testssl") -> str | None:
+    """Return the connect-timeout flag this testssl build accepts, or None."""
+    if binary in _TIMEOUT_FLAG_CACHE:
+        return _TIMEOUT_FLAG_CACHE[binary]
+
+    flag = None
+    try:
+        proc = subprocess.run(
+            [binary, "--help"], capture_output=True, text=True, timeout=30
+        )
+        help_text = proc.stdout + proc.stderr
+        flag = next(
+            (c for c in _TIMEOUT_FLAG_CANDIDATES if c in help_text), None
+        )
+    except (OSError, subprocess.SubprocessError):
+        flag = None
+
+    _TIMEOUT_FLAG_CACHE[binary] = flag
+    return flag
+
 
 class TestsslPlugin(KastPlugin):
     __test__ = False  # pytest: this is a plugin class, not a test class
@@ -70,7 +101,7 @@ class TestsslPlugin(KastPlugin):
 
     name = "testssl"
     display_name = "Test SSL"
-    tested_tool_version = "3.3"
+    tested_tool_version = "3.2.4"
     description = "Tests SSL and TLS posture"
     website_url = "https://testssl.sh/"
     scan_type = "passive"
@@ -116,15 +147,8 @@ class TestsslPlugin(KastPlugin):
         """
         return shutil.which("testssl") is not None or shutil.which("testssl.sh") is not None
 
-    def run(self, target, output_dir, report_only):
-        """
-        Run testssl and return standardized result dict.
-        """
-        self.setup(target, output_dir)
-        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
-        output_file = os.path.join(output_dir, f"{self.name}.json")
-
-        # Build command dynamically based on configuration
+    def _build_command(self, target, output_file):
+        """Build the testssl argv for the current configuration."""
         cmd = ["testssl"]
 
         # Add test flags based on configuration
@@ -139,7 +163,14 @@ class TestsslPlugin(KastPlugin):
 
         # Add connection timeout if configured
         if self.connect_timeout:
-            cmd.extend(["--socket-timeout", str(self.connect_timeout)])
+            timeout_flag = detect_timeout_flag()
+            if timeout_flag:
+                cmd.extend([timeout_flag, str(self.connect_timeout)])
+            else:
+                self.debug(
+                    "testssl --help exposes neither --socket-timeout nor "
+                    "--connect-timeout; running without a connect timeout"
+                )
 
         # Add warnings batch mode flag
         if self.warnings_batch_mode:
@@ -148,20 +179,33 @@ class TestsslPlugin(KastPlugin):
         # Add JSON output and target
         cmd.extend(["-oJ", output_file, target])
 
-        # Store command for reference
-        self.command_executed = " ".join(cmd)
+        return cmd
 
-        # Add verbose flag if enabled
-        if getattr(self.cli_args, "verbose", False):
-            self.debug(f"Running command: {' '.join(cmd)}")
+    def run(self, target, output_dir, report_only):
+        """
+        Run testssl and return standardized result dict.
+        """
+        self.setup(target, output_dir)
+        timestamp = datetime.now(UTC).isoformat(timespec="milliseconds")
+        output_file = os.path.join(output_dir, f"{self.name}.json")
 
-        # Check if tool is available
+        # Check if tool is available. This precedes command building because
+        # the timeout-flag probe shells out to the binary.
         if not self.is_available():
             return self.get_result_dict(
                 disposition="fail",
                 results="testssl is not installed or not found in PATH.",
                 timestamp=timestamp
             )
+
+        cmd = self._build_command(target, output_file)
+
+        # Store command for reference
+        self.command_executed = " ".join(cmd)
+
+        # Add verbose flag if enabled
+        if getattr(self.cli_args, "verbose", False):
+            self.debug(f"Running command: {' '.join(cmd)}")
 
         try:
             if report_only:
@@ -632,29 +676,7 @@ class TestsslPlugin(KastPlugin):
         """
         output_file = os.path.join(output_dir, f"{self.name}.json")
 
-        # Build command with current configuration
-        cmd = ["testssl"]
-
-        # Add test flags based on configuration
-        if self.test_protocols:
-            cmd.append("-p")
-        if self.test_server_defaults:
-            cmd.append("-S")
-        if self.test_vulnerabilities:
-            cmd.append("-U")
-        if self.test_ciphers:
-            cmd.append("-E")
-
-        # Add connection timeout if configured
-        if self.connect_timeout:
-            cmd.extend(["--socket-timeout", str(self.connect_timeout)])
-
-        # Add warnings batch mode flag
-        if self.warnings_batch_mode:
-            cmd.append("--warnings=batch")
-
-        # Add JSON output and target
-        cmd.extend(["-oJ", output_file, target])
+        cmd = self._build_command(target, output_file)
 
         return {
             "commands": [' '.join(cmd)],

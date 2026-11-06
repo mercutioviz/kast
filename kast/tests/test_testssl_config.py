@@ -12,7 +12,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from kast.config_manager import ConfigManager
-from kast.plugins.testssl_plugin import TestsslPlugin
+from kast.plugins.testssl_plugin import (
+    _TIMEOUT_FLAG_CACHE,
+    TestsslPlugin,
+    detect_timeout_flag,
+)
 from kast.tests.helpers.config_test_helpers import (
     assert_config_values,
     create_test_config_file,
@@ -33,6 +37,7 @@ class TestTestsslConfig(unittest.TestCase):
         self.mock_args.config = None
         self.mock_args.set = None
         self.temp_dirs = []
+        _TIMEOUT_FLAG_CACHE.clear()
 
     def tearDown(self):
         """Clean up after each test"""
@@ -221,7 +226,9 @@ class TestTestsslConfig(unittest.TestCase):
         with open(result_file, 'w') as f:
             f.write('{"scanResult": []}')
 
-        plugin.run("example.com", temp_dir, report_only=True)
+        with patch("kast.plugins.testssl_plugin.detect_timeout_flag",
+                   return_value="--socket-timeout"):
+            plugin.run("example.com", temp_dir, report_only=True)
 
         # Check the command that would be executed
         # With test_vulnerabilities=false and test_ciphers=false,
@@ -233,9 +240,8 @@ class TestTestsslConfig(unittest.TestCase):
         self.assertNotIn("-U", command, "Should not have -U flag when vulnerabilities disabled")
         self.assertNotIn("-E", command, "Should not have -E flag when ciphers disabled")
 
-        # Verify connect timeout is present
-        self.assertIn("--socket-timeout", command)
-        self.assertIn("20", command)
+        # Verify connect timeout is present under the probed flag name
+        self.assertIn("--socket-timeout 20", command)
 
         # Verify warnings flag is NOT present when disabled
         self.assertNotIn("--warnings=batch", command)
@@ -262,13 +268,17 @@ class TestTestsslConfig(unittest.TestCase):
         with open(result_file, 'w') as f:
             f.write('{"scanResult": []}')
 
-        plugin.run("example.com", temp_dir, report_only=True)
+        with patch("kast.plugins.testssl_plugin.detect_timeout_flag",
+                   return_value="--connect-timeout"):
+            plugin.run("example.com", temp_dir, report_only=True)
         command = plugin.command_executed
 
         # Verify flags ARE present when enabled
         self.assertIn("-U", command, "Should have -U flag when vulnerabilities enabled")
         self.assertIn("-E", command, "Should have -E flag when ciphers enabled")
         self.assertIn("--warnings=batch", command, "Should have warnings flag when enabled")
+        self.assertIn("--connect-timeout 10", command,
+            "Should use the flag name the installed testssl advertises")
 
     def test_timeout_enforcement(self):
         """Verify timeout config is passed to subprocess execution"""
@@ -400,5 +410,106 @@ class TestTestsslConfig(unittest.TestCase):
         # For now, just verify plugin initializes correctly without them
         self.assertIsNotNone(plugin)
         self.assertEqual(plugin.name, "testssl")
+
+
+# testssl 3.2 and 3.3dev disagree on the name of this flag, and both are in the
+# field. Passing the wrong one aborts the scan with "unrecognized option", so
+# the name is probed from --help rather than hardcoded.
+_HELP_32 = """     --warnings <batch|off>        "batch" doesn't continue
+     --connect-timeout <seconds>   Max <seconds> to wait for the TCP connect
+     --openssl-timeout <seconds>   Max <seconds> before openssl connect dies
+"""
+
+_HELP_33DEV = """     --warnings <batch|off>        "batch" doesn't continue
+     --socket-timeout <seconds>    Max <seconds> to wait for the TCP connect
+     --openssl-timeout <seconds>   Max <seconds> before openssl connect dies
+"""
+
+_HELP_NEITHER = """     --warnings <batch|off>        "batch" doesn't continue
+     --openssl-timeout <seconds>   Max <seconds> before openssl connect dies
+"""
+
+
+class TestTestsslTimeoutFlagDetection(unittest.TestCase):
+    """Test suite for the testssl connect-timeout flag probe"""
+
+    def setUp(self):
+        self.mock_args = MagicMock()
+        self.mock_args.verbose = False
+        self.mock_args.config = None
+        self.mock_args.set = None
+        _TIMEOUT_FLAG_CACHE.clear()
+
+    def tearDown(self):
+        _TIMEOUT_FLAG_CACHE.clear()
+
+    @staticmethod
+    def _help_patch(help_text):
+        return patch(
+            "kast.plugins.testssl_plugin.subprocess.run",
+            return_value=MagicMock(returncode=0, stdout=help_text, stderr=""),
+        )
+
+    def test_detects_connect_timeout_on_stable_branch(self):
+        """testssl 3.2 advertises --connect-timeout"""
+        with self._help_patch(_HELP_32):
+            self.assertEqual(detect_timeout_flag(), "--connect-timeout")
+
+    def test_detects_socket_timeout_on_dev_branch(self):
+        """testssl 3.3dev renamed it to --socket-timeout"""
+        with self._help_patch(_HELP_33DEV):
+            self.assertEqual(detect_timeout_flag(), "--socket-timeout")
+
+    def test_openssl_timeout_does_not_false_match(self):
+        """--openssl-timeout is a different flag and must not be selected"""
+        with self._help_patch(_HELP_NEITHER):
+            self.assertIsNone(detect_timeout_flag())
+
+    def test_missing_binary_returns_none(self):
+        """A missing or broken binary probes to None rather than raising"""
+        with patch("kast.plugins.testssl_plugin.subprocess.run",
+                   side_effect=FileNotFoundError):
+            self.assertIsNone(detect_timeout_flag())
+
+    def test_probe_result_is_cached(self):
+        """--help is read once per process, not once per command build"""
+        with self._help_patch(_HELP_32) as mock_run:
+            detect_timeout_flag()
+            detect_timeout_flag()
+            self.assertEqual(mock_run.call_count, 1)
+
+    def test_command_uses_probed_flag(self):
+        """The built command carries whichever name the binary advertises"""
+        config_manager = ConfigManager(self.mock_args)
+        config_manager.register_plugin_schema("testssl",
+            TestsslPlugin.config_schema)
+        plugin = TestsslPlugin(self.mock_args, config_manager)
+
+        with self._help_patch(_HELP_32):
+            cmd = plugin._build_command("example.com", "/tmp/testssl.json")
+        self.assertIn("--connect-timeout", cmd)
+        self.assertNotIn("--socket-timeout", cmd)
+
+        _TIMEOUT_FLAG_CACHE.clear()
+        with self._help_patch(_HELP_33DEV):
+            cmd = plugin._build_command("example.com", "/tmp/testssl.json")
+        self.assertIn("--socket-timeout", cmd)
+        self.assertNotIn("--connect-timeout", cmd)
+
+    def test_command_omits_flag_when_unsupported(self):
+        """An unrecognised flag aborts the whole scan, so omit it instead"""
+        config_manager = ConfigManager(self.mock_args)
+        config_manager.register_plugin_schema("testssl",
+            TestsslPlugin.config_schema)
+        plugin = TestsslPlugin(self.mock_args, config_manager)
+
+        with self._help_patch(_HELP_NEITHER):
+            cmd = plugin._build_command("example.com", "/tmp/testssl.json")
+
+        self.assertNotIn("--connect-timeout", cmd)
+        self.assertNotIn("--socket-timeout", cmd)
+        # The rest of the command is unaffected
+        self.assertIn("--warnings=batch", cmd)
+        self.assertEqual(cmd[-3:], ["-oJ", "/tmp/testssl.json", "example.com"])
 
 
