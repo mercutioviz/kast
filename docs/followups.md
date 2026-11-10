@@ -20,6 +20,13 @@ drift from what the plugin emits. Worth batching with the other two open
 kast-web threads in CLAUDE.md (the `kast -ls` → `kast plugins list --json`
 migration, and the AI service).
 
+**Open decision for that session:** whether katana progress mirrors ZAP's
+DB-backed shape (`ZapScanProgress` in `app/models.py`, plus the preservation
+step in `app/tasks.py`) or is read through from `katana_progress.json` per
+request. ZAP's model survives scan-directory cleanup and keeps the two progress
+surfaces consistent; read-through needs no migration. Deliberately left open —
+it depends on kast-web conventions, not on anything kast decides.
+
 - **kast-web does not read `katana_progress.json` at all.** It has no katana
   progress view — only ZAP has one (`app/models.py:821`,
   `app/tasks.py:855`) — so a crawl shows as an opaque "in progress" for its
