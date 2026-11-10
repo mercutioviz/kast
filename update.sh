@@ -42,7 +42,14 @@ PRESERVE_FILES=(
     ".kast_custom_config"
 )
 
-# Files to exclude from sync (generated or temporary)
+# Files to exclude from sync (generated or temporary).
+#
+# These must stay in step with .gitignore: rsync does not read it, so anything
+# a developer creates in the repo root lands in /opt/kast unless named here.
+# The dev venv is the case that proved it -- .venv/ is gitignored, but an
+# update copied 479 MB of it into the installation, carrying an editable
+# install that pointed back at the developer's working tree. The launcher uses
+# venv/ (no dot) so nothing broke, but it inflated every subsequent backup.
 EXCLUDE_PATTERNS=(
     ".git"
     ".gitignore"
@@ -52,6 +59,14 @@ EXCLUDE_PATTERNS=(
     "update.sh"
     "install.sh"
     ".kast_update_state"
+    ".venv"
+    "venv"
+    ".pytest_cache"
+    ".ruff_cache"
+    ".mypy_cache"
+    "*.egg-info"
+    ".coverage"
+    "htmlcov"
 )
 
 ###############################################################################
