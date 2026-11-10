@@ -18,6 +18,7 @@ from kast.cli.doctor import (
     OK,
     WARN,
     CheckResult,
+    check_config_shadows_defaults,
     check_issue_registry,
     check_plugin_loading,
     check_python_version,
@@ -295,3 +296,59 @@ def test_doctor_warn_does_not_fail_exit_code():
         runner = CliRunner()
         result = runner.invoke(doctor, [])
         assert result.exit_code == 0
+
+
+# -- check_config_shadows_defaults -------------------------------------------
+#
+# A config file that pins an option away from its current default is legal but
+# invisible. That invisibility is how katana went on crawling unbounded after
+# it gained a 300s budget.
+
+
+def _write_config(path, plugins):
+    path.write_text(json.dumps({"kast": {"config_version": "1.1"},
+                                "plugins": plugins}))
+    return path
+
+
+def test_config_shadows_defaults_warns_on_stale_pin(tmp_path):
+    cfg = _write_config(tmp_path / "config.yaml", {"katana": {"crawl_duration": 0}})
+    results = check_config_shadows_defaults([cfg])
+
+    assert len(results) == 1
+    assert results[0].status == WARN
+    assert "katana.crawl_duration=0" in results[0].detail
+    assert "default 300" in results[0].detail
+
+
+def test_config_shadows_defaults_ok_when_value_matches(tmp_path):
+    """A written-out value equal to the default is harmless, not a warning."""
+    cfg = _write_config(tmp_path / "config.yaml", {"katana": {"crawl_duration": 300}})
+    results = check_config_shadows_defaults([cfg])
+
+    assert results[0].status == OK
+    assert "1 written out but matching" in results[0].detail
+
+
+def test_config_shadows_defaults_reports_unknown_keys(tmp_path):
+    cfg = _write_config(tmp_path / "config.yaml", {
+        "katana": {"no_such_option": 1},
+        "no_such_plugin": {"whatever": 2},
+    })
+    results = check_config_shadows_defaults([cfg])
+
+    assert len(results) == 1
+    assert results[0].status == INFO
+    assert "katana.no_such_option" in results[0].detail
+    assert "no_such_plugin.* (no such plugin)" in results[0].detail
+
+
+def test_config_shadows_defaults_ignores_absent_files(tmp_path):
+    assert check_config_shadows_defaults([tmp_path / "nope.yaml"]) == []
+
+
+def test_config_shadows_defaults_survives_unparseable_file(tmp_path):
+    """check_config_files owns the YAML-error report; this check must not duplicate it."""
+    bad = tmp_path / "config.yaml"
+    bad.write_text("plugins: [this: is, not: a mapping\n")
+    assert check_config_shadows_defaults([bad]) == []

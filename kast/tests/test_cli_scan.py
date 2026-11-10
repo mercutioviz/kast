@@ -187,6 +187,30 @@ def test_scan_rerun_re_renders_html(tmp_path):
     assert (target / "kast_report.html").exists()
 
 
+def test_scan_rerun_forwards_set_overrides(tmp_path):
+    """--set must reach _run_scan so post_process re-runs under new config.
+
+    Without this, re-scoping a finished scan (e.g. katana.report_scope) meant
+    re-running the crawl.
+    """
+    with patch("kast.cli.scan._run_scan") as mock_run:
+        CliRunner().invoke(
+            scan_group,
+            ["rerun", str(tmp_path),
+             "--set", "katana.report_scope=target",
+             "--set", "ftap.timeout=60"],
+        )
+    assert mock_run.call_args.kwargs["set_overrides"] == (
+        "katana.report_scope=target", "ftap.timeout=60",
+    )
+
+
+def test_scan_rerun_without_set_passes_empty(tmp_path):
+    with patch("kast.cli.scan._run_scan") as mock_run:
+        CliRunner().invoke(scan_group, ["rerun", str(tmp_path)])
+    assert mock_run.call_args.kwargs["set_overrides"] == ()
+
+
 # -- default scan still works (v2 compat through the group) -----------------
 
 

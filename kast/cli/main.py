@@ -139,7 +139,10 @@ def config_init() -> None:
     config_manager.collect_schemas_from_classes(registry.discover())
     config_path = config_manager.create_default_config()
     console.print(f"[green]Created default configuration at:[/green] {config_path}")
-    console.print("[cyan]Edit this file to customize plugin settings.[/cyan]")
+    console.print(
+        "[cyan]Every option is listed commented out. Uncomment one to pin it; "
+        "anything left commented tracks the built-in default.[/cyan]"
+    )
 
 
 @config_group.command(name="show")

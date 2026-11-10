@@ -8,6 +8,84 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.51] — 2026-11-10
+
+Backlog sweep against `docs/followups.md`. (v3.0.50 shipped without a
+CHANGELOG entry; see `git log` for it.)
+
+### Fixed
+
+- **`kast config init` froze schema defaults, so changed defaults never
+  reached existing installs.** The generated `~/.config/kast/config.yaml`
+  wrote every schema default out as an explicit value. Once written, a later
+  change to a `config_schema` default was silently overridden on that machine
+  forever, with nothing on the box saying so. The symptom: after katana gained
+  a bounded 300s `crawl_duration`, any box that had ever run `kast config init`
+  went on crawling unbounded, protected only by the `max_runtime` backstop.
+
+  Generated configs now write every option **commented out**, leaving only
+  `kast.config_version` live, under a header explaining that an uncommented
+  line pins the value and a commented one tracks the built-in default.
+
+  Configs written by earlier versions still carry live values, so
+  `kast doctor` gained **`check_config_shadows_defaults`**: it reads every file
+  on the config search path and WARNs on each option pinned away from its
+  current schema default, with INFO for keys matching no schema at all (a
+  renamed or removed option). Deliberate pins are legal — the check exists so
+  they are visible rather than silent.
+
+- **Katana reported JavaScript source fragments as discovered URLs.** Katana
+  extracts string literals out of JS, so a concatenation like
+  `"/js/" + e.iframeSrc` was emitted as the URL `/js/'+e.iframeSrc+'` and
+  rendered into a prospect-facing report. `JS_SOURCE_ARTIFACT` now drops them,
+  matching only characters that are illegal unencoded in a URL so that a hit is
+  positive evidence rather than a guess. Bare `{}` is deliberately not matched:
+  `/api/{id}` is a route template katana really found.
+
+- **Cache-busting and campaign parameters inflated the reported URL count.**
+  The headless browser mints a fresh `_ga` client ID and `?_=<timestamp>` on
+  every page load, so katana saw a new URL for a page it already had — on
+  donate.wbez.org, 115,532 output lines for 14,263 unique URLs.
+  `VOLATILE_QUERY_PARAMS` now strips them from the uniqueness key. The list is
+  deliberately narrow and matched on whole parameter names; `v`, `t`, `ts` and
+  `cb` are excluded because each is as plausibly a real parameter as a
+  cache-buster, and merging two genuinely distinct URLs understates the attack
+  surface.
+
+  Both filters report their counts (`js_artifact_count`,
+  `canonicalized_url_count`) into `crawl_scope`, the plugin summary and both
+  report formats, so a shrinking URL count is never silent. Measured on a real
+  7,223-URL crawl of www.barracuda.com: 7,220 unique URLs became 6,914, from
+  2 JS fragments and 436 URLs carrying `utm_*` parameters.
+
+### Added
+
+- **`kast scan rerun --set plugin.key=value`** re-runs every plugin's
+  `post_process` under different config without re-running the scan — e.g.
+  re-scoping a finished crawl with `--set katana.report_scope=target`. Only
+  options consumed during post-processing take effect, since no tool is
+  invoked. Previously the only way to re-scope a completed scan was to drive
+  `post_process` from Python by hand.
+
+### Changed
+
+- **katana filters static assets by default.** `extension_filter` now defaults
+  to images, fonts, stylesheets and media, which dominated crawl volume without
+  being attack surface. `js` is deliberately excluded — a JavaScript endpoint
+  is security-relevant. Set `extension_filter: []` to report every asset.
+  Note that an existing config file pins the old `[]` value; `kast doctor`
+  now reports that shadowing.
+
+### Development
+
+- **Dev environment is a repo-local `.venv/`**, built with
+  `python3 -m venv .venv && .venv/bin/python -m pip install -e '.[dev]'`, and
+  kept separate from the deployed runtime at `/opt/kast/venv`. `/usr/local/bin/kast`
+  runs out of `/opt/kast`, so installing the working tree there would make the
+  CLI execute uncommitted code. CLAUDE.md's documented test command was
+  corrected — a bare `python -m pytest` could never have worked, since the
+  system interpreter has neither the dev tools nor `tldextract`.
+
 ## [3.0.49] — 2026-11-06
 
 ### Fixed

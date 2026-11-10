@@ -303,3 +303,119 @@ class TestFallbackPaths(KatanaPostProcessBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+JS_ARTIFACT_URLS = [
+    # Katana extracting a JS concatenation: "/files/wbez/js/" + e.iframeSrc + "/"
+    "https://donate.wbez.org/files/wbez/js/'+e.iframeSrc+'",
+    'https://donate.wbez.org/api/"+t+"/load',
+    "https://donate.wbez.org/path/${endpoint}",
+    "https://donate.wbez.org/a path/with spaces",
+    "https://donate.wbez.org/<div>",
+]
+
+VOLATILE_PARAM_URLS = [
+    "https://donate.wbez.org/page?_ga=2.111.222.333",
+    "https://donate.wbez.org/page?_ga=2.999.888.777",
+    "https://donate.wbez.org/page?utm_source=twitter&utm_campaign=spring",
+    "https://donate.wbez.org/scripts/libphonenumber-min.js?_=1762800000000",
+    "https://donate.wbez.org/scripts/libphonenumber-min.js?_=1762800099999",
+]
+
+
+class TestJavaScriptArtifacts(KatanaPostProcessBase):
+    """Katana emits JS string fragments as URLs. They are not endpoints."""
+
+    def setUp(self):
+        super().setUp()
+        self.plugin = self.make_plugin(report_scope="target")
+        self.processed_out = self.processed(
+            self.plugin, urls=TARGET_URLS + JS_ARTIFACT_URLS
+        )
+        self.scope = self.processed_out["crawl_scope"]
+
+    def test_fragments_are_not_reported_as_urls(self):
+        urls = self.processed_out["findings"]["urls"]
+        for bad in ("'+e.iframeSrc+'", '"+t+"', "${endpoint}", "<div>"):
+            self.assertFalse(
+                any(bad in u for u in urls), f"{bad} leaked into the report"
+            )
+
+    def test_every_fragment_is_counted_not_silently_dropped(self):
+        self.assertEqual(self.scope["js_artifact_count"], len(JS_ARTIFACT_URLS))
+
+    def test_real_urls_survive_alongside_them(self):
+        self.assertIn("/node/311", self.processed_out["findings"]["urls"])
+
+    def test_summary_accounts_for_the_discards(self):
+        self.assertIn(
+            "JavaScript source fragment(s) were discarded",
+            self.processed_out["summary"],
+        )
+
+    def test_percent_encoded_quote_is_a_real_url(self):
+        """%27 is legal in a URL; only a literal quote signals a source fragment."""
+        out = self.processed(
+            self.plugin, urls=["https://donate.wbez.org/search?q=it%27s"]
+        )
+        self.assertEqual(out["crawl_scope"]["js_artifact_count"], 0)
+        self.assertEqual(out["findings_count"], 1)
+
+    def test_route_template_braces_are_kept(self):
+        """/api/{id} is a route katana really found, not a JS fragment."""
+        out = self.processed(self.plugin, urls=["https://donate.wbez.org/api/{id}"])
+        self.assertEqual(out["crawl_scope"]["js_artifact_count"], 0)
+        self.assertIn("/api/{id}", out["findings"]["urls"])
+
+
+class TestVolatileQueryParams(KatanaPostProcessBase):
+    """Cache-busting and campaign params mint a new URL on every page load."""
+
+    def setUp(self):
+        super().setUp()
+        self.plugin = self.make_plugin(report_scope="target")
+        self.processed_out = self.processed(self.plugin, urls=VOLATILE_PARAM_URLS)
+        self.scope = self.processed_out["crawl_scope"]
+
+    def test_duplicates_collapse_to_one_url_each(self):
+        """5 raw URLs are 2 real pages once the volatile params come off."""
+        self.assertEqual(
+            sorted(self.processed_out["findings"]["urls"]),
+            ["/page", "/scripts/libphonenumber-min.js"],
+        )
+
+    def test_collapse_is_counted(self):
+        self.assertEqual(
+            self.scope["canonicalized_url_count"], len(VOLATILE_PARAM_URLS)
+        )
+
+    def test_summary_accounts_for_the_collapse(self):
+        self.assertIn("were collapsed after dropping", self.processed_out["summary"])
+
+    def test_meaningful_params_are_preserved(self):
+        out = self.processed(self.plugin, urls=[
+            "https://donate.wbez.org/search?q=privacy&utm_source=x",
+            "https://donate.wbez.org/search?q=security",
+        ])
+        self.assertEqual(
+            sorted(out["findings"]["urls"]), ["/search?q=privacy", "/search?q=security"]
+        )
+
+    def test_ambiguous_names_are_left_alone(self):
+        """v/t/ts/cb are plausible cache-busters and plausible real params.
+
+        Merging two distinct URLs understates the surface, so they stay.
+        """
+        out = self.processed(self.plugin, urls=[
+            "https://donate.wbez.org/api?v=1",
+            "https://donate.wbez.org/api?v=2",
+        ])
+        self.assertEqual(out["findings_count"], 2)
+
+    def test_prefix_match_is_not_a_substring_match(self):
+        """utm_ is a prefix rule; a param merely containing it is untouched."""
+        out = self.processed(self.plugin, urls=[
+            "https://donate.wbez.org/x?my_utm_code=7",
+        ])
+        self.assertEqual(out["crawl_scope"]["canonicalized_url_count"], 0)
+        self.assertIn("/x?my_utm_code=7", out["findings"]["urls"])

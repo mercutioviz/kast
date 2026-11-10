@@ -29,6 +29,26 @@ class ConfigManager:
 
     CONFIG_VERSION = "1.1"
 
+    _CONFIG_HEADER = """\
+# kast configuration
+#
+# Every plugin option is listed below, commented out, with the default built
+# into the version of kast that generated this file.
+#
+# Uncomment a line to pin that option. Anything left commented tracks the
+# built-in default, so an upgrade that changes a default reaches this machine.
+# Earlier versions wrote these values out live, which silently froze them --
+# a config generated before katana gained its bounded 300s crawl budget went
+# on pinning crawl_duration to 0 (unbounded) with nothing saying so.
+#
+# Precedence, highest first:
+#   --set  >  ./kast_config.yaml  >  this file  >  /etc/kast/config.yaml
+#   >  built-in schema defaults
+#
+# `kast config show` prints the merged result.
+# `kast doctor` flags options here that differ from the current default.
+"""
+
     def __init__(self, cli_args=None, logger=None):
         """
         Initialize the configuration manager.
@@ -391,31 +411,36 @@ class ConfigManager:
         # Create directory if needed
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Build default config with all registered plugins
-        default_config = {
-            "kast": {
-                "config_version": self.CONFIG_VERSION
-            },
+        defaults = {
             "global": {
                 "timeout": 300,
                 "retry_count": 2
             },
-            "plugins": {}
+            "plugins": {
+                name: self._get_defaults_from_schema(name)
+                for name in self.plugin_schemas
+            },
         }
 
-        # Add defaults for each plugin from schemas
-        for plugin_name in self.plugin_schemas:
-            default_config["plugins"][plugin_name] = self._get_defaults_from_schema(plugin_name)
+        body = yaml.dump(
+            defaults,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+        )
+        # Commented out on purpose. Writing these live froze them: a config
+        # generated before a schema default changed kept overriding the new
+        # value forever, with nothing on the machine saying so.
+        commented = "\n".join(
+            f"# {line}" if line.strip() else "#" for line in body.splitlines()
+        )
 
-        # Write to file
-        with open(config_path, 'w') as f:
-            yaml.dump(
-                default_config,
-                f,
-                default_flow_style=False,
-                sort_keys=False,
-                allow_unicode=True
-            )
+        content = (
+            f"{self._CONFIG_HEADER}\n"
+            f"kast:\n  config_version: '{self.CONFIG_VERSION}'\n\n"
+            f"{commented}\n"
+        )
+        config_path.write_text(content, encoding="utf-8")
 
         self.logger.info(f"Created default config at: {config_path}")
         return str(config_path)

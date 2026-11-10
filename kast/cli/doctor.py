@@ -606,6 +606,99 @@ def check_config_files() -> list[CheckResult]:
     return results
 
 
+def check_config_shadows_defaults(
+    search_paths: list[Path] | None = None,
+) -> list[CheckResult]:
+    """Flag config values that pin a plugin option away from its current default.
+
+    `kast config init` used to write every schema default out as a live value,
+    so a later change to that default never reached the machine -- the symptom
+    was katana still crawling unbounded after it gained a 300s budget. Config
+    files are now generated commented out, but files written by older versions
+    are still out there, and a deliberately pinned value can go stale the same
+    way. Neither case is an error; both should be visible.
+    """
+    import yaml as yaml_mod
+
+    from kast.config_manager import ConfigManager
+    from kast.registry import PluginRegistry
+
+    section = "Configuration"
+    log = logging.getLogger("kast.doctor")
+    log.addHandler(logging.NullHandler())
+
+    cm = ConfigManager()
+    cm.collect_schemas_from_classes(PluginRegistry(log).discover())
+
+    results: list[CheckResult] = []
+    for path in (search_paths if search_paths is not None else CONFIG_SEARCH_PATHS):
+        path = Path(path).expanduser()
+        if not path.exists():
+            continue
+        try:
+            with open(path) as f:
+                data = yaml_mod.safe_load(f) or {}
+        except (OSError, yaml_mod.YAMLError):
+            # check_config_files already reports unreadable/invalid files.
+            continue
+        if not isinstance(data, dict):
+            continue
+
+        stale: list[str] = []
+        unknown: list[str] = []
+        pinned_at_default = 0
+
+        for plugin_name, values in (data.get("plugins") or {}).items():
+            if not isinstance(values, dict):
+                continue
+            schema = cm.plugin_schemas.get(plugin_name)
+            if schema is None:
+                unknown.append(f"{plugin_name}.* (no such plugin)")
+                continue
+            properties = schema.get("properties", {})
+            for key, value in values.items():
+                prop = properties.get(key)
+                if prop is None:
+                    unknown.append(f"{plugin_name}.{key}")
+                elif "default" not in prop:
+                    continue
+                elif value == prop["default"]:
+                    pinned_at_default += 1
+                else:
+                    stale.append(
+                        f"{plugin_name}.{key}={value!r} (default {prop['default']!r})"
+                    )
+
+        if stale:
+            results.append(CheckResult(
+                section=section,
+                name=f"{path} overrides",
+                status=WARN,
+                detail=f"{len(stale)} option(s) differ from the built-in default: "
+                       + ", ".join(sorted(stale)),
+                hint="Intentional pins are fine. To track the default again, delete "
+                     "the line, or regenerate with `kast config init`.",
+            ))
+        if unknown:
+            results.append(CheckResult(
+                section=section,
+                name=f"{path} unknown keys",
+                status=INFO,
+                detail=f"{len(unknown)} key(s) match no current schema: "
+                       + ", ".join(sorted(unknown)),
+                hint="Likely left over from a renamed or removed plugin option.",
+            ))
+        if not stale and not unknown:
+            detail = "no option pinned away from its default"
+            if pinned_at_default:
+                detail += f" ({pinned_at_default} written out but matching)"
+            results.append(CheckResult(
+                section=section, name=f"{path} overrides", status=OK, detail=detail,
+            ))
+
+    return results
+
+
 def check_issue_registry() -> CheckResult:
     """Issue registry must load and parse."""
     registry_path = Path(__file__).resolve().parent.parent / "data" / "issue_registry.json"
@@ -1078,6 +1171,7 @@ CHECKS: list[Callable[[], CheckResult | list[CheckResult]]] = [
     check_log_dir_writable,
     check_results_dir,
     check_config_files,
+    check_config_shadows_defaults,
     check_issue_registry,
     check_registry_severities,
     check_registry_timeframes,

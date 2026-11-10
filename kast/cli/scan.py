@@ -582,9 +582,12 @@ def scan_diff(baseline_dir: str, current_dir: str, json_output: bool,
               help="AI provider adapter (default: anthropic).")
 @click.option("--ai-endpoint", type=str, default=None, envvar="KAST_AI_ENDPOINT",
               help="Route AI requests through a kast-web AI service endpoint.")
+@click.option("--set", "set_overrides", multiple=True,
+              help="Override config value for the re-render: --set plugin.key=value")
 def scan_rerun(scan_dir: str, format_: str, logo: str | None,
                ai_summary_flag: bool, ai_model: str | None,
-               ai_adapter: str, ai_endpoint: str | None) -> None:
+               ai_adapter: str, ai_endpoint: str | None,
+               set_overrides: tuple[str, ...]) -> None:
     """Re-render reports from an existing scan directory.
 
     Equivalent to ``kast scan --report-only DIR --format X`` — preserved
@@ -592,6 +595,12 @@ def scan_rerun(scan_dir: str, format_: str, logo: str | None,
 
     Pass ``--ai-summary`` to add an AI executive summary to the re-rendered
     report without re-running any plugins.
+
+    ``--set`` re-runs each plugin's ``post_process`` under different config
+    without re-running the scan itself — e.g. re-scoping a finished crawl with
+    ``--set katana.report_scope=target``. Only options consumed during
+    post-processing take effect; options that shape the tool invocation are
+    inert here, because no tool is invoked.
 
     Defaults to ``--format both`` so HTML and PDF are always kept in sync.
     """
@@ -611,7 +620,7 @@ def scan_rerun(scan_dir: str, format_: str, logo: str | None,
         httpx_rate_limit=10,
         zap_profile=None,
         config_path=None,
-        set_overrides=(),
+        set_overrides=set_overrides,
         ai_summary_flag=ai_summary_flag,
         ai_model=ai_model,
         ai_adapter=ai_adapter,

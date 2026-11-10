@@ -35,6 +35,46 @@ KATANA_STALL_THRESHOLD_SECONDS = 45
 # "security-relevant".
 EDITORIAL_DATE_PATH = re.compile(r"/(?:19|20)\d{2}/\d{1,2}(?:/\d{1,2})?(?:/|$)")
 
+# Katana extracts string literals out of JavaScript, so a concatenation like
+#   "/files/wbez/js/" + e.iframeSrc + "/"
+# is emitted as the URL /files/wbez/js/'+e.iframeSrc+'. Those are source
+# fragments, not endpoints, and they read as visibly broken in a report a
+# prospect sees. Every character matched here is illegal unencoded in a URL, so
+# a hit is positive evidence of a fragment rather than a guess. Bare {} is
+# deliberately absent: /api/{id} is a route template katana really did find.
+JS_SOURCE_ARTIFACT = re.compile(r"""['"`\\<>]|\$\{|\s""")
+
+# Query parameters minted fresh on every page load. The headless browser gets a
+# new _ga client ID and ?_=<timestamp> each time, so katana sees a new URL for
+# a page it already has: on donate.wbez.org that was 115,532 output lines for
+# 14,263 unique URLs. Dropping them from the uniqueness key collapses the
+# duplicates and keeps the reported surface honest.
+#
+# Deliberately narrow, and matched as whole parameter names. Merging two
+# genuinely distinct URLs understates the attack surface, which is the more
+# expensive error in front of a prospect, so a name earns a place here only if
+# it carries no routing meaning anywhere. Notably absent: v, t, ts, cb -- all
+# plausible cache-busters, all equally plausible real parameters.
+VOLATILE_QUERY_PARAMS = frozenset({
+    "_",  # jQuery's cache-buster
+    "_ga", "_gl", "_gid",
+    "fbclid", "gclid", "msclkid", "igshid",
+    "mc_cid", "mc_eid",
+})
+VOLATILE_QUERY_PREFIXES = ("utm_",)
+
+# Static assets katana should not write out at all. Cuts both crawl output and
+# report volume -- the CDN image transforms that dominated the wbez.org crawl
+# (20,654 occurrences of ?url= against resize endpoints) are all in here.
+# js is deliberately excluded: a JS endpoint is security-relevant, and js_crawl
+# parses it for more.
+DEFAULT_EXTENSION_FILTER = [
+    "png", "jpg", "jpeg", "gif", "svg", "ico", "webp", "avif", "bmp",
+    "woff", "woff2", "ttf", "eot", "otf",
+    "css",
+    "mp4", "webm", "mp3", "wav", "m4a",
+]
+
 # Bundled assets are not attack surface worth highlighting. Without this, a site
 # that serves CSS and JS out of /files/ fills the section with build artifacts.
 STATIC_ASSET_EXTENSIONS = {
@@ -235,8 +275,13 @@ class KatanaPlugin(KastPlugin):
             "extension_filter": {
                 "type": "array",
                 "items": {"type": "string"},
-                "default": [],
-                "description": "Filter out URLs with these extensions (e.g., png, css, jpg)"
+                "default": DEFAULT_EXTENSION_FILTER,
+                "description": (
+                    "Filter out URLs with these extensions. Defaults to images, "
+                    "fonts, stylesheets and media, which dominate crawl volume "
+                    "without being attack surface. js is deliberately not "
+                    "filtered. Set to [] to report every asset."
+                )
             },
             "omit_body": {
                 "type": "boolean",
@@ -765,14 +810,37 @@ class KatanaPlugin(KastPlugin):
             return "sibling"
         return "external"
 
+    @staticmethod
+    def _is_volatile_param(name):
+        return (
+            name in VOLATILE_QUERY_PARAMS
+            or name.startswith(VOLATILE_QUERY_PREFIXES)
+        )
+
+    def _strip_volatile_query(self, query):
+        """Drop cache-busting / attribution params, leaving the rest verbatim.
+
+        Split on & rather than going through parse_qsl, which would re-encode
+        every surviving value and change URLs this is not meant to touch.
+        """
+        if not query:
+            return query, False
+        parts = query.split("&")
+        kept = [p for p in parts if not self._is_volatile_param(p.split("=", 1)[0])]
+        return "&".join(kept), len(kept) != len(parts)
+
     def _url_suffix(self, split_url):
-        """Everything after the host: path, query and fragment."""
+        """Everything after the host: path, canonicalized query, and fragment.
+
+        :return: (suffix, whether a volatile parameter was dropped)
+        """
+        query, stripped = self._strip_volatile_query(split_url.query)
         suffix = split_url.path or "/"
-        if split_url.query:
-            suffix += f"?{split_url.query}"
+        if query:
+            suffix += f"?{query}"
         if split_url.fragment:
             suffix += f"#{split_url.fragment}"
-        return suffix
+        return suffix, stripped
 
     def _scope_urls(self, raw_urls, target):
         """
@@ -791,8 +859,14 @@ class KatanaPlugin(KastPlugin):
         labels_by_host = {}
         classification = {}
         unparseable = 0
+        js_artifacts = 0
+        canonicalized = 0
 
         for url in raw_urls:
+            if JS_SOURCE_ARTIFACT.search(url):
+                # A JavaScript source fragment, not a URL katana can have fetched.
+                js_artifacts += 1
+                continue
             split_url = urlsplit(url)
             host = (split_url.hostname or "").lower()
             if not host:
@@ -803,7 +877,9 @@ class KatanaPlugin(KastPlugin):
                 classification[host] = self._classify_host(
                     host, target_host, target_domain
                 )
-            suffix = self._url_suffix(split_url)
+            suffix, stripped = self._url_suffix(split_url)
+            if stripped:
+                canonicalized += 1
             # Paths are relative to the target; any other host stays qualified so
             # a report never implies a sibling's path belongs to the target.
             label = suffix if host == target_host else f"{host}{suffix}"
@@ -851,6 +927,8 @@ class KatanaPlugin(KastPlugin):
             "hosts_by_class": hosts_by_class,
             "hosts": hosts,
             "unparseable_lines": unparseable,
+            "js_artifact_count": js_artifacts,
+            "canonicalized_url_count": canonicalized,
         }
 
         return sorted(labels), crawl_scope
@@ -952,9 +1030,34 @@ class KatanaPlugin(KastPlugin):
                 f"{excluded} URL(s) on {hosts['external']} external host(s) "
                 "were referenced but are excluded from this report."
             )
+        normalization = self._normalization_sentence(crawl_scope)
+        if normalization:
+            parts.append(normalization)
         if truncation:
             parts.append(truncation)
         return " ".join(parts)
+
+    @staticmethod
+    def _normalization_sentence(crawl_scope):
+        """Account for what was filtered before the counts above were taken.
+
+        Both filters shrink the number a prospect sees, so neither gets to be
+        invisible -- the same rule the excluded-host count follows.
+        """
+        dropped = (crawl_scope or {}).get("js_artifact_count", 0)
+        collapsed = (crawl_scope or {}).get("canonicalized_url_count", 0)
+        parts = []
+        if dropped:
+            parts.append(
+                f"{dropped} JavaScript source fragment(s) were discarded as "
+                "non-URLs"
+            )
+        if collapsed:
+            parts.append(
+                f"{collapsed} URL(s) were collapsed after dropping "
+                "cache-busting and campaign-tracking parameters"
+            )
+        return f"Before counting, {' and '.join(parts)}." if parts else ""
 
     TERMINATION_REASONS = {
         "max_runtime": "hit its wall-clock limit",
@@ -1070,7 +1173,8 @@ class KatanaPlugin(KastPlugin):
             f'<code>{self._esc(crawl_scope["report_scope"])}</code>: '
             f'{crawl_scope["reported_url_count"]} of {crawl_scope["unique_url_count"]} '
             f'unique URL(s) are listed below; {crawl_scope["excluded_url_count"]} are excluded. '
-            'Hosts marked External were referenced as link targets from in-scope pages.'
+            'Hosts marked External were referenced as link targets from in-scope pages. '
+            f'{self._esc(self._normalization_sentence(crawl_scope))}'
             '</div>'
             '<table style="width:100%;border-collapse:collapse;font-size:0.84em;">'
             '<tr style="text-align:left;border-bottom:1px solid #c3d5e3;">'
@@ -1124,7 +1228,8 @@ class KatanaPlugin(KastPlugin):
             f'{crawl_scope["reported_url_count"]} of {crawl_scope["unique_url_count"]} unique URL(s) '
             f'reported (scope: {self._esc(crawl_scope["report_scope"])}). '
             f'{by_class["target"]} target host, {by_class["sibling"]} same-domain, '
-            f'{by_class["external"]} external.</div>'
+            f'{by_class["external"]} external. '
+            f'{self._esc(self._normalization_sentence(crawl_scope))}</div>'
             '<ul style="margin:0.2em 0 0 1.2em;padding:0;">'
         )
         for host in shown:

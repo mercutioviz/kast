@@ -88,7 +88,11 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertEqual(plugin.field_scope, "rdn")
         self.assertEqual(plugin.headless, True)
         self.assertEqual(plugin.xhr_extraction, False)
-        self.assertEqual(plugin.extension_filter, [])
+        # Static assets are filtered by default: they dominated crawl volume
+        # without being attack surface. js is deliberately not in the list.
+        self.assertIn("png", plugin.extension_filter)
+        self.assertIn("css", plugin.extension_filter)
+        self.assertNotIn("js", plugin.extension_filter)
         self.assertEqual(plugin.omit_body, True)
 
     def test_config_from_file(self):
@@ -186,6 +190,8 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertNotIn("-jc", command)  # js_crawl=False
         self.assertIn("-hl", command)  # headless=True (default)
         self.assertNotIn("-rl ", command)  # rate_limit=150 (default, not added)
+        self.assertIn("-ef ", command)  # static assets filtered by default
+        self.assertNotIn("js,", command)  # ...but never JavaScript
 
     def test_command_building_with_custom_depth(self):
         """Test command building with custom crawl depth."""
