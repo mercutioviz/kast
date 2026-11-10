@@ -60,6 +60,9 @@ class TestKatanaConfig(unittest.TestCase):
         self.assertIn("xhr_extraction", properties)
         self.assertIn("extension_filter", properties)
         self.assertIn("omit_body", properties)
+        self.assertIn("report_scope", properties)
+        self.assertIn("max_runtime", properties)
+        self.assertIn("stall_timeout", properties)
 
     def test_default_configuration(self):
         """Test that plugin loads default values from schema."""
@@ -68,7 +71,10 @@ class TestKatanaConfig(unittest.TestCase):
         # Verify defaults
         self.assertEqual(plugin.depth, 3)
         self.assertEqual(plugin.js_crawl, False)
-        self.assertEqual(plugin.crawl_duration, 0)
+        # Bounded by default: an unbounded crawl can hang a live demo.
+        self.assertEqual(plugin.crawl_duration, 300)
+        self.assertEqual(plugin.max_runtime, 600)
+        self.assertEqual(plugin.stall_timeout, 180)
         self.assertEqual(plugin.known_files, "")
         self.assertEqual(plugin.automatic_form_fill, False)
         self.assertEqual(plugin.strategy, "depth-first")
