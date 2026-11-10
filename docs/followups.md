@@ -12,16 +12,26 @@ hand. Remove it when it ships.
 
 ### kast-web integration
 
-- **`katana_progress.json` gained a `termination` field and a `"terminated"`
-  status.** kast-web's crawl progress view treats the file as
-  `crawling | stalled | done`; a crawl stopped by `max_runtime` or
-  `stall_timeout` now reports `"terminated"` and should be shown as a partial
-  result rather than a completed one.
+Both items below are **kast-web work in `/home/mscollins/kast-web/`**, not kast
+work. The kast side is finished: `docs/web-integration.md` now documents both
+documents under "Special Case: katana", and
+`kast/tests/test_katana_web_contract.py` pins the key sets so the doc cannot
+drift from what the plugin emits. Worth batching with the other two open
+kast-web threads in CLAUDE.md (the `kast -ls` → `kast plugins list --json`
+migration, and the AI service).
 
-- **`katana_processed.json` gained a `crawl_scope` block.** Per-host breakdown
-  (classification, unique URL counts, `reported` flag) plus
-  `reported/excluded/unique` totals and a `complete` flag. The HTML and PDF
-  reports render it; kast-web's scan-details page does not.
+- **kast-web does not read `katana_progress.json` at all.** It has no katana
+  progress view — only ZAP has one (`app/models.py:821`,
+  `app/tasks.py:855`) — so a crawl shows as an opaque "in progress" for its
+  whole duration. When it gains one, `status: "terminated"` (and equivalently
+  `crawl_scope.complete: false`) MUST render as a partial result, not a
+  completed one.
+
+- **kast-web's scan-details page does not render `crawl_scope`.** Per-host
+  breakdown plus `reported/excluded/unique` totals and the `complete` flag.
+  Both report formats render it; the web UI does not. Note the rule from the
+  contract doc: report `reported_url_count`, never `unique_url_count`, as
+  "URLs found".
 
 ### Katana output quality
 
@@ -38,9 +48,13 @@ hand. Remove it when it ships.
   live site first: a regex that over-matches silently shrinks the reported
   surface, which is worse than the waste it removes.
 
-### Tooling
+### Plugin internals
 
-- **Katana is not version-pinned.** `tested_tool_version = "1.6.1"` is advisory
-  only — nothing fails if the installed binary differs, unlike the ZAP image
-  digest pin (`check_zap_image_pin`). An upstream katana change can alter crawl
-  behaviour under a demo. Consider a `kast doctor` check.
+- **`katana.json` is deleted when the katana process exits**
+  (`katana_plugin.py`, `os.remove(in_progress_file)`), which contradicts
+  invariant 4 of the kast↔kast-web contract ("no deletion of state-bearing
+  files mid-scan"). It is benign today — `katana.txt` exists by then and is
+  the start marker the Directory Layout table actually lists — so this is
+  documented as a deliberate exception rather than fixed. Worth revisiting if
+  the state machine ever stops treating `.txt` as a start marker, since the
+  exception is the only thing keeping katana's "running" state observable.

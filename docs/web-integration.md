@@ -148,6 +148,126 @@ UI feedback (progress bars, live alert counts):
    `poll_interval_seconds`. The first write occurs at scan start
    (with elapsed_seconds=0), and a final write occurs when the scan
    transitions to `status: "completed"`.
+### Special Case: katana
+
+Like `zap`, the `katana` plugin adds a real-time progress file. A crawl is
+open-ended — katana follows links until the frontier is exhausted or a bound
+fires — so there is no total to compute a percentage against, and kast reports
+a running URL count plus a liveness signal instead.
+
+Added in v3.0.50. **kast-web does not consume either of the files below yet**;
+they are documented here so it can.
+
+#### Files
+
+| File                      | Purpose                                              | Lifecycle                                        |
+|---------------------------|------------------------------------------------------|--------------------------------------------------|
+| `katana.json`             | "plugin started" marker                              | Created empty at plugin start, **removed** once the katana process exits (see note) |
+| `katana.txt`              | katana's own output (one URL per line)               | Created by katana; grows during the crawl        |
+| `katana_progress.json`    | Live progress: URL count, stall signal, termination  | Written every 3s during the crawl, plus a final write |
+| `katana_processed.json`   | "plugin completed" marker                            | Written atomically at full completion            |
+
+> **Note on `katana.json`.** It is deleted when the katana process exits,
+> which is a deliberate exception to invariant 4 below. The state machine
+> still holds because `katana.txt` exists by then and is itself a start
+> marker — the Directory Layout table lists `katana.txt`, not `katana.json`,
+> as katana's **S** file for exactly this reason. kast-web must not treat
+> the disappearance of `katana.json` as a signal of anything.
+
+#### Schema of `katana_progress.json`
+
+```json
+{
+  "status": "crawling" | "stalled" | "done" | "terminated",
+  "urls_found": <int — lines in katana.txt at this tick>,
+  "stalled_seconds": <int — seconds since urls_found last changed>,
+  "termination": null | "max_runtime" | "stall_timeout",
+  "last_updated": "<ISO-8601 timestamp, milliseconds>"
+}
+```
+
+All keys are always present. Status meanings:
+
+| `status`     | Meaning                                                                 |
+|--------------|-------------------------------------------------------------------------|
+| `crawling`   | Running, URL count still growing                                        |
+| `stalled`    | Still running, but no new URL for ≥45s. **Not** an error — a crawl near the end of its frontier looks like this |
+| `done`       | Crawl finished on its own. Results are complete                         |
+| `terminated` | Crawl was **cut short** by a bound. Results are partial                  |
+
+**`"terminated"` MUST be surfaced as a partial result, not a completed one.**
+`termination` says which bound fired: `max_runtime` (hard wall-clock cap) or
+`stall_timeout` (no new URL for too long). Both keep whatever katana had
+written. Presenting a truncated crawl as a finished one understates the
+prospect's attack surface, and "we found N URLs" is a claim an SA may have to
+defend in the room.
+
+`status` and `termination` are redundant by design — `status == "terminated"`
+exactly when `termination` is non-null. Read either.
+
+#### Invariants kast MUST preserve for katana
+
+1. All standard plugin invariants apply, except the `katana.json` deletion
+   noted above.
+2. Each progress write is atomic (write-to-tmp + `rename(2)`), so kast-web
+   never reads a half-written document.
+3. The schema above is part of the contract.
+4. `katana_progress.json` persists after completion. Completion is signaled
+   by `katana_processed.json`, never by this file's absence. kast reads it
+   back on `kast scan rerun` to recover the termination reason, so kast-web
+   must not delete it.
+5. Update frequency is fixed at `KATANA_POLL_INTERVAL_SECONDS` (3s), not
+   configurable.
+
+#### `crawl_scope` in `katana_processed.json`
+
+`katana_processed.json` carries a `crawl_scope` block quantifying what the
+crawl reached versus what the report lists. The two differ by design:
+katana's `field_scope` (default `rdn`) crawls the whole registrable domain,
+while `report_scope` (default `organization`) decides what is reported.
+
+```json
+"crawl_scope": {
+  "target_host":             "<the scanned host>",
+  "registrable_domain":      "<eTLD+1, or '' for an IP/bare hostname>",
+  "report_scope":            "target" | "organization" | "all",
+  "field_scope":             "dn" | "rdn" | "fqdn",
+  "raw_url_count":           <int — lines katana emitted, pre-dedupe>,
+  "unique_url_count":        <int — distinct URLs after filtering>,
+  "reported_url_count":      <int — those report_scope admits>,
+  "excluded_url_count":      <int — unique minus reported>,
+  "host_count":              <int>,
+  "hosts_by_class":          {"target": <int>, "sibling": <int>, "external": <int>},
+  "hosts": [
+    {"host": "<hostname>",
+     "classification": "target" | "sibling" | "external",
+     "unique_urls": <int>,
+     "reported": <bool>}
+  ],
+  "unparseable_lines":       <int>,
+  "js_artifact_count":       <int — JavaScript source fragments discarded>,
+  "canonicalized_url_count": <int — URLs collapsed by dropping volatile params>,
+  "termination":             null | "max_runtime" | "stall_timeout",
+  "runtime_seconds":         <number | null>,
+  "complete":                <bool — false when the crawl was cut short>
+}
+```
+
+Two rules for any consumer:
+
+- **`complete: false` must be shown.** It is the same claim as
+  `status: "terminated"` above, surviving into the finished scan.
+- **Report `reported_url_count`, not `unique_url_count`, as "URLs found".**
+  An unqualified count invites a prospect to read third-party link targets as
+  their own attack surface — on a real scan the crawl reached 14,254 URLs
+  across 618 hosts while the target itself had 27. `hosts_by_class` and the
+  `hosts` table are what let an SA answer "why does a scan of one hostname
+  list URLs on another".
+
+`js_artifact_count` and `canonicalized_url_count` explain why
+`unique_url_count` is lower than `raw_url_count` beyond plain deduplication.
+Both are already rendered into the plugin's summary text.
+
 ### Directory Layout
 
 Manifest from `docs/baseline-v2.14/sample-scan-1/` (a representative
@@ -190,7 +310,9 @@ informational (used for richer UI / detail views but not state),
 A ZAP-included scan additionally produces `zap.json` (start marker, **S**),
 `zap_processed.json` (completion marker, **S**), and
 `zap_scan_progress.json` (live progress, **I** — schema documented
-above). The PDF/HTML report files (R) and `kast_info.json` (M) appear
+above). Scans run since v3.0.50 also produce `katana_progress.json`
+(live progress, **I** — schema documented above); it is absent from this
+v2.14 manifest because it did not exist yet. The PDF/HTML report files (R) and `kast_info.json` (M) appear
 only after every plugin completes and the report is generated; their
 absence does NOT mean the scan failed mid-flight.
 

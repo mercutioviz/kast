@@ -8,6 +8,51 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.52] — 2026-11-10
+
+Remaining `docs/followups.md` items on the kast side. The two kast-web items
+are unblocked by the contract documentation below but belong to that repo.
+
+### Fixed
+
+- **katana was installed from `@latest`.** A fresh box built whatever katana
+  shipped that day, so two installs a week apart could crawl differently with
+  nothing recording why — the same exposure the ZAP image digest pin closes.
+  `install.sh` now pins `KATANA_VERSION`, and the two `kast doctor` install
+  hints that recommended `@latest` (which would have quietly undone the pin for
+  anyone following them) now name the pinned version.
+
+  `kast/tests/test_katana_pin.py` fails if `install.sh`, the plugin's
+  `tested_tool_version`, and `doctor.py`'s `KATANA_PINNED_VERSION` drift apart,
+  or if any hint reverts to `@latest`. `check_tested_versions` continues to
+  warn separately when the installed binary differs from the tested version.
+
+### Documentation
+
+- **`docs/web-integration.md` now specifies katana's two kast-web channels.**
+  Neither `katana_progress.json` (added v3.0.50) nor the `crawl_scope` block in
+  `katana_processed.json` was documented in the contract, and kast-web consumes
+  neither — a crawl currently shows as an opaque "in progress" for its whole
+  duration. The new "Special Case: katana" section gives both schemas, the four
+  progress states, and the invariants kast preserves.
+
+  Two rules are called out for any consumer: `status: "terminated"` (and
+  equivalently `crawl_scope.complete: false`) must render as a **partial**
+  result, since presenting a truncated crawl as finished understates the
+  prospect's attack surface; and `reported_url_count`, never
+  `unique_url_count`, is "URLs found", since an unqualified count invites a
+  prospect to read third-party link targets as their own surface.
+
+  `kast/tests/test_katana_web_contract.py` pins the exact key sets of both
+  documents, so a key added or renamed without a matching doc change fails the
+  suite.
+
+  Also documented: `katana.json` is deleted when the katana process exits,
+  a deliberate exception to the contract's "no deletion of state-bearing files"
+  invariant. It is benign because `katana.txt` is the start marker the
+  Directory Layout table actually lists, but it was previously unwritten
+  anywhere.
+
 ## [3.0.51] — 2026-11-10
 
 Backlog sweep against `docs/followups.md`. (v3.0.50 shipped without a

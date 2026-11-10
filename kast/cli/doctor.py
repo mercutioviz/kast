@@ -118,13 +118,19 @@ def check_python_modules() -> list[CheckResult]:
     return results
 
 
+# The katana release install.sh pins to. Kept in lockstep with
+# KatanaPlugin.tested_tool_version and install.sh's KATANA_VERSION by
+# test_katana_pin.py -- an install hint that said @latest would quietly undo
+# the pin for anyone who followed it.
+KATANA_PINNED_VERSION = "v1.6.1"
+
 # Tool binary checks: (tool, plugin_name, install_hint)
 EXTERNAL_TOOLS = [
     ("whatweb",    "whatweb",       "sudo apt install -y ruby ruby-addressable ruby-rchardet && sudo git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && sudo ln -sf /opt/whatweb/whatweb /usr/local/bin/whatweb"),
     ("wafw00f",    "wafw00f",       "sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install wafw00f"),
     ("testssl",    "testssl",       "sudo git clone --depth 1 --branch 3.2 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh && sudo ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl"),
     ("subfinder",  "subfinder",     "sudo GOBIN=/usr/local/bin go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"),
-    ("katana",     "katana",        "sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@latest"),
+    ("katana",     "katana",        f"sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@{KATANA_PINNED_VERSION}"),
     ("httpx",      "related_sites", "sudo GOBIN=/usr/local/bin go install github.com/projectdiscovery/httpx/cmd/httpx@latest"),
     ("docker",     "zap (local)",   "https://docs.docker.com/engine/install/ — needed only for ZAP local mode"),
 ]
@@ -244,7 +250,8 @@ UPDATE_SPECS: list[ToolUpdateSpec] = [
         local_version_regex=r"[Cc]urrent [Vv]ersion:?\s*v?(\d+(?:\.\d+)+)",
         upstream_kind="github_release",
         upstream_id="projectdiscovery/katana",
-        update_hint="sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@latest",
+        # Pinned, not @latest: bumping katana is a deliberate act (see install.sh).
+        update_hint=f"sudo CGO_ENABLED=1 GOBIN=/usr/local/bin go install github.com/projectdiscovery/katana/cmd/katana@{KATANA_PINNED_VERSION}",
     ),
     ToolUpdateSpec(
         binary="httpx",

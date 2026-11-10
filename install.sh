@@ -55,6 +55,14 @@ CHECKPOINT_COMPLETE="complete"
 TESTSSL_REPO="https://github.com/drwetter/testssl.sh.git"
 TESTSSL_BRANCH="3.2"
 
+# katana is pinned to the version the plugin declares as tested_tool_version.
+# @latest made a fresh box install whatever shipped that day, so two installs a
+# week apart could crawl differently with nothing recording why. Bumping this is
+# a deliberate act: change both this and KatanaPlugin.tested_tool_version, then
+# re-run the katana tests. `kast doctor` warns when the installed binary and the
+# plugin's tested-against version drift apart.
+KATANA_VERSION="v1.6.1"
+
 ###############################################################################
 # TOOL REQUIREMENTS REGISTRY
 ###############################################################################
@@ -1310,9 +1318,9 @@ install_go_tools() {
             return 1
         fi
 
-        log_info "Building katana with CGO enabled (required for go-tree-sitter)..."
+        log_info "Building katana $KATANA_VERSION with CGO enabled (required for go-tree-sitter)..."
         CGO_ENABLED=1 GOBIN=/usr/local/bin "$go_binary" install \
-            github.com/projectdiscovery/katana/cmd/katana@latest
+            "github.com/projectdiscovery/katana/cmd/katana@${KATANA_VERSION}"
         if [[ -f "/usr/local/bin/katana" ]]; then
             log_success "Katana installed successfully"
         else
