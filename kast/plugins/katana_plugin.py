@@ -63,11 +63,16 @@ VOLATILE_QUERY_PARAMS = frozenset({
 })
 VOLATILE_QUERY_PREFIXES = ("utm_",)
 
-# Static assets katana should not write out at all. Cuts both crawl output and
-# report volume -- the CDN image transforms that dominated the wbez.org crawl
-# (20,654 occurrences of ?url= against resize endpoints) are all in here.
-# js is deliberately excluded: a JS endpoint is security-relevant, and js_crawl
-# parses it for more.
+# Static assets katana should not write out at all. js is deliberately
+# excluded: a JS endpoint is security-relevant, and js_crawl parses it for more.
+#
+# katana's -ef matches the extension in the URL *path* only. It therefore does
+# NOT catch the CDN image transforms that dominated the wbez.org crawl --
+# cst.brightspotcdn.com/dims4/.../resize/840x555!/quality/90/?url=...%2Fx.jpg
+# has no path extension at all, and its .jpg lives in the query string. Those
+# are kept out of the report by report_scope instead, as third-party hosts.
+# Verified on a live donate.wbez.org crawl: 0 filtered extensions reached the
+# path, while 78 query-string image URLs passed -ef untouched.
 DEFAULT_EXTENSION_FILTER = [
     "png", "jpg", "jpeg", "gif", "svg", "ico", "webp", "avif", "bmp",
     "woff", "woff2", "ttf", "eot", "otf",
