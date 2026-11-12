@@ -8,6 +8,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.53] — 2026-11-12
+
+`update.sh` could not report a failed update. Three defects, all of which made
+a broken or stale deploy look successful — the shape of problem that surfaces
+at the worst possible moment, in front of a prospect.
+
+### Fixed
+
+- **A failed `git pull` was swallowed and then reported as "already up to
+  date".** `if ! git pull ... | tee -a "$UPDATE_LOG"` tests the exit status of
+  `tee`, not of `git`, so both the fetch and the pull always passed. The commit
+  comparison that followed found HEAD unchanged and logged `Repository is
+  already up to date`. Observed live during the v3.0.52 deploy: under `sudo`
+  root has no SSH key, both git commands died with
+  `Permission denied (publickey)`, and the script carried on as if current. On
+  a box where origin genuinely has new commits, that ships stale code and calls
+  it success — which is how an installation sits five releases behind without
+  anyone noticing.
+
+  Status is now read from `PIPESTATUS[0]`, checked locally rather than via a
+  global `set -o pipefail` that would change every other pipe in the script.
+
+  A failure is **not** treated as fatal, with one exception. An unreachable
+  origin leaves a perfectly valid working tree, and aborting would block the
+  legitimate case of deploying local commits; the script now warns loudly,
+  names the commit it is actually deploying, and never claims the tree is
+  current when it could not ask. The exception is a pull that left `MERGE_HEAD`
+  behind: a conflicted tree is never deployed. Connectivity failures and
+  merge-refusals are reported distinctly, since git declines a divergent pull
+  *without* creating `MERGE_HEAD` and the two need different advice.
+
+- **The post-update plugin-count validation could not fail.** Two bugs stacked:
+  it called `python -m kast.main --list-plugins`, a v2 flag the v3 CLI dropped,
+  so nothing ever matched; and `grep -c "Plugin:" || echo "0"` appended a second
+  `0` to grep's own `0`, producing the literal `0\n0`. The result was
+  `./update.sh: line 588: [[: 0\n0: syntax error` followed by
+  `✓ 0\n0 plugins available` logged as a **success**. A genuine no-plugins
+  regression would have passed validation unnoticed.
+
+  Now reads `kast plugins list --json` and counts the array, guards a
+  non-numeric result, and treats zero plugins as a validation **error** rather
+  than a warning — an install that cannot scan should trigger the rollback
+  prompt, not a shrug.
+
+- **Validation never actually examined the installation.** kast is not
+  pip-installed into `/opt/kast/venv`; `/usr/local/bin/kast` works by `cd`-ing
+  to `/opt/kast` first. The import check and the plugin count inherited the
+  caller's cwd, which during an update is the *git repository* — so validation
+  confirmed that the repo's kast imported and had plugins, and would have
+  passed even against a completely broken installation. Both now run with cwd
+  set to `INSTALL_DIR`, like the launcher does. Found while testing the two
+  fixes above.
+
 ## [3.0.52] — 2026-11-10
 
 Remaining `docs/followups.md` items on the kast side. The two kast-web items

@@ -590,18 +590,41 @@ validate_installation() {
         log_success "✓ Python virtual environment"
     fi
     
-    # Test Python imports
-    if ! "$INSTALL_DIR/venv/bin/python" -c "import kast" 2>/dev/null; then
+    # Test Python imports.
+    #
+    # Must run with cwd = INSTALL_DIR. kast is not pip-installed into the
+    # venv; /usr/local/bin/kast works by cd'ing to /opt/kast first and letting
+    # the package resolve from there. Without the cd this inherited whatever
+    # cwd the caller had -- during an update that is GIT_DIR, so validation
+    # imported the *repository's* kast and never touched the installation it
+    # was supposed to be validating.
+    if ! (cd "$INSTALL_DIR" && "$INSTALL_DIR/venv/bin/python" -c "import kast") 2>/dev/null; then
         log_error "Cannot import kast module"
         ((failed++))
     else
         log_success "✓ Python imports"
     fi
     
-    # Check if at least one plugin is available
-    local plugin_count=$("$INSTALL_DIR/venv/bin/python" -m kast.main --list-plugins 2>/dev/null | grep -c "Plugin:" || echo "0")
+    # Check if at least one plugin is available.
+    #
+    # This used to call --list-plugins, a v2 flag the v3 CLI dropped, and pipe
+    # it through `grep -c "Plugin:" || echo "0"` -- which appends a second 0 to
+    # grep's own 0 when grep exits non-zero. The result was the literal "0\n0",
+    # a `[[: 0\n0: syntax error`, and then "✓ 0\n0 plugins available" logged as
+    # a SUCCESS. The check could not fail, so a genuine no-plugins regression
+    # would have passed validation unnoticed.
+    # cd for the same reason as the import check above: without it this counts
+    # the repository's plugins, not the installed ones.
+    local plugin_count
+    plugin_count=$(cd "$INSTALL_DIR" && "$INSTALL_DIR/venv/bin/python" -m kast.main plugins list --json 2>/dev/null \
+        | "$INSTALL_DIR/venv/bin/python" -c \
+          'import json,sys; print(len(json.load(sys.stdin)["plugins"]))' 2>/dev/null)
+    # Any failure above -- missing CLI, bad JSON, empty output -- leaves this
+    # non-numeric. Treat that as zero rather than letting [[ ]] error out.
+    [[ "$plugin_count" =~ ^[0-9]+$ ]] || plugin_count=0
     if [[ $plugin_count -eq 0 ]]; then
-        log_warning "No plugins available"
+        log_error "No plugins available"
+        ((failed++))
     else
         log_success "✓ $plugin_count plugins available"
     fi
@@ -661,20 +684,61 @@ update_git_repository() {
     local current_commit=$(git rev-parse HEAD)
     log_debug "Current commit: $current_commit"
     
-    # Fetch latest changes
+    # `cmd | tee` reports tee's exit status, not cmd's, so these two used to
+    # pass unconditionally -- a failed pull was then read as "no new commits"
+    # and logged as "already up to date". Observed live: under sudo the SSH key
+    # is not available to root, both fetch and pull died with
+    # "Permission denied (publickey)", and the deploy continued as if current.
+    # On a box where origin genuinely has commits, that ships stale code and
+    # calls it success. PIPESTATUS[0] is the git status; checked locally rather
+    # than via a global `set -o pipefail`, which would change every other pipe
+    # in this script.
+    local branch
+    branch=$(git branch --show-current)
+    local fetch_failed=0 pull_failed=0
+
     log_info "Fetching latest changes..."
-    if ! git fetch origin 2>&1 | tee -a "$UPDATE_LOG"; then
-        log_error "Failed to fetch from remote repository"
-        return 1
+    git fetch origin 2>&1 | tee -a "$UPDATE_LOG"
+    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+        fetch_failed=1
+    else
+        log_info "Pulling changes..."
+        git pull origin "$branch" 2>&1 | tee -a "$UPDATE_LOG"
+        if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+            pull_failed=1
+        fi
     fi
-    
-    # Pull changes
-    log_info "Pulling changes..."
-    if ! git pull origin $(git branch --show-current) 2>&1 | tee -a "$UPDATE_LOG"; then
-        log_error "Failed to pull changes"
-        return 1
+
+    if [[ $fetch_failed -eq 1 || $pull_failed -eq 1 ]]; then
+        # A half-finished merge must never be deployed. Everything else -- no
+        # network, no credentials, divergent branches with no strategy set --
+        # leaves a perfectly valid tree, and refusing to deploy it would block
+        # the legitimate case of shipping local commits. So: abort on a
+        # conflicted merge, warn loudly otherwise, and never claim the tree is
+        # current when we could not confirm it.
+        if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+            log_error "Pull left an unresolved merge; refusing to deploy a conflicted tree"
+            log_error "Resolve it in $GIT_DIR (git merge --abort, or finish the merge), then re-run"
+            return 1
+        fi
+        # Distinguish the two: a failed fetch means origin was unreachable, a
+        # failed pull means it was reached but the tree could not be advanced
+        # (most often divergent branches, which git declines to reconcile).
+        if [[ $fetch_failed -eq 1 ]]; then
+            log_warning "Could not reach origin -- the working tree was NOT refreshed"
+        else
+            log_warning "Fetched origin, but could not update the working tree"
+            log_warning "Most often divergent local and remote branches; check: git -C $GIT_DIR status"
+        fi
+        log_warning "Deploying $GIT_DIR as it stands, at commit ${current_commit:0:8} on $branch"
+        log_warning "This may not be the latest code. If you expected new commits, stop now."
+        if [[ $fetch_failed -eq 1 && $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then
+            log_info "Running under sudo: root usually has no SSH key for git@github.com."
+            log_info "Pull as $SUDO_USER first (git -C $GIT_DIR pull), then re-run this script."
+        fi
+        return 0
     fi
-    
+
     # Check if anything changed
     local new_commit=$(git rev-parse HEAD)
     if [[ "$current_commit" == "$new_commit" ]]; then
@@ -682,7 +746,7 @@ update_git_repository() {
     else
         log_success "Repository updated: $current_commit -> $new_commit"
     fi
-    
+
     return 0
 }
 

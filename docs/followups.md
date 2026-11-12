@@ -93,33 +93,6 @@ it depends on kast-web conventions, not on anything kast decides.
   live site first: a regex that over-matches silently shrinks the reported
   surface, which is worse than the waste it removes.
 
-### update.sh
-
-Both found while deploying v3.0.52. Neither is new; both make a failed or
-partial update look like a successful one, which is the shape of problem that
-surfaces at the worst moment.
-
-- **`git pull` failure is swallowed, and then reported as "already up to
-  date".** `if ! git pull origin $(git branch --show-current) 2>&1 | tee -a
-  "$UPDATE_LOG"` tests the exit status of `tee`, not of `git`, so a failed pull
-  always passes. The commit comparison that follows then finds HEAD unchanged
-  and logs `Repository is already up to date`. Observed live: under `sudo` the
-  SSH key is not available to root, so both `git fetch` and `git pull` died
-  with `Permission denied (publickey)` and the script continued as if current.
-  Harmless when the working tree is already ahead of origin — which is why the
-  v3.0.52 deploy was still correct — but on a box where origin genuinely has
-  new commits, update.sh will deploy stale code and report success. Fix with
-  `PIPESTATUS[0]` or `set -o pipefail` around the pull.
-
-- **The post-update plugin-count validation cannot fail.** Two bugs stacked:
-  it calls `python -m kast.main --list-plugins`, a v2 flag the v3 CLI no longer
-  has (now `kast plugins list`), so nothing matches; and
-  `grep -c "Plugin:" || echo "0"` appends a second `0` to grep's own `0` when
-  grep exits non-zero, producing the literal `0\n0`. That yields
-  `./update.sh: line 588: [[: 0\n0: syntax error` and then logs
-  `✓ 0\n0 plugins available` as a **success**. A real "no plugins available"
-  regression would pass validation unnoticed.
-
 ### Plugin internals
 
 - **`katana.json` is deleted when the katana process exits**
