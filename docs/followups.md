@@ -40,7 +40,45 @@ it depends on kast-web conventions, not on anything kast decides.
   contract doc: report `reported_url_count`, never `unique_url_count`, as
   "URLs found".
 
+### Katana stall detection
+
+- **Stall detection counts lines in `katana.txt`, which measures flushes, not
+  discovery — so a working crawl can be killed as stalled.** `_count_lines`
+  polls the `-o` output file every 3s and `stall_timeout` fires when the count
+  has not moved. But katana appears to buffer writes to that file, so the count
+  reflects when its buffer flushed rather than when it found a URL.
+
+  Observed on a live `donate.wbez.org` crawl (v3.0.52, 2026-11-10,
+  `~/kast_results/donate.wbez.org-20261110-190108/`): the count reached 251 at
+  roughly 19:01:50 and never moved, so `stall_timeout` fired at 228.1s and the
+  result was reported partial. But `katana.txt`'s mtime is **19:04:56.885** —
+  the instant of termination — and the final count was **305**. Nothing was
+  written to the file for the whole 180s stall window, then 54 lines landed at
+  kill time. At ~119 bytes/line those 54 lines are ~6.4 KB, consistent with a
+  stdio-sized buffer flushing on exit.
+
+  So the crawl had discovered 54 URLs the detector could not see, and we cannot
+  tell from this run whether it had genuinely finished or was still working.
+  The bound behaved correctly given its input; the input is the problem. The
+  partial result was labelled, so nothing was misreported — but a crawl cut
+  short at 305 URLs on a site known to have ~14k is a real coverage loss, and
+  raising `stall_timeout` only moves the threshold without fixing the signal.
+
+  Options, roughly in order of preference: (1) drop `-o` and read katana's
+  stdout directly, so the plugin owns the buffering boundary and counts URLs as
+  they arrive; (2) treat `katana.txt`'s mtime as a second liveness signal
+  alongside line count; (3) check whether katana offers a flush/line-buffered
+  flag. Needs confirming against katana's source — the buffering mechanism is
+  inferred from the timing evidence above, not read.
+
 ### Katana output quality
+
+- **Percent-encoded JS template literals reach the report.**
+  `allegro.wbez.org/$%7BdonateUrl%7D` was reported as a URL on the same crawl.
+  `JS_SOURCE_ARTIFACT` deliberately matches only a literal `${`, because `%7B`
+  is legal in a URL and treating it as a fragment risks dropping real ones.
+  Cosmetic rather than wrong, and much rarer than the raw `'+e.x+'` form the
+  filter does catch, but it is the same class of defect.
 
 - **Cache-busting parameters still reach the crawl frontier.** Report-time
   canonicalization (`VOLATILE_QUERY_PARAMS`) now collapses the duplicates, and
