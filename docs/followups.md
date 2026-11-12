@@ -42,34 +42,52 @@ it depends on kast-web conventions, not on anything kast decides.
 
 ### Katana stall detection
 
-- **Stall detection counts lines in `katana.txt`, which measures flushes, not
-  discovery — so a working crawl can be killed as stalled.** `_count_lines`
-  polls the `-o` output file every 3s and `stall_timeout` fires when the count
-  has not moved. But katana appears to buffer writes to that file, so the count
-  reflects when its buffer flushed rather than when it found a URL.
+- **Stall detection counts lines in `katana.txt`, which katana writes through a
+  32 KiB buffer — so a working crawl gets killed as stalled.** `_count_lines`
+  polls the `-o` file every 3s and `stall_timeout` fires when the count has not
+  moved. katana flushes that file only when its 32 KiB buffer fills, so the
+  count reports flush events, not discovery.
 
-  Observed on a live `donate.wbez.org` crawl (v3.0.52, 2026-11-10,
-  `~/kast_results/donate.wbez.org-20261110-190108/`): the count reached 251 at
-  roughly 19:01:50 and never moved, so `stall_timeout` fired at 228.1s and the
-  result was reported partial. But `katana.txt`'s mtime is **19:04:56.885** —
-  the instant of termination — and the final count was **305**. Nothing was
-  written to the file for the whole 180s stall window, then 54 lines landed at
-  kill time. At ~119 bytes/line those 54 lines are ~6.4 KB, consistent with a
-  stdio-sized buffer flushing on exit.
+  **Mechanism confirmed by direct measurement** (2026-11-12, katana v1.6.1,
+  harness at `/tmp/kt/probe.py` — sampled the `-o` file, stdout, and process-
+  tree CPU once per second). Crawling `donate.wbez.org` with `-hl`, over 70
+  seconds the output file took **exactly two sizes: 0 and 32768 bytes**, while
+  stdout advanced continuously:
 
-  So the crawl had discovered 54 URLs the detector could not see, and we cannot
-  tell from this run whether it had genuinely finished or was still working.
-  The bound behaved correctly given its input; the input is the problem. The
-  partial result was labelled, so nothing was misreported — but a crawl cut
-  short at 305 URLs on a site known to have ~14k is a real coverage loss, and
-  raising `stall_timeout` only moves the threshold without fixing the signal.
+  | t | `-o` file | stdout | lag |
+  |---|---|---|---|
+  | 8s  | 0 bytes / 0 lines      | 32 lines  | 32 lines |
+  | 24s | 32768 bytes / 258 lines| 278 lines | 20 lines |
+  | 70s | 32768 bytes / 258 lines| 302 lines | 44 lines |
 
-  Options, roughly in order of preference: (1) drop `-o` and read katana's
-  stdout directly, so the plugin owns the buffering boundary and counts URLs as
-  they arrive; (2) treat `katana.txt`'s mtime as a second liveness signal
-  alongside line count; (3) check whether katana offers a flush/line-buffered
-  flag. Needs confirming against katana's source — the buffering mechanism is
-  inferred from the timing evidence above, not read.
+  The detector saw **zero** URLs for the first 23 seconds and a frozen 258 for
+  the following 46, while the crawl was working the whole time. That is exactly
+  the live incident on 2026-11-10: 251 frozen, `stall_timeout` at 228.1s, then
+  305 once the buffer flushed at kill.
+
+  **The fix is to read stdout instead of the `-o` file.** The same run proves
+  stdout is not subject to that buffer — it tracked discovery closely even when
+  redirected to a file. Two earlier guesses are now ruled out: file **mtime is
+  useless** as a second signal (it only changes on flush, so it carries exactly
+  the same information as the line count), and **process-tree CPU**, while a
+  valid liveness signal (~1.0-1.8 s/s while crawling, 11-12 processes under
+  `-hl`), is unnecessary complexity once stdout is available.
+
+  **Severity is higher than it looks: it only bites in headless mode, which is
+  the default.** The same crawl *without* `-hl` produced 113,698 URLs in 75s,
+  so the buffer refilled constantly and the file tracked stdout to within 3
+  lines — the defect is invisible there. Headless crawls are low-volume
+  (302 URLs in 70s), so they sit below the flush threshold for minutes at a
+  time. Any site yielding under 32 KiB of URLs per `stall_timeout` window is
+  liable to be cut short while working.
+
+- **katana's default `-timeout 10 -retry 1` may be pathological on dead hosts.**
+  Noticed while building the harness above, and **not yet confirmed**: manual
+  runs using katana's defaults hung for 45-150s against `example.com` and
+  `donate.wbez.org` producing nothing at all, while the same commands with
+  `-timeout 5 -retry 0` began emitting URLs immediately. The plugin passes
+  neither flag, so it inherits the defaults. Could be a slow-host tail, could
+  be environmental; needs a controlled comparison before anything is changed.
 
 ### Katana output quality
 
