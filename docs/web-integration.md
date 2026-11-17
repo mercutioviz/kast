@@ -163,7 +163,7 @@ they are documented here so it can.
 | File                      | Purpose                                              | Lifecycle                                        |
 |---------------------------|------------------------------------------------------|--------------------------------------------------|
 | `katana.json`             | "plugin started" marker                              | Created empty at plugin start, **removed** once the katana process exits (see note) |
-| `katana.txt`              | katana's own output (one URL per line)               | Created by katana; grows during the crawl        |
+| `katana.txt`              | katana's own output (one URL per line)               | Created by katana; grows during the crawl. katana writes it through a 32 KiB buffer, so it lags discovery — kast counts katana's stdout for progress, and tops this file up from that capture if katana was killed before flushing |
 | `katana_progress.json`    | Live progress: URL count, stall signal, termination  | Written every 3s during the crawl, plus a final write |
 | `katana_processed.json`   | "plugin completed" marker                            | Written atomically at full completion            |
 
@@ -179,7 +179,7 @@ they are documented here so it can.
 ```json
 {
   "status": "crawling" | "stalled" | "done" | "terminated",
-  "urls_found": <int — lines in katana.txt at this tick>,
+  "urls_found": <int — URLs katana has emitted at this tick>,
   "stalled_seconds": <int — seconds since urls_found last changed>,
   "termination": null | "max_runtime" | "stall_timeout",
   "last_updated": "<ISO-8601 timestamp, milliseconds>"

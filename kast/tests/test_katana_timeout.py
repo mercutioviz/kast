@@ -23,6 +23,10 @@ from kast.plugins.katana_plugin import KatanaPlugin
 
 # Writes two URLs, forks a long-lived child (standing in for the headless
 # browser), then blocks forever. Exactly the shape that used to hang a scan.
+#
+# Writes to stdout *and* the -o file, as real katana does. The plugin counts
+# stdout, so a stub that fed only the file would leave the stall detector
+# reading zero and make these tests pass for the wrong reason.
 STUB_KATANA = """#!/bin/sh
 out=""
 while [ $# -gt 0 ]; do
@@ -33,8 +37,44 @@ while [ $# -gt 0 ]; do
 done
 sleep 300 &
 echo $! > "${out}.childpid"
-printf 'https://example.com/a\\nhttps://example.com/b\\n' > "$out"
+printf 'https://example.com/a\\nhttps://example.com/b\\n' | tee "$out"
 wait
+"""
+
+# Reproduces katana's real buffering: URLs appear on stdout as they are found,
+# while the -o file stays empty because its 32 KiB buffer has not filled. On a
+# live donate.wbez.org crawl that file held exactly 0 bytes for 23 seconds and
+# then 32768 for the next 46 while the crawl was working the whole time.
+# Counting the file declared this crawl stalled and killed it.
+STUB_KATANA_BUFFERED = """#!/bin/sh
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+: > "$out"
+i=0
+while [ $i -lt 400 ]; do
+  echo "https://example.com/page-$i"
+  i=$((i + 1))
+  sleep 0.1
+done
+"""
+
+# Emits more on stdout than it ever flushes to -o, then exits without flushing
+# the rest -- what a SIGKILLed katana leaves behind.
+STUB_KATANA_UNFLUSHED = """#!/bin/sh
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf 'https://example.com/a\\n' > "$out"
+printf 'https://example.com/a\\nhttps://example.com/b\\nhttps://example.com/c\\n'
 """
 
 
@@ -49,13 +89,12 @@ def _alive(pid):
 
 
 class KatanaTimeoutBase(unittest.TestCase):
+    STUB = STUB_KATANA
+
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.bin_dir = tempfile.mkdtemp()
-        stub = os.path.join(self.bin_dir, "katana")
-        with open(stub, "w") as f:
-            f.write(STUB_KATANA)
-        os.chmod(stub, os.stat(stub).st_mode | stat.S_IEXEC | stat.S_IXGRP)
+        self.install_stub(self.STUB)
 
         self._path_patch = patch.dict(
             os.environ, {"PATH": self.bin_dir + os.pathsep + os.environ["PATH"]}
@@ -67,6 +106,12 @@ class KatanaTimeoutBase(unittest.TestCase):
             katana_plugin, "KATANA_POLL_INTERVAL_SECONDS", 0.1
         )
         self._poll_patch.start()
+
+    def install_stub(self, script):
+        stub = os.path.join(self.bin_dir, "katana")
+        with open(stub, "w") as f:
+            f.write(script)
+        os.chmod(stub, os.stat(stub).st_mode | stat.S_IEXEC | stat.S_IXGRP)
 
     def tearDown(self):
         self._poll_patch.stop()
@@ -264,3 +309,81 @@ class TestTerminateHelper(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestBufferedOutputIsNotMistakenForAStall(KatanaTimeoutBase):
+    """The defect this whole change exists for.
+
+    katana writes its -o file through a 32 KiB buffer, so on a low-volume
+    headless crawl that file can sit unchanged for minutes while the crawl is
+    working. Counting it declared a healthy crawl stalled and killed it: a
+    live donate.wbez.org run was cut to 305 URLs at 228.1s and reported
+    partial. The plugin counts stdout instead, which carries the same bytes
+    with no such buffer.
+    """
+
+    STUB = STUB_KATANA_BUFFERED
+
+    def test_a_working_crawl_is_not_terminated_for_stalling(self):
+        # stall_timeout well under the crawl's lifetime: the old line-count
+        # signal would see the empty -o file and fire almost immediately.
+        plugin = self.make_plugin(stall_timeout=2, max_runtime=6)
+        result = plugin.run("example.com", self.test_dir, report_only=False)
+
+        self.assertEqual(
+            result["results"]["termination"], "max_runtime",
+            "a crawl emitting URLs on stdout was killed as stalled",
+        )
+
+    def test_progress_tracks_stdout_while_the_output_file_is_empty(self):
+        plugin = self.make_plugin(stall_timeout=2, max_runtime=6)
+        plugin.run("example.com", self.test_dir, report_only=False)
+
+        with open(os.path.join(self.test_dir, "katana_progress.json")) as f:
+            progress = json.load(f)
+        self.assertGreater(
+            progress["urls_found"], 0,
+            "urls_found still reflects the unflushed -o file",
+        )
+
+
+class TestUnflushedOutputIsRecovered(KatanaTimeoutBase):
+    """A SIGKILLed katana never flushes, losing up to 32 KiB from katana.txt.
+
+    The stdout capture holds those URLs. Silently under-reporting a prospect's
+    attack surface is the failure this tool exists to avoid.
+    """
+
+    STUB = STUB_KATANA_UNFLUSHED
+
+    def test_katana_txt_is_topped_up_from_the_capture(self):
+        plugin = self.make_plugin(max_runtime=0, stall_timeout=0)
+        plugin.run("example.com", self.test_dir, report_only=False)
+
+        with open(os.path.join(self.test_dir, "katana.txt")) as f:
+            lines = [ln.strip() for ln in f if ln.strip()]
+        self.assertEqual(lines, [
+            "https://example.com/a",
+            "https://example.com/b",
+            "https://example.com/c",
+        ])
+
+    def test_returned_urls_include_the_unflushed_tail(self):
+        plugin = self.make_plugin(max_runtime=0, stall_timeout=0)
+        result = plugin.run("example.com", self.test_dir, report_only=False)
+        self.assertEqual(len(result["results"]["urls"]), 3)
+
+    def test_reconciliation_never_shortens_the_file(self):
+        """A complete katana.txt must survive untouched."""
+        plugin = self.make_plugin()
+        target = os.path.join(self.test_dir, "katana.txt")
+        with open(target, "w") as f:
+            f.write("\n".join(f"https://example.com/{i}" for i in range(50)) + "\n")
+        capture = os.path.join(self.test_dir, "capture.txt")
+        with open(capture, "w") as f:
+            f.write("https://example.com/only-one\n")
+
+        plugin._reconcile_output(target, capture)
+
+        with open(target) as f:
+            self.assertEqual(len([ln for ln in f if ln.strip()]), 50)

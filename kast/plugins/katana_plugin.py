@@ -397,6 +397,70 @@ class KatanaPlugin(KastPlugin):
             return None
         return count
 
+    class _StreamCounter:
+        """Count lines in a growing file, reading only what is new each tick.
+
+        Exists because katana writes its ``-o`` file through a 32 KiB buffer,
+        so that file's line count reports flush events rather than discovery.
+        Measured on a live donate.wbez.org crawl: over 70 seconds the file took
+        exactly two sizes, 0 and 32768 bytes, while katana's stdout advanced
+        continuously. Polling the file therefore declared a working crawl
+        stalled and killed it -- the whole reason this class exists. stdout
+        carries the same bytes with no such buffer, so the poll loop counts
+        that instead.
+
+        Incremental by design: re-reading the whole stream every 3s is pure
+        waste on a crawl that reached 113,698 URLs in 75 seconds.
+        """
+
+        def __init__(self, path):
+            self.path = path
+            self.offset = 0
+            self.count = 0
+
+        def poll(self):
+            """Return the running line count, or None if the file is unreadable."""
+            try:
+                with open(self.path, "rb") as fh:
+                    fh.seek(self.offset)
+                    chunk = fh.read()
+            except OSError:
+                return None
+            if chunk:
+                self.offset += len(chunk)
+                self.count += chunk.count(b"\n")
+            return self.count
+
+    @staticmethod
+    def _read_capture(path, limit=8000):
+        """Read a captured stream for an error message, tolerating a missing file."""
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                return fh.read(limit).strip()
+        except OSError:
+            return ""
+
+    def _reconcile_output(self, output_file, stdout_path):
+        """Top katana.txt back up from the stdout capture if the buffer was lost.
+
+        Both streams carry identical bytes -- verified byte-for-byte on a live
+        crawl -- so the longer one is authoritative. Only ever grows the file.
+        """
+        captured = self._count_lines(stdout_path)
+        written = self._count_lines(output_file)
+        if captured is None or written is None or captured <= written:
+            return
+        self.debug(
+            f"katana.txt holds {written} URL(s) but stdout captured {captured}; "
+            "restoring the unflushed tail"
+        )
+        try:
+            shutil.copyfile(stdout_path, output_file)
+        except OSError as e:
+            # Better a short file than no file: post_process still has the
+            # envelope, and the count mismatch is already in the debug log.
+            self.debug(f"could not restore katana.txt from the stdout capture: {e}")
+
     def _write_progress(
         self, output_dir, status, urls_found, stalled_seconds=0, termination=None
     ):
@@ -553,65 +617,88 @@ class KatanaPlugin(KastPlugin):
                 in_progress_file = os.path.join(output_dir, "katana.json")
                 open(in_progress_file, 'a').close()
 
-                # stdout/stderr go to a spooled temp file rather than PIPE: with -o
-                # writing URLs directly to katana.txt, katana shouldn't produce much
-                # on either stream, but an unread PIPE can fill its OS buffer and
-                # deadlock the process during a long poll loop. A real file has no
-                # such limit and needs no draining.
-                with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as combined_output:
-                    # start_new_session puts katana and the headless browser it
-                    # spawns in their own process group, so termination reaches the
-                    # whole tree. Signalling katana alone leaves Chrome orphaned.
-                    proc = subprocess.Popen(
-                        cmd,
-                        stdout=combined_output,
-                        stderr=combined_output,
-                        start_new_session=True,
-                    )
+                # stdout/stderr go to real files rather than PIPE: an unread PIPE
+                # can fill its OS buffer and deadlock katana during a long poll
+                # loop. A real file has no such limit and needs no draining.
+                #
+                # They are named files in a temp dir, not TemporaryFile objects,
+                # for two reasons. The counter below must read stdout through its
+                # own handle -- handing subprocess a file object shares one open
+                # file description with the child, so seeking it in the parent
+                # would move the child's write offset and corrupt the capture.
+                # And the dir sits outside output_dir so no extra file appears in
+                # the scan directory for kast-web to trip over.
+                with tempfile.TemporaryDirectory(prefix="kast-katana-") as capture_dir:
+                    stdout_path = os.path.join(capture_dir, "stdout.txt")
+                    stderr_path = os.path.join(capture_dir, "stderr.txt")
+                    with open(stdout_path, "wb") as stdout_fh, \
+                            open(stderr_path, "wb") as stderr_fh:
+                        # start_new_session puts katana and the headless browser it
+                        # spawns in their own process group, so termination reaches
+                        # the whole tree. Signalling katana alone leaves Chrome
+                        # orphaned.
+                        proc = subprocess.Popen(
+                            cmd,
+                            stdout=stdout_fh,
+                            stderr=stderr_fh,
+                            start_new_session=True,
+                        )
 
-                    started_at = time.monotonic()
-                    deadline = (
-                        started_at + self.max_runtime if self.max_runtime else None
-                    )
-                    termination = None
-                    last_count = 0
-                    last_change_time = time.monotonic()
-                    while proc.poll() is None:
-                        time.sleep(KATANA_POLL_INTERVAL_SECONDS)
-                        count = self._count_lines(output_file)
-                        now = time.monotonic()
-                        if count is not None:
-                            if count != last_count:
-                                last_count = count
-                                last_change_time = now
-                            stalled_seconds = int(now - last_change_time)
-                            status = (
-                                "stalled"
-                                if stalled_seconds >= KATANA_STALL_THRESHOLD_SECONDS
-                                else "crawling"
-                            )
-                            self._write_progress(
-                                output_dir, status, last_count, stalled_seconds
-                            )
-                        else:
-                            # katana.txt was mid-write; skip this tick's counting but
-                            # still let the deadline checks below run, or an unreadable
-                            # file would defeat the timeouts entirely.
-                            stalled_seconds = int(now - last_change_time)
+                        started_at = time.monotonic()
+                        deadline = (
+                            started_at + self.max_runtime if self.max_runtime else None
+                        )
+                        termination = None
+                        last_count = 0
+                        last_change_time = time.monotonic()
+                        # Counts katana's stdout, not katana.txt: the -o file is
+                        # written through a 32 KiB buffer and lags discovery by
+                        # minutes on a low-volume headless crawl.
+                        counter = self._StreamCounter(stdout_path)
+                        while proc.poll() is None:
+                            time.sleep(KATANA_POLL_INTERVAL_SECONDS)
+                            count = counter.poll()
+                            now = time.monotonic()
+                            if count is not None:
+                                if count != last_count:
+                                    last_count = count
+                                    last_change_time = now
+                                stalled_seconds = int(now - last_change_time)
+                                status = (
+                                    "stalled"
+                                    if stalled_seconds >= KATANA_STALL_THRESHOLD_SECONDS
+                                    else "crawling"
+                                )
+                                self._write_progress(
+                                    output_dir, status, last_count, stalled_seconds
+                                )
+                            else:
+                                # Capture was unreadable this tick; skip counting but
+                                # still let the deadline checks below run, or an
+                                # unreadable file would defeat the timeouts entirely.
+                                stalled_seconds = int(now - last_change_time)
 
-                        if deadline and now >= deadline:
-                            termination = "max_runtime"
-                        elif self.stall_timeout and stalled_seconds >= self.stall_timeout:
-                            termination = "stall_timeout"
-                        if termination:
-                            self.debug(
-                                f"katana terminated by {termination} after "
-                                f"{int(now - started_at)}s with {last_count} URL(s)"
-                            )
-                            self._terminate(proc)
-                            break
+                            if deadline and now >= deadline:
+                                termination = "max_runtime"
+                            elif self.stall_timeout and stalled_seconds >= self.stall_timeout:
+                                termination = "stall_timeout"
+                            if termination:
+                                self.debug(
+                                    f"katana terminated by {termination} after "
+                                    f"{int(now - started_at)}s with {last_count} URL(s)"
+                                )
+                                self._terminate(proc)
+                                break
 
-                    proc.wait()
+                        proc.wait()
+
+                    # katana flushes its buffer when it handles SIGTERM, but a
+                    # SIGKILLed process cannot, losing up to 32 KiB -- roughly 275
+                    # URLs -- from katana.txt. The stdout capture holds them, and
+                    # silently under-reporting a prospect's attack surface is the
+                    # failure this tool exists to avoid, so top the file back up.
+                    self._reconcile_output(output_file, stdout_path)
+
                     final_count = self._count_lines(output_file) or 0
                     self._write_progress(
                         output_dir,
@@ -624,8 +711,10 @@ class KatanaPlugin(KastPlugin):
                     # A non-zero code after we signalled katana is our own doing, not
                     # a crawl failure — the URLs written so far are still good.
                     if proc.returncode != 0 and termination is None:
-                        combined_output.seek(0)
-                        error_output = combined_output.read().strip()
+                        error_output = self._read_capture(stderr_path)
+                        if not error_output:
+                            # katana has been seen writing diagnostics to stdout.
+                            error_output = self._read_capture(stdout_path)
                         return self.get_result_dict(
                             disposition="fail",
                             results=error_output

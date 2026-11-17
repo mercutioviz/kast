@@ -8,6 +8,62 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.54] — 2026-11-17
+
+### Fixed
+
+- **katana's stall detector was reading a 32 KiB buffer, so working crawls
+  were killed and reported partial.** The plugin decided a crawl had stalled by
+  polling the line count of `katana.txt` — the file katana writes via `-o`.
+  katana writes that file through a 32 KiB buffered writer, so the count
+  reported *flush events*, not discovery.
+
+  Measured directly (katana v1.6.1, `donate.wbez.org`, sampling the `-o` file,
+  stdout and process-tree CPU once a second): with `-hl`, over 70 seconds the
+  output file took **exactly two sizes, 0 and 32768 bytes**, while stdout
+  advanced continuously. The detector saw zero URLs for 23 seconds, then a
+  frozen 258 for the next 46, while the crawl worked throughout.
+
+  **This only bit in headless mode, which has been the default since v3.0.15.**
+  The same crawl without `-hl` produced 113,698 URLs in 75s, refilling the
+  buffer constantly so the file tracked stdout to within 3 lines — the defect
+  is invisible there. Headless crawls are low-volume and sit below the flush
+  threshold for minutes, so any site yielding under 32 KiB of URLs per
+  `stall_timeout` window could be cut short while working. A truncated crawl
+  shown to a prospect understates their attack surface.
+
+  The poll loop now counts katana's **stdout**, which carries the same bytes
+  (verified byte-identical) with no such buffer. Counting is incremental
+  rather than re-reading the whole stream every 3s, which also removes real
+  waste on large crawls. stdout and stderr are captured to separate named
+  files in a temp directory outside the scan directory — named, because
+  handing `subprocess` a file object shares one open file description with the
+  child and seeking it in the parent would corrupt the capture.
+
+  Effect on the same target, before and after:
+
+  | | 10 Nov (before) | 17 Nov (after) |
+  |---|---|---|
+  | URLs crawled | 305 | 324 |
+  | URLs reported | 150 | 161 |
+  | Outcome | killed at 228.1s, `complete: false` | **finished on its own**, `complete: true` |
+
+  The report no longer carries the partial-crawl banner, because the crawl is
+  no longer being cut short. This also provides the first live confirmation
+  that katana's own `crawl_duration` budget (`-ct`) ends a crawl gracefully —
+  previously only the hard backstops had ever been observed firing.
+
+- **A SIGKILLed katana no longer silently loses URLs.** katana flushes its
+  buffer when it handles SIGTERM, but a process killed outright cannot, losing
+  up to 32 KiB — roughly 275 URLs — from `katana.txt`. The stdout capture holds
+  them, so `katana.txt` is topped up from it when the file comes back short.
+  Only ever grows the file.
+
+**Contract unchanged.** `katana_progress.json` keeps exactly its five
+documented keys (`urls_found` is simply accurate now), `katana.txt` is still
+written by katana via `-o`, and `kast/tests/test_katana_web_contract.py` passes
+unmodified. kast-web needs no changes.
+
 ## [3.0.53] — 2026-11-12
 
 `update.sh` could not report a failed update. Three defects, all of which made
