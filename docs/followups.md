@@ -42,13 +42,48 @@ it depends on kast-web conventions, not on anything kast decides.
 
 ### Katana crawl tuning
 
-- **katana's default `-timeout 10 -retry 1` may be pathological on dead hosts.**
-  Noticed while building the harness above, and **not yet confirmed**: manual
-  runs using katana's defaults hung for 45-150s against `example.com` and
-  `donate.wbez.org` producing nothing at all, while the same commands with
-  `-timeout 5 -retry 0` began emitting URLs immediately. The plugin passes
-  neither flag, so it inherits the defaults. Could be a slow-host tail, could
-  be environmental; needs a controlled comparison before anything is changed.
+> The earlier suspicion that katana's default `-timeout 10 -retry 1` was
+> pathological is **disproven** and has been removed. A controlled four-arm
+> comparison (2026-11-18, `donate.wbez.org`, `-rl 30` on every arm, varying
+> only those two flags) found the defaults perfectly healthy — first URL at
+> 1.0s in every arm. Non-headless totals over 45s: default 71,895,
+> `-timeout 5` 83,822, `-retry 0` 65,323, both 87,860. So `-timeout 5` is worth
+> roughly +17%, `-retry 0` alone is slightly *negative*, and in **headless
+> mode — the plugin's default — all four arms were identical** (3.0s to first
+> URL, ~312 URLs). Not worth changing a default for. The original observation
+> came from varying several flags at once against a target that was behaving
+> erratically; see below.
+
+- **katana's results against one target became erratic and then went to zero,
+  while the site stayed healthy.** Found while running the comparison above,
+  and **not explained**. After sustained crawling of `donate.wbez.org`
+  (including one 113,698-URL run), identical commands that had returned
+  71,895 URLs non-headless and 312 headless began returning **0**, headless and
+  non-headless alike, across five consecutive runs. Throughout, `curl` got
+  HTTP 200 in ~29 ms, katana crawled `httpbin.org` normally, and katana with
+  `-v` still crawled `donate.wbez.org` and printed `GET` lines — so neither the
+  site, the network, nor the binary was broken.
+
+  Candidate explanations, none confirmed: target-side bot or WAF mitigation
+  keyed to crawl volume; katana state (it writes a resume file per interrupted
+  run — 11 had accumulated in `~/.config/katana/`); or an interaction with
+  `-silent` and the stdout destination. Worth isolating on a **fresh target
+  with no prior crawl history**, changing one variable at a time, rather than
+  continuing against a site this box has already hammered.
+
+  This matters more than the timeout question it replaced. A repeat demo
+  against the same prospect silently returning "0 URLs found" is both wrong and
+  embarrassing in the room, and it is the exact failure mode the partial-crawl
+  banner cannot catch, because a zero-URL crawl reports itself as complete.
+
+- **The plugin crawls at katana's default 150 requests/second.** `rate_limit`
+  defaults to 150, matching katana's own default, so the plugin passes no `-rl`
+  and inherits it. That is aggressive against a prospect's infrastructure and
+  sits awkwardly with this project's rule that scans must never look like an
+  attack. It is also a plausible trigger for the mitigation theory above. No
+  change proposed yet — lowering it trades crawl completeness for politeness,
+  and that is a judgement call worth making deliberately rather than as a side
+  effect of a bug hunt.
 
 ### Katana output quality
 
