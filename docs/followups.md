@@ -54,27 +54,66 @@ it depends on kast-web conventions, not on anything kast decides.
 > came from varying several flags at once against a target that was behaving
 > erratically; see below.
 
-- **katana's results against one target became erratic and then went to zero,
-  while the site stayed healthy.** Found while running the comparison above,
-  and **not explained**. After sustained crawling of `donate.wbez.org`
-  (including one 113,698-URL run), identical commands that had returned
-  71,895 URLs non-headless and 312 headless began returning **0**, headless and
-  non-headless alike, across five consecutive runs. Throughout, `curl` got
-  HTTP 200 in ~29 ms, katana crawled `httpbin.org` normally, and katana with
-  `-v` still crawled `donate.wbez.org` and printed `GET` lines — so neither the
-  site, the network, nor the binary was broken.
+- **`-pls heuristic`, katana's default page-load strategy, makes headless
+  crawling roughly 10x slower for identical results.** Established against a
+  local 24-page static site built for the purpose (`/tmp/kt/mksite.py`, served
+  on 127.0.0.1 — it cannot rate-limit, cannot deploy bot mitigation, and has a
+  known-correct answer of 24 URLs):
 
-  Candidate explanations, none confirmed: target-side bot or WAF mitigation
-  keyed to crawl volume; katana state (it writes a resume file per interrupted
-  run — 11 had accumulated in `~/.config/katana/`); or an interaction with
-  `-silent` and the stdout destination. Worth isolating on a **fresh target
-  with no prior crawl history**, changing one variable at a time, rather than
-  continuing against a site this box has already hammered.
+  | flags | URLs | time |
+  |---|---|---|
+  | `-hl` (default `-pls heuristic`) | 23 | **155s** |
+  | `-hl -pls load` | 23 | **15s** |
+  | `-hl -pls networkidle` | 23 | **15s** |
+  | `-hl -dwt 1` | 23 | 155s (no effect) |
+  | non-headless | 26 | 12s |
 
-  This matters more than the timeout question it replaced. A repeat demo
-  against the same prospect silently returning "0 URLs found" is both wrong and
-  embarrassing in the room, and it is the exact failure mode the partial-crawl
-  banner cannot catch, because a zero-URL crawl reports itself as complete.
+  Reproducible across repeated runs and **identical on katana v1.6.1 and
+  v1.8.0**. `-dwt` and `-time-stable` are not the cause; the strategy is. The
+  plugin never sets `-pls`, so every headless scan inherits `heuristic`.
+
+  Two things follow. **Headless is enormously more expensive than its benefit
+  looks:** on `donate.wbez.org`, non-headless returned 94,139 URLs in 60s while
+  headless returned ~320. And on non-JS content headless finds *fewer* URLs
+  than non-headless (23 vs 26 locally). The v3.0.15 decision to default
+  headless on cited "17 vs 50 URLs on an SPA, 3x" — measured on one SPA, and
+  worth revisiting with this cost in view.
+
+  **Before changing the `-pls` default, the JS-coverage question must be
+  answered**: does `load` miss content `heuristic` renders? Not yet known —
+  the intended SPA target (`microapps.netlify.app`) returned 0 URLs under both
+  strategies despite answering curl with HTTP 200, so the comparison could not
+  be run.
+
+- **Headless against a real site intermittently produces nothing at all, and
+  this is still unexplained.** Against `donate.wbez.org`: six consecutive
+  `-hl -pls load` runs returned 313-322 URLs each, then minutes later the same
+  command returned 0; a `-hl` heuristic run instrumented with stdout to a plain
+  file sat at **0 bytes for 140 seconds** with empty stderr before being
+  killed. Throughout, `curl` got HTTP 200 and the local target worked every
+  time, so neither the box nor the binary is broken.
+
+  Ruled out by direct test: `-silent` (works perfectly on the local target),
+  orphaned Chrome (none accumulate, even after SIGTERM mid-crawl), stdout
+  buffering (the file was genuinely 0 bytes, and SIGTERM flushes), and katana
+  v1.6.1 vs v1.8.0 (identical). Remaining candidates: target-side bot
+  mitigation that engages and disengages, or heuristic's per-page wait being
+  unbounded on heavy real pages so nothing is ever emitted. **`-pls load` was
+  the only configuration that produced output on every attempt**, which is
+  suggestive but not proof.
+
+  This matters because a repeat demo silently returning "0 URLs found" is both
+  wrong and embarrassing in the room, and it is the one failure the
+  partial-crawl banner cannot catch — a zero-URL crawl reports itself complete.
+
+- **katana v1.8.0 is built and staged at `/opt/katana-1.8.0/katana`**, left
+  deliberately outside `PATH` so the v3.0.52 pin at v1.6.1 still governs.
+  Every one of the 21 flags the plugin emits exists in 1.8.0, so the argv
+  contract holds. It fixes none of the behaviour above. Two changes to validate
+  if the pin is ever bumped: v1.7.0 enforced **RDN scope label boundaries**
+  (the plugin runs `field_scope=rdn` and derives all host classification from
+  it), and v1.7.0 added **content-similarity dedup**, which overlaps
+  `VOLATILE_QUERY_PARAMS`.
 
 - **The plugin crawls at katana's default 150 requests/second.** `rate_limit`
   defaults to 150, matching katana's own default, so the plugin passes no `-rl`
