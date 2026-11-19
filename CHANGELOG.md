@@ -8,6 +8,55 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > (see `git log --oneline`). Each commit subject names the version it shipped under.
 > This CHANGELOG resumes structured release notes at v3.0.21.
 
+## [3.0.55] — 2026-11-19
+
+### Fixed
+
+- **`kast -v` silently zeroed every katana crawl.** The plugin passed kast's
+  own `--verbose` through to katana as `-v`, which switches katana to the field
+  display format — `[a] [GET] https://example.com/x [depth:0]` — in the `-o`
+  file as well as on stdout. Every one of those lines contains whitespace, so
+  `JS_SOURCE_ARTIFACT` classified all of them as JavaScript source fragments
+  and dropped them.
+
+  Observed on `www.barracuda.com`: 265 raw lines became **0 reported URLs**,
+  while `crawl_scope` still said `complete: true`, `js_artifact_count` read
+  265, and the report rendered "No URLs found" as a successful scan. At the
+  same moment `katana_progress.json` reported `urls_found: 265` — the two
+  channels disagreed and nothing flagged it. A silently empty crawl presented
+  as complete is the exact failure kast exists to avoid, and it fired on the
+  flag an operator reaches for when something already looks wrong.
+
+  The passthrough is gone; kast's verbosity is a kast-logging concern. The
+  command log stays and still prints only under `-v`, since `debug()` is
+  itself gated on `cli_args.verbose`. This also makes `run()` agree with
+  `get_dry_run_info()`, which never emitted `-v` — the dry-run preview was
+  accurate while the command actually executed was not.
+
+  Same target, verbose run, before and after:
+
+  | | before | after |
+  |---|---|---|
+  | URLs reported | 0 | 229 |
+  | unique / raw | 0 / 265 | 258 / 265 |
+  | `js_artifact_count` | 265 | 2 |
+  | hosts | 0 | 37 |
+
+  Verbose and non-verbose runs now agree exactly.
+
+### Tests
+
+- 965 passed, 4 skipped, 3 xfailed.
+- New `TestVerboseDoesNotChangeKatanaOutput` in `test_katana_timeout.py`, with
+  a stub reproducing katana's real `-v` behaviour. Every pre-existing katana
+  test set `verbose = False`, and the only command builder under test was
+  `get_dry_run_info`, which never carried the flag — which is why this went
+  unnoticed. The new tests exercise `run()` with verbose on.
+
+**Contract unchanged.** No change to `katana_progress.json`,
+`katana_processed.json`, or any kast↔kast-web surface. kast-web needs no
+changes.
+
 ## [3.0.54] — 2026-11-17
 
 ### Fixed

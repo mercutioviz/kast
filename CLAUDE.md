@@ -10,7 +10,7 @@ kast-web (at `/home/mscollins/kast-web/`, a separate repo) is the Flask + Celery
 
 **Reliability and reputational safety are first-class concerns.** An SA cannot run a flaky tool in front of a prospect. Active scans must never look like attacks against the prospect's infrastructure.
 
-Current line: kast `v3.0.54` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
+Current line: kast `v3.0.55` on `main`; kast-web on its `v2.0` line (`v2.0.1`). v3 shipped via the refactor documented in `docs/v3-planning/01-audit.md` through `04-kast-web-cloud-migration.md` — design history, not active work.
 
 ## Frozen contracts
 
@@ -94,7 +94,7 @@ Deferred capability candidates live in `docs/v3.1-backlog.md`. Reference that fi
 ## Working in this codebase
 
 - **Dev environment:** `.venv/` at the repo root, created with `python3 -m venv .venv && .venv/bin/python -m pip install -e '.[dev]'`. Gitignored. **Keep it separate from the deployed runtime at `/opt/kast/venv`** — `/usr/local/bin/kast` `cd`s to `/opt/kast` (a deployed copy of the tree, not a checkout) and runs `python -m kast.main`, so an editable install of this working tree into that venv would make the CLI an SA demos from execute uncommitted dev code. Never install dev tooling there.
-- **Run tests:** `.venv/bin/python -m pytest kast/tests/` (963 passed / 4 skipped / 3 xfailed as of v3.0.54). Lint with `.venv/bin/python -m ruff check kast/`. A bare `python -m pytest` does not work — system `python3` has neither the dev tools nor `tldextract`.
+- **Run tests:** `.venv/bin/python -m pytest kast/tests/` (965 passed / 4 skipped / 3 xfailed as of v3.0.55). Lint with `.venv/bin/python -m ruff check kast/`. A bare `python -m pytest` does not work — system `python3` has neither the dev tools nor `tldextract`.
 - **Plugin discovery:** plugins live at `kast/plugins/*_plugin.py`, auto-discovered (see `kast/utils.py:discover_plugins`)
 - **Issue registry:** `kast/data/issue_registry.json` (119 entries, 116 marked `waf_addressable`)
 - **Issue registry workflow:** `kast registry list/add/promote`. `kast registry add ID --severity ... --category ...` adds an entry. `kast registry promote SCAN_DIR` reads `missing_issue_ids.json` and walks the operator through accepting candidate entries (use `--accept-all` for CI). Both write atomically.
