@@ -590,9 +590,11 @@ class KatanaPlugin(KastPlugin):
         if self.omit_body:
             cmd.append("-ob")
 
-        if getattr(self.cli_args, "verbose", False):
-            cmd.insert(1, "-v")
-            self.debug(f"Running command: {' '.join(cmd)}")
+        # Never pass katana's own -v. It switches katana to the field display
+        # format ("[a] [GET] <url> [depth:0]") in the -o file as well as on
+        # stdout, and every such line is discarded as a JS source artifact --
+        # so `kast -v` reported a complete crawl with zero URLs.
+        self.debug(f"Running command: {' '.join(cmd)}")
 
         # Store command for reporting
         self.command_executed = ' '.join(cmd)

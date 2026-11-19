@@ -78,6 +78,27 @@ printf 'https://example.com/a\\nhttps://example.com/b\\nhttps://example.com/c\\n
 """
 
 
+# Mimics katana's own -v: given that flag it switches both stdout and the -o
+# file to the field display format, which the URL parser discards wholesale.
+# kast used to pass -v through whenever the operator ran `kast -v`.
+STUB_KATANA_VERBOSE_FORMAT = """#!/bin/sh
+out=""
+verbose=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    -v) verbose=1; shift ;;
+    *) shift ;;
+  esac
+done
+if [ "$verbose" = 1 ]; then
+  printf '[a] [GET] https://example.com/a [depth:0]\\n[a] [GET] https://example.com/b [depth:0]\\n' | tee "$out"
+else
+  printf 'https://example.com/a\\nhttps://example.com/b\\n' | tee "$out"
+fi
+"""
+
+
 def _alive(pid):
     try:
         os.kill(pid, 0)
@@ -119,9 +140,9 @@ class KatanaTimeoutBase(unittest.TestCase):
         shutil.rmtree(self.test_dir, ignore_errors=True)
         shutil.rmtree(self.bin_dir, ignore_errors=True)
 
-    def make_plugin(self, **overrides):
+    def make_plugin(self, verbose=False, **overrides):
         cli_args = Mock()
-        cli_args.verbose = False
+        cli_args.verbose = verbose
         cli_args.target = "example.com"
         cli_args.config = None
         cli_args.set = [f"katana.{k}={v}" for k, v in overrides.items()]
@@ -387,3 +408,22 @@ class TestUnflushedOutputIsRecovered(KatanaTimeoutBase):
 
         with open(target) as f:
             self.assertEqual(len([ln for ln in f if ln.strip()]), 50)
+
+
+class TestVerboseDoesNotChangeKatanaOutput(KatanaTimeoutBase):
+    """`kast -v` must not alter what katana writes, only what kast logs."""
+
+    STUB = STUB_KATANA_VERBOSE_FORMAT
+
+    def test_katana_never_receives_v(self):
+        plugin = self.make_plugin(verbose=True, max_runtime=0, stall_timeout=0)
+        plugin.run("example.com", self.test_dir, report_only=False)
+        self.assertNotIn("-v", plugin.command_executed.split())
+
+    def test_verbose_scan_still_reports_its_urls(self):
+        plugin = self.make_plugin(verbose=True, max_runtime=0, stall_timeout=0)
+        result = plugin.run("example.com", self.test_dir, report_only=False)
+        self.assertEqual(
+            result["results"]["urls"],
+            ["https://example.com/a", "https://example.com/b"],
+        )
